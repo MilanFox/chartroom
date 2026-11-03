@@ -8,6 +8,7 @@ export interface DeploymentConfig {
   port: number
   updateCheck: boolean
   dataDir: string
+  elevationSeconds: number
 }
 
 export class MissingVariableError extends Error {
@@ -31,6 +32,7 @@ export const readDeploymentConfig = (env: NodeJS.ProcessEnv = process.env): Depl
     port: Number(optional('PORT') ?? 3000),
     updateCheck: optional('UPDATE_CHECK') !== 'false',
     dataDir: optional('DATA_DIR') ?? '/data',
+    elevationSeconds: Number(optional('ELEVATION_SECONDS') ?? 3600),
   };
 };
 

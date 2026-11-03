@@ -8,6 +8,13 @@
       "when": 1793731249385,
       "tag": "0000_label-groups",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1793732632963,
+      "tag": "0001_holders-sessions",
+      "breakpoints": true
     }
   ]
 }
