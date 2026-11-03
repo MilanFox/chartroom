@@ -1,0 +1,87 @@
+import { describe, expect, it } from 'vitest';
+import { apiClient, uiClient } from './clients';
+import { TEST_PASSWORDS, useTestServer } from './harness';
+import { ERROR_CODES } from '../utils/errors';
+
+type OpenApiDocument = {
+  openapi: string
+  servers: { url: string }[]
+  paths: Record<string, Record<string, { summary: string }>>
+  components: { schemas: Record<string, { properties: Record<string, { enum?: string[] }> }>, securitySchemes: Record<string, unknown> }
+  security: Record<string, string[]>[]
+};
+
+describe('the OpenAPI document', () => {
+  const server = useTestServer();
+
+  let apiDocumentOnce: Promise<OpenApiDocument> | undefined;
+  const apiDocument = () => {
+    apiDocumentOnce ??= apiClient(server).request('GET', '/openapi.json').then(response => response.json() as Promise<OpenApiDocument>);
+    return apiDocumentOnce;
+  };
+
+  let uiDocumentOnce: Promise<OpenApiDocument> | undefined;
+  const uiDocument = () => {
+    uiDocumentOnce ??= uiClient(server).request('GET', '/openapi.json').then(response => response.json() as Promise<OpenApiDocument>);
+    return uiDocumentOnce;
+  };
+
+  it('is served unauthenticated on both mounts as JSON', async () => {
+    const api = await apiClient(server).request('GET', '/openapi.json');
+    const ui = await uiClient(server).request('GET', '/openapi.json');
+
+    expect(api.status).toBe(200);
+    expect(api.headers.get('content-type')).toMatch(/application\/json/);
+    expect(await api.json()).toMatchObject({ openapi: '3.1.0', info: { title: 'Chartroom' } });
+    expect(ui.status).toBe(200);
+    expect(await ui.json()).toMatchObject({ openapi: '3.1.0' });
+  });
+
+  it('lists the route table under the api server', async () => {
+    const document = await apiDocument();
+
+    expect(document.servers[0]!.url).toMatch(/\/api\/v1$/);
+    expect(document.paths['/me']!.get?.summary).toBeTruthy();
+    expect(document.paths['/holders']!.get?.summary).toBeTruthy();
+    expect(Object.keys(document.paths)).toEqual(expect.arrayContaining(['/issues', '/issues/{number}', '/issues/{number}/body/append', '/issues/{number}/changes']));
+    expect(Object.keys(document.paths['/issues']!)).toEqual(['get', 'post']);
+    expect(Object.keys(document.paths['/issues/{number}']!)).toEqual(['get', 'patch', 'delete']);
+    expect(Object.keys(document.paths['/issues/{number}/body/append']!)).toEqual(['post']);
+    expect(Object.keys(document.paths['/issues/{number}/changes']!)).toEqual(['get']);
+    expect(document.paths['/login']).toBeUndefined();
+    expect(document.security).toEqual([{ bearer: [] }]);
+    expect(document.components.securitySchemes).toEqual({ bearer: { type: 'http', scheme: 'bearer' } });
+  });
+
+  it('adds the UI-only routes under the ui server', async () => {
+    const document = await uiDocument();
+
+    expect(document.servers[0]!.url).toMatch(/\/ui$/);
+    expect(document.paths['/me']!.get).toBeDefined();
+    expect(document.paths['/login']!.post?.summary).toBeTruthy();
+    expect(document.paths['/holders/{slug}/rotate']!.post?.summary).toBeTruthy();
+    expect(document.security).toEqual([{ session: [] }]);
+    expect(document.components.securitySchemes).toEqual({ session: { type: 'apiKey', in: 'cookie', name: 'chartroom_session' } });
+  });
+
+  it('describes the error envelope with the six codes', async () => {
+    const document = await apiDocument();
+
+    const envelope = document.components.schemas.Error!.properties.error as { properties: Record<string, { enum?: string[] }>, required: string[] };
+    expect(envelope.properties.code!.enum).toEqual(ERROR_CODES);
+    expect(envelope.required).toEqual(['code', 'message']);
+  });
+
+  it('is public for GET only', async () => {
+    const admin = uiClient(server);
+    await admin.login(TEST_PASSWORDS.CHARTROOM_VIEWER_PASSWORD);
+    await admin.elevate(TEST_PASSWORDS.CHARTROOM_ADMIN_PASSWORD);
+    const { body: holder } = await admin.createHolder('api-user');
+
+    const anonymous = await apiClient(server).json('POST', '/openapi.json');
+    const authenticated = await apiClient(server, holder.secret).json('POST', '/openapi.json');
+
+    expect(anonymous).toMatchObject({ status: 401, body: { error: { code: 'unauthenticated' } } });
+    expect(authenticated).toMatchObject({ status: 404, body: { error: { code: 'not-found' } } });
+  });
+});

@@ -40,3 +40,32 @@ export const sessions = sqliteTable('sessions', {
   lastSeenAt: text('last_seen_at').notNull(),
   adminUntil: text('admin_until'),
 });
+
+export const issues = sqliteTable('issues', {
+  number: integer().primaryKey({ autoIncrement: true }),
+  kind: text().notNull(),
+  title: text().notNull(),
+  body: text().notNull().default(''),
+  state: text().notNull().default('open'),
+  assignee: text(),
+  parent: integer(),
+  name: text().unique(),
+  testInstructions: text('test_instructions'),
+  createdBy: text('created_by').notNull(),
+  origin: text().notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  closedAt: text('closed_at'),
+  version: integer().notNull().default(1),
+});
+
+export const changes = sqliteTable('changes', {
+  id: integer().primaryKey({ autoIncrement: true }),
+  issue: integer().notNull().references(() => issues.number, { onDelete: 'cascade' }),
+  actor: text().notNull(),
+  origin: text().notNull(),
+  at: text('at').notNull(),
+  field: text().notNull(),
+  before: text(),
+  after: text(),
+});
