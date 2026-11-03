@@ -23,3 +23,9 @@ export const labelParam = (event: H3Event) => {
   if (label === '') throw invalid('label must not be blank', 'label');
   return label;
 };
+
+export const linkIdParam = (event: H3Event) => {
+  const raw = getRouterParam(event, 'id') ?? '';
+  if (!/^\d+$/.test(raw)) throw notFound(`link ${raw} does not exist`);
+  return Number(raw);
+};

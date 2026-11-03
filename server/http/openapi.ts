@@ -40,8 +40,8 @@ const pathParameters = (path: string, declared: NonNullable<OperationMeta['param
     .filter(name => !declared.some(parameter => parameter.in === 'path' && parameter.name === name))
     .map(name => ({ name, in: 'path', required: true, schema: { type: 'string' } }));
 
-const response = (status: string, { description, schema }: OperationMeta['responses'][string]) => {
-  if (schema) return { description, content: { 'application/json': { schema } } };
+const response = (status: string, { description, schema, contentType = 'application/json' }: OperationMeta['responses'][string]) => {
+  if (schema) return { description, content: { [contentType]: { schema } } };
   return Number(status) >= 400 ? { description, content: errorContent } : { description };
 };
 

@@ -1,5 +1,6 @@
 import { and, asc, count, desc, eq, gt, inArray, lt, or, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
+import type { SQLiteColumn } from 'drizzle-orm/sqlite-core';
 import { changes, issues } from '../db/schema';
 import type { BlockerRef } from './blockers';
 import type { FieldWrite, LoggedValue } from './changes';
@@ -142,11 +143,14 @@ const SORT_COLUMNS = {
 const containsText = (needle: string) =>
   sql`(instr(lower(${issues.title}), lower(${needle})) > 0 or instr(lower(${issues.body}), lower(${needle})) > 0)`;
 
-const beyondCursor = ({ sort, order, after }: IssueQuery & { after: IssueCursor }) => {
+export const beyondCursorOn = (column: SQLiteColumn, order: SortOrder, after: IssueCursor) => {
   const beyond = order === 'asc' ? gt : lt;
-  if (sort === 'number') return beyond(issues.number, after.number);
-  const column = SORT_COLUMNS[sort];
   return or(beyond(column, String(after.key)), and(eq(column, String(after.key)), beyond(issues.number, after.number)))!;
+};
+
+const beyondCursor = ({ sort, order, after }: IssueQuery & { after: IssueCursor }) => {
+  if (sort === 'number') return (order === 'asc' ? gt : lt)(issues.number, after.number);
+  return beyondCursorOn(SORT_COLUMNS[sort], order, after);
 };
 
 const filterConditions = (query: IssueQuery) => {

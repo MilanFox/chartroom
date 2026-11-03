@@ -2,8 +2,10 @@ import type { H3Event } from 'h3';
 import type { Principal } from '../utils/principal';
 import { holderRoster } from './handlers/holders';
 import { BLOCKER_NUMBER_PARAM, CHANGE_SCHEMA, DOCUMENT_SCHEMA, ISSUE_CREATE_SCHEMA, ISSUE_FIELDS_SCHEMA, ISSUE_LIST_PARAMS, ISSUE_NUMBER_PARAM, issueHandlers, LABEL_PARAM, PAGING_PARAMS, pageSchema, ROW_SCHEMA } from './handlers/issues';
+import { EFFORT_DOCUMENT_SCHEMA, EFFORT_HANDLE_PARAM, EFFORT_LIST_PARAMS, EFFORT_PAGE_SCHEMA, effortHandlers } from './handlers/efforts';
 import { COMMENT_BODY_SCHEMA, COMMENT_ID_PARAM, COMMENT_SCHEMA, commentHandlers } from './handlers/comments';
 import { LABEL_GROUP_SCHEMA, labelGroupList } from './handlers/labels';
+import { LINK_CREATE_SCHEMA, LINK_FIELDS_SCHEMA, LINK_ID_PARAM, LINK_SCHEMA, linkHandlers } from './handlers/links';
 import { ME_SCHEMA, me } from './handlers/me';
 
 export type RouteMethod = 'get' | 'post' | 'put' | 'patch' | 'delete';
@@ -18,7 +20,7 @@ export interface OperationMeta {
   tags: string[]
   parameters?: { name: string, in: 'path' | 'query' | 'header', required?: boolean, schema: JsonSchema, description?: string }[]
   requestBody?: JsonSchema
-  responses: Record<string, { description: string, schema?: JsonSchema }>
+  responses: Record<string, { description: string, schema?: JsonSchema, contentType?: string }>
 }
 
 export interface TableRoute {
@@ -280,6 +282,52 @@ export const routeTable: TableRoute[] = [
   },
   {
     method: 'get',
+    path: '/issues/:number/links',
+    handler: linkHandlers.list,
+    openapi: {
+      summary: 'The Links of an issue, oldest first',
+      tags: ['links'],
+      parameters: [ISSUE_NUMBER_PARAM, ...PAGING_PARAMS],
+      responses: { 200: { description: 'Page of Link', schema: pageSchema(LINK_SCHEMA) }, 400: { description: 'Bad limit or cursor' }, 404: { description: 'No such issue' } },
+    },
+  },
+  {
+    method: 'post',
+    path: '/issues/:number/links',
+    handler: linkHandlers.create,
+    openapi: {
+      summary: 'Attach a Link to an issue',
+      tags: ['links'],
+      parameters: [ISSUE_NUMBER_PARAM],
+      requestBody: LINK_CREATE_SCHEMA,
+      responses: { 201: { description: 'Link', schema: LINK_SCHEMA }, 400: { description: 'A bad role, type, url or title; field set' }, 404: { description: 'No such issue' }, 409: { description: 'The URL is already linked on this issue (field url)' } },
+    },
+  },
+  {
+    method: 'patch',
+    path: '/issues/:number/links/:id',
+    handler: linkHandlers.edit,
+    openapi: {
+      summary: 'Edit the role, type or title of a Link',
+      tags: ['links'],
+      parameters: [ISSUE_NUMBER_PARAM, LINK_ID_PARAM],
+      requestBody: LINK_FIELDS_SCHEMA,
+      responses: { 200: { description: 'Link', schema: LINK_SCHEMA }, 400: { description: 'A bad role, type or title; field set' }, 404: { description: 'No such issue or Link' } },
+    },
+  },
+  {
+    method: 'delete',
+    path: '/issues/:number/links/:id',
+    handler: linkHandlers.remove,
+    openapi: {
+      summary: 'Remove a Link; records a link Change with its id, title and url',
+      tags: ['links'],
+      parameters: [ISSUE_NUMBER_PARAM, LINK_ID_PARAM],
+      responses: { 204: { description: 'Removed' }, 404: { description: 'No such issue or Link' } },
+    },
+  },
+  {
+    method: 'get',
     path: '/issues/:number/changes',
     handler: issueHandlers.changes,
     openapi: {
@@ -287,6 +335,39 @@ export const routeTable: TableRoute[] = [
       tags: ['issues'],
       parameters: [ISSUE_NUMBER_PARAM, ...PAGING_PARAMS, { name: 'field', in: 'query', schema: { type: 'string' }, description: 'Only Changes of this field' }],
       responses: { 200: { description: 'Page of Change', schema: pageSchema(CHANGE_SCHEMA) }, 400: { description: 'Bad limit or cursor' }, 404: { description: 'No such issue' } },
+    },
+  },
+  {
+    method: 'get',
+    path: '/efforts',
+    handler: effortHandlers.list,
+    openapi: {
+      summary: 'List Efforts as Effort documents',
+      tags: ['efforts'],
+      parameters: EFFORT_LIST_PARAMS,
+      responses: { 200: { description: 'Page of Effort document', schema: EFFORT_PAGE_SCHEMA }, 400: { description: 'An unknown sort or order, or a bad limit or cursor; field set' } },
+    },
+  },
+  {
+    method: 'get',
+    path: '/efforts/:handle',
+    handler: effortHandlers.read,
+    openapi: {
+      summary: 'Read an Effort by slug or number, with its roll-ups, map and specs',
+      tags: ['efforts'],
+      parameters: [EFFORT_HANDLE_PARAM],
+      responses: { 200: { description: 'Effort document', schema: EFFORT_DOCUMENT_SCHEMA }, 400: { description: 'The number is not an Effort (field handle)' }, 404: { description: 'No such Effort' } },
+    },
+  },
+  {
+    method: 'get',
+    path: '/efforts/:handle/artifacts.md',
+    handler: effortHandlers.artifacts,
+    openapi: {
+      summary: 'The Artifacts of the roll-up as markdown, one list item per Artifact',
+      tags: ['efforts'],
+      parameters: [EFFORT_HANDLE_PARAM],
+      responses: { 200: { description: 'Markdown', contentType: 'text/markdown', schema: { type: 'string' } }, 400: { description: 'The number is not an Effort (field handle)' }, 404: { description: 'No such Effort' } },
     },
   },
   {
