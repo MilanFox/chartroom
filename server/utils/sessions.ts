@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { eq } from 'drizzle-orm';
+import type { H3Event } from 'h3';
 import { sessions } from '../db/schema';
 import type { Store } from './store';
 
@@ -7,6 +8,16 @@ export const SESSION_COOKIE = 'chartroom_session';
 export const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 
 export type SessionRecord = typeof sessions.$inferSelect;
+
+export const setSessionCookie = (event: H3Event, token: string) => {
+  setCookie(event, SESSION_COOKIE, token, {
+    httpOnly: true,
+    sameSite: 'lax',
+    path: '/',
+    maxAge: SESSION_MAX_AGE_SECONDS,
+    secure: isSecureRequest(event),
+  });
+};
 
 export const createSession = (holderSlug: string | null) => {
   const token = randomBytes(32).toString('base64url');

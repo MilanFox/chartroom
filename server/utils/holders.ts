@@ -39,9 +39,9 @@ const issueSecretFor = (slug: string, store: Store) => {
 export const createHolder = ({ slug, displayName }: NewHolder, actor: string) => {
   if (!SLUG_SHAPE.test(slug)) throw invalid('slug must be lowercase letters, digits and hyphens', 'slug');
   if (slug === RESERVED_SLUG) throw invalid(`${RESERVED_SLUG} is a reserved slug`, 'slug');
-  if (findHolder(slug)) throw conflict(`holder ${slug} already exists`, 'slug');
   const at = nowIso();
   const secret = useStore().transaction((tx) => {
+    if (findHolder(slug)) throw conflict(`holder ${slug} already exists`, 'slug');
     tx.insert(holders).values({ slug, displayName: displayName ?? null, createdAt: at, updatedAt: at, updatedBy: actor }).run();
     return issueSecretFor(slug, tx);
   });

@@ -45,5 +45,6 @@ export const resolveSessionPrincipal = (event: H3Event): Principal => {
     deleteSession(session.id);
     throw unauthenticated('a valid session is required');
   }
+  setSessionCookie(event, token!);
   return sessionPrincipal(session, holder);
 };

@@ -3,16 +3,6 @@ import type { Principal } from '../../utils/principal';
 import { uiMe } from '../handlers/me';
 import type { MountRoute } from '../mount';
 
-const setSessionCookie = (event: H3Event, token: string) => {
-  setCookie(event, SESSION_COOKIE, token, {
-    httpOnly: true,
-    sameSite: 'lax',
-    path: '/',
-    maxAge: SESSION_MAX_AGE_SECONDS,
-    secure: isSecureRequest(event),
-  });
-};
-
 const login = async (event: H3Event) => {
   const ip = clientIp(event);
   assertNotLimited(ip);

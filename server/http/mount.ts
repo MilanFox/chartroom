@@ -29,7 +29,7 @@ const assertJsonBody = (event: H3Event) => {
 };
 
 const assertSameOrigin = (event: H3Event) => {
-  if (getRequestHeader(event, 'origin') !== baseUrl(event)) throw forbidden('writes must originate from this site');
+  if (getRequestHeader(event, 'origin') !== new URL(baseUrl(event)).origin) throw forbidden('writes must originate from this site');
 };
 
 const renderError = (event: H3Event, error: unknown) => {
@@ -57,7 +57,7 @@ export const createMount = ({ origin, resolvePrincipal, extraRoutes = [] }: Moun
   return defineEventHandler(async (event) => {
     try {
       assertJsonBody(event);
-      if (!publicPaths.has(`${event.method} ${event.path}`)) event.context.principal = resolvePrincipal(event);
+      if (!publicPaths.has(`${event.method} ${getRequestURL(event).pathname}`)) event.context.principal = resolvePrincipal(event);
       if (origin === 'ui' && !isRead(event)) assertSameOrigin(event);
       return await dispatch(event);
     }
