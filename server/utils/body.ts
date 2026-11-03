@@ -28,3 +28,9 @@ export const optionalString = (body: JsonObject, field: string) => {
   if (typeof value !== 'string') throw invalid(`${field} must be a string`, field);
   return value;
 };
+
+export const requireText = (body: JsonObject, field: string) => {
+  const value = requireString(body, field);
+  if (value.trim() === '') throw invalid(`${field} must not be blank`, field);
+  return value;
+};

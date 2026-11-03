@@ -22,6 +22,13 @@
       "when": 1793734624567,
       "tag": "0002_issues-changes",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1793736261310,
+      "tag": "0003_comments",
+      "breakpoints": true
     }
   ]
 }

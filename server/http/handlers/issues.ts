@@ -3,13 +3,15 @@ import type { JsonObject } from '../../utils/body';
 import type { Query } from '../../utils/paging';
 import type { IssueCursor, IssueFields, IssueQuery, IssueRecord, IssueSort } from '../../utils/issues';
 import type { Principal } from '../../utils/principal';
+import { COMMENT_SCHEMA, toComment } from './comments';
+import { issueNumberParam } from './params';
 
 export const toRow = (event: H3Event, issue: IssueRecord) => ({
   number: issue.number,
   kind: issue.kind,
   title: issue.title,
   state: issue.state,
-  status: issue.state,
+  status: statusOf(issue),
   assignee: issue.assignee,
   parent: issue.parent,
   effort: effortNumberOf(issue),
@@ -19,26 +21,23 @@ export const toRow = (event: H3Event, issue: IssueRecord) => ({
   url: `${baseUrl(event)}/issues/${issue.number}`,
 });
 
-export const toDocument = (event: H3Event, issue: IssueRecord) => ({
-  ...toRow(event, issue),
-  body: issue.body,
-  createdBy: issue.createdBy,
-  origin: issue.origin,
-  closedAt: issue.closedAt,
-  version: issue.version,
-  blockedBy: [],
-  blocks: [],
-  children: childNumbers(issue.number),
-  links: [],
-  comments: [],
-  resolution: null,
-  ...(issue.kind === 'effort' ? { name: issue.name, testInstructions: issue.testInstructions } : {}),
-});
-
-export const issueNumberParam = (event: H3Event) => {
-  const raw = getRouterParam(event, 'number') ?? '';
-  if (!/^\d+$/.test(raw)) throw notFound(`issue #${raw} does not exist`);
-  return Number(raw);
+export const toDocument = (event: H3Event, issue: IssueRecord) => {
+  const resolution = resolutionOf(issue.number);
+  return {
+    ...toRow(event, issue),
+    body: issue.body,
+    createdBy: issue.createdBy,
+    origin: issue.origin,
+    closedAt: issue.closedAt,
+    version: issue.version,
+    blockedBy: [],
+    blocks: [],
+    children: childNumbers(issue.number),
+    links: [],
+    comments: commentsOf(issue.number).map(comment => toComment(event, comment)),
+    resolution: resolution === null ? null : toComment(event, resolution),
+    ...(issue.kind === 'effort' ? { name: issue.name, testInstructions: issue.testInstructions } : {}),
+  };
 };
 
 const parentField = (body: JsonObject) => {
@@ -102,6 +101,19 @@ const issueAppend = async (event: H3Event, principal: Principal) => {
   const request = { section: requireString(body, 'section'), text: requireString(body, 'text') };
   return toDocument(event, appendToIssue(number, request, principal));
 };
+
+const issueClaim = (event: H3Event, principal: Principal) => toDocument(event, claimIssue(issueNumberParam(event), principal));
+
+const issueUnassign = (event: H3Event, principal: Principal) => toDocument(event, unassignIssue(issueNumberParam(event), principal));
+
+const issueClose = async (event: H3Event, principal: Principal) => {
+  const number = issueNumberParam(event);
+  const body = await readJsonObject(event);
+  const comment = body.comment === undefined ? null : requireText(body, 'comment');
+  return toDocument(event, closeIssue(number, comment, principal));
+};
+
+const issueReopen = (event: H3Event, principal: Principal) => toDocument(event, reopenIssue(issueNumberParam(event), principal));
 
 const MAX_NUMBERS = 200;
 
@@ -182,6 +194,10 @@ export const issueHandlers = {
   edit: issueEdit,
   remove: issueRemove,
   append: issueAppend,
+  claim: issueClaim,
+  unassign: issueUnassign,
+  close: issueClose,
+  reopen: issueReopen,
   changes: issueChanges,
 };
 
@@ -194,7 +210,7 @@ const ROW_PROPERTIES = {
   kind: { type: 'string', enum: KINDS },
   title: { type: 'string' },
   state: { type: 'string', enum: ['open', 'closed'] },
-  status: { type: 'string', enum: ['open', 'closed'] },
+  status: { type: 'string', enum: ['open', 'claimed', 'closed'] },
   assignee: nullable('string'),
   parent: nullable('integer'),
   effort: nullable('integer'),
@@ -217,8 +233,8 @@ const DOCUMENT_PROPERTIES = {
   blocks: objectList,
   children: { type: 'array', items: { type: 'integer' } },
   links: objectList,
-  comments: objectList,
-  resolution: nullable('object'),
+  comments: { type: 'array', items: COMMENT_SCHEMA },
+  resolution: { oneOf: [COMMENT_SCHEMA, { type: 'null' }] },
   name: { ...nullable('string'), description: 'Effort only' },
   testInstructions: { ...nullable('string'), description: 'Effort only' },
 };

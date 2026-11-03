@@ -2,6 +2,7 @@ import type { H3Event } from 'h3';
 import type { Principal } from '../utils/principal';
 import { holderRoster } from './handlers/holders';
 import { CHANGE_SCHEMA, DOCUMENT_SCHEMA, ISSUE_FIELDS_SCHEMA, ISSUE_LIST_PARAMS, ISSUE_NUMBER_PARAM, issueHandlers, PAGING_PARAMS, pageSchema, ROW_SCHEMA } from './handlers/issues';
+import { COMMENT_BODY_SCHEMA, COMMENT_ID_PARAM, COMMENT_SCHEMA, commentHandlers } from './handlers/comments';
 import { ME_SCHEMA, me } from './handlers/me';
 
 export type RouteMethod = 'get' | 'post' | 'put' | 'patch' | 'delete';
@@ -118,6 +119,60 @@ export const routeTable: TableRoute[] = [
   },
   {
     method: 'post',
+    path: '/issues/:number/claim',
+    handler: issueHandlers.claim,
+    openapi: {
+      summary: 'Claim an issue for the caller',
+      tags: ['issues'],
+      parameters: [ISSUE_NUMBER_PARAM],
+      responses: {
+        200: { description: 'Document', schema: DOCUMENT_SCHEMA },
+        400: { description: 'The issue is closed (field state)' },
+        404: { description: 'No such issue' },
+        409: { description: 'Held by another holder (field assignee)' },
+      },
+    },
+  },
+  {
+    method: 'delete',
+    path: '/issues/:number/assignee',
+    handler: issueHandlers.unassign,
+    openapi: {
+      summary: 'Unassign an issue',
+      tags: ['issues'],
+      parameters: [ISSUE_NUMBER_PARAM],
+      responses: { 200: { description: 'Document', schema: DOCUMENT_SCHEMA }, 404: { description: 'No such issue' } },
+    },
+  },
+  {
+    method: 'post',
+    path: '/issues/:number/close',
+    handler: issueHandlers.close,
+    openapi: {
+      summary: 'Close an issue, optionally with its Resolution comment',
+      tags: ['issues'],
+      parameters: [ISSUE_NUMBER_PARAM],
+      requestBody: { type: 'object', properties: { comment: { type: 'string', description: 'Created flagged resolution: true; the issue\'s Resolution' } } },
+      responses: {
+        200: { description: 'Document', schema: DOCUMENT_SCHEMA },
+        400: { description: 'Already closed (field state), or a blank comment (field comment)' },
+        404: { description: 'No such issue' },
+      },
+    },
+  },
+  {
+    method: 'post',
+    path: '/issues/:number/reopen',
+    handler: issueHandlers.reopen,
+    openapi: {
+      summary: 'Reopen an issue; the Resolution comment keeps its flag',
+      tags: ['issues'],
+      parameters: [ISSUE_NUMBER_PARAM],
+      responses: { 200: { description: 'Document', schema: DOCUMENT_SCHEMA }, 404: { description: 'No such issue' } },
+    },
+  },
+  {
+    method: 'post',
     path: '/issues/:number/body/append',
     handler: issueHandlers.append,
     openapi: {
@@ -130,6 +185,52 @@ export const routeTable: TableRoute[] = [
         400: { description: 'No such section (field section)' },
         404: { description: 'No such issue' },
       },
+    },
+  },
+  {
+    method: 'get',
+    path: '/issues/:number/comments',
+    handler: commentHandlers.list,
+    openapi: {
+      summary: 'The comments of an issue, oldest first',
+      tags: ['comments'],
+      parameters: [ISSUE_NUMBER_PARAM, ...PAGING_PARAMS],
+      responses: { 200: { description: 'Page of Comment', schema: pageSchema(COMMENT_SCHEMA) }, 400: { description: 'Bad limit or cursor' }, 404: { description: 'No such issue' } },
+    },
+  },
+  {
+    method: 'post',
+    path: '/issues/:number/comments',
+    handler: commentHandlers.create,
+    openapi: {
+      summary: 'Comment on an issue',
+      tags: ['comments'],
+      parameters: [ISSUE_NUMBER_PARAM],
+      requestBody: COMMENT_BODY_SCHEMA,
+      responses: { 201: { description: 'Comment', schema: COMMENT_SCHEMA }, 400: { description: 'Blank body (field body)' }, 404: { description: 'No such issue' } },
+    },
+  },
+  {
+    method: 'patch',
+    path: '/issues/:number/comments/:id',
+    handler: commentHandlers.edit,
+    openapi: {
+      summary: 'Edit an own comment',
+      tags: ['comments'],
+      parameters: [ISSUE_NUMBER_PARAM, COMMENT_ID_PARAM],
+      requestBody: COMMENT_BODY_SCHEMA,
+      responses: { 200: { description: 'Comment', schema: COMMENT_SCHEMA }, 400: { description: 'Blank body (field body)' }, 403: { description: 'Not the author' }, 404: { description: 'No such issue or comment' } },
+    },
+  },
+  {
+    method: 'delete',
+    path: '/issues/:number/comments/:id',
+    handler: commentHandlers.remove,
+    openapi: {
+      summary: 'Delete an own comment; records a comment Change',
+      tags: ['comments'],
+      parameters: [ISSUE_NUMBER_PARAM, COMMENT_ID_PARAM],
+      responses: { 204: { description: 'Deleted' }, 403: { description: 'Not the author' }, 404: { description: 'No such issue or comment' } },
     },
   },
   {

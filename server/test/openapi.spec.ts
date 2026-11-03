@@ -48,6 +48,12 @@ describe('the OpenAPI document', () => {
     expect(Object.keys(document.paths['/issues/{number}']!)).toEqual(['get', 'patch', 'delete']);
     expect(Object.keys(document.paths['/issues/{number}/body/append']!)).toEqual(['post']);
     expect(Object.keys(document.paths['/issues/{number}/changes']!)).toEqual(['get']);
+    expect(Object.keys(document.paths['/issues/{number}/claim']!)).toEqual(['post']);
+    expect(Object.keys(document.paths['/issues/{number}/assignee']!)).toEqual(['delete']);
+    expect(Object.keys(document.paths['/issues/{number}/close']!)).toEqual(['post']);
+    expect(Object.keys(document.paths['/issues/{number}/reopen']!)).toEqual(['post']);
+    expect(Object.keys(document.paths['/issues/{number}/comments']!)).toEqual(['get', 'post']);
+    expect(Object.keys(document.paths['/issues/{number}/comments/{id}']!)).toEqual(['patch', 'delete']);
     expect(document.paths['/login']).toBeUndefined();
     expect(document.security).toEqual([{ bearer: [] }]);
     expect(document.components.securitySchemes).toEqual({ bearer: { type: 'http', scheme: 'bearer' } });
