@@ -17,26 +17,23 @@
     "prepare": "husky"
   },
   "dependencies": {
-    "@pinia/nuxt": "^0.11.3",
+    "@pinia/nuxt": "^1.0.3",
     "nuxt": "^4.3.0",
-    "pinia": "^3.0.4",
-    "vue": "^3.5.27",
-    "vue-router": "^4.6.4"
+    "pinia": "^4.1.0"
   },
   "devDependencies": {
     "@nuxt/eslint": "^1.13.0",
     "@nuxt/test-utils": "^4.0.3",
-    "@types/node": "^25.0.10",
+    "@types/node": "^26.6.6",
     "@vue/test-utils": "^2.4.11",
-    "@vueuse/core": "^14.1.0",
-    "@vueuse/nuxt": "^14.1.0",
+    "@vueuse/nuxt": "^15.0.0",
     "happy-dom": "^21.0.4",
     "husky": "^9.1.7",
     "lint-staged": "^17.1.0",
     "postcss-pxtorem": "^6.1.0",
     "sass": "^1.97.3",
-    "typescript": "^5.9.3",
-    "vitest": "^4.1.10",
+    "typescript": "^6.0.3",
+    "vitest": "^5.1.0",
     "vue-tsc": "^3.2.3"
   },
   "allowScripts": {
