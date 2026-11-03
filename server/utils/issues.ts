@@ -1,8 +1,10 @@
 import { and, asc, count, desc, eq, gt, inArray, lt, or, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import { changes, issues } from '../db/schema';
+import type { BlockerRef } from './blockers';
 import type { FieldWrite, LoggedValue } from './changes';
 import type { Principal } from './principal';
+import type { Store } from './store';
 
 export type Kind = 'effort' | 'map' | 'spec' | 'ticket';
 export type IssueRecord = typeof issues.$inferSelect;
@@ -36,6 +38,8 @@ export interface IssueFields {
 export interface NewIssue extends IssueFields {
   kind: Kind
   title: string
+  labels?: string[]
+  blockedBy?: number[]
 }
 
 export interface PatchRequest {
@@ -55,7 +59,7 @@ export interface ChangeQuery {
 }
 
 export type IssueState = 'open' | 'closed';
-export type IssueStatus = 'open' | 'claimed' | 'closed';
+export type IssueStatus = 'open' | 'claimed' | 'blocked' | 'closed';
 export type IssueSort = 'number' | 'createdAt' | 'updatedAt' | 'title';
 export type SortOrder = 'asc' | 'desc';
 
@@ -81,8 +85,9 @@ const isSet = <T>(value: T | null | undefined): value is T => value !== undefine
 
 export const isKind = (value: unknown): value is Kind => KINDS.includes(value as Kind);
 
-export const statusOf = (issue: IssueRecord): IssueStatus => {
+export const statusOf = (issue: IssueRecord, blockers: BlockerRef[] = blockersOf(issue.number)): IssueStatus => {
   if (issue.state === 'closed') return 'closed';
+  if (blockers.some(blocker => blocker.open)) return 'blocked';
   return issue.assignee === null ? 'open' : 'claimed';
 };
 
@@ -93,6 +98,10 @@ export const requireIssue = (number: number) => {
   const issue = findIssue(number);
   if (!issue) throw notFound(`issue #${number} does not exist`);
   return issue;
+};
+
+export const touchIssue = (tx: Store, number: number, at: string) => {
+  tx.update(issues).set({ updatedAt: at }).where(eq(issues.number, number)).run();
 };
 
 export const childNumbers = (number: number) =>
@@ -204,19 +213,25 @@ export const createIssue = (input: NewIssue, principal: Principal) => {
   assertEffortOnlyFields(input.kind, input);
   assertParentAllowed(input.kind, parent, null);
   assertNameFree(input.name, null);
+  requireBlockers(input.blockedBy ?? []);
   const { actor, origin, at } = stampFor(principal);
-  const { number } = useStore().insert(issues).values({
-    kind: input.kind,
-    title: input.title,
-    body: input.body ?? '',
-    parent,
-    name: input.name ?? null,
-    testInstructions: input.testInstructions ?? null,
-    createdBy: actor,
-    origin,
-    createdAt: at,
-    updatedAt: at,
-  }).returning({ number: issues.number }).get();
+  const number = useStore().transaction((tx) => {
+    const created = tx.insert(issues).values({
+      kind: input.kind,
+      title: input.title,
+      body: input.body ?? '',
+      parent,
+      name: input.name ?? null,
+      testInstructions: input.testInstructions ?? null,
+      createdBy: actor,
+      origin,
+      createdAt: at,
+      updatedAt: at,
+    }).returning({ number: issues.number }).get();
+    for (const label of input.labels ?? []) applyLabel(tx, created.number, label);
+    insertBlockers(tx, created.number, input.blockedBy ?? []);
+    return created.number;
+  });
   return requireIssue(number);
 };
 
@@ -327,11 +342,19 @@ export const appendToIssue = (number: number, { section, text }: AppendRequest, 
     return requireIssue(number);
   });
 
-export const deleteIssue = (number: number) => {
-  requireIssue(number);
+export const deleteIssue = (number: number, principal: Principal) => {
+  const issue = requireIssue(number);
   const { children } = useStore().select({ children: count() }).from(issues).where(eq(issues.parent, number)).get()!;
   if (children > 0) throw conflict(`issue #${number} still has ${children} ${children === 1 ? 'child' : 'children'}`);
-  useStore().delete(issues).where(eq(issues.number, number)).run();
+  const stamp = stampFor(principal);
+  useStore().transaction((tx) => {
+    const blocked = blocksOf(number);
+    tx.delete(issues).where(eq(issues.number, number)).run();
+    for (const target of blocked) {
+      logChanges(tx, { ...stamp, issue: target.number }, [{ field: 'blocker', before: `#${number} ${issue.title}`, after: null }]);
+      touchIssue(tx, target.number, stamp.at);
+    }
+  });
 };
 
 export const listChanges = (number: number, { field, after, limit }: ChangeQuery): ChangeRecord[] => {

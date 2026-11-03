@@ -1,4 +1,4 @@
-import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 export const labelGroups = sqliteTable('label_groups', {
   id: text().primaryKey(),
@@ -80,3 +80,13 @@ export const comments = sqliteTable('comments', {
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 });
+
+export const issueLabels = sqliteTable('issue_labels', {
+  issue: integer().notNull().references(() => issues.number, { onDelete: 'cascade' }),
+  label: text().notNull(),
+}, table => [primaryKey({ columns: [table.issue, table.label] })]);
+
+export const issueBlockers = sqliteTable('issue_blockers', {
+  issue: integer().notNull().references(() => issues.number, { onDelete: 'cascade' }),
+  blocker: integer().notNull().references(() => issues.number, { onDelete: 'cascade' }),
+}, table => [primaryKey({ columns: [table.issue, table.blocker] })]);

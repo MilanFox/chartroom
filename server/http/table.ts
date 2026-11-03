@@ -1,8 +1,9 @@
 import type { H3Event } from 'h3';
 import type { Principal } from '../utils/principal';
 import { holderRoster } from './handlers/holders';
-import { CHANGE_SCHEMA, DOCUMENT_SCHEMA, ISSUE_FIELDS_SCHEMA, ISSUE_LIST_PARAMS, ISSUE_NUMBER_PARAM, issueHandlers, PAGING_PARAMS, pageSchema, ROW_SCHEMA } from './handlers/issues';
+import { BLOCKER_NUMBER_PARAM, CHANGE_SCHEMA, DOCUMENT_SCHEMA, ISSUE_CREATE_SCHEMA, ISSUE_FIELDS_SCHEMA, ISSUE_LIST_PARAMS, ISSUE_NUMBER_PARAM, issueHandlers, LABEL_PARAM, PAGING_PARAMS, pageSchema, ROW_SCHEMA } from './handlers/issues';
 import { COMMENT_BODY_SCHEMA, COMMENT_ID_PARAM, COMMENT_SCHEMA, commentHandlers } from './handlers/comments';
+import { LABEL_GROUP_SCHEMA, labelGroupList } from './handlers/labels';
 import { ME_SCHEMA, me } from './handlers/me';
 
 export type RouteMethod = 'get' | 'post' | 'put' | 'patch' | 'delete';
@@ -66,11 +67,11 @@ export const routeTable: TableRoute[] = [
     openapi: {
       summary: 'Create an issue',
       tags: ['issues'],
-      requestBody: { type: 'object', properties: { kind: { type: 'string', enum: KINDS }, ...ISSUE_FIELDS_SCHEMA }, required: ['kind', 'title'] },
+      requestBody: { type: 'object', properties: { kind: { type: 'string', enum: KINDS }, ...ISSUE_CREATE_SCHEMA }, required: ['kind', 'title'] },
       responses: {
         201: { description: 'Document', schema: DOCUMENT_SCHEMA },
-        400: { description: 'A parent rule, the name shape, or name on a non-Effort; field set' },
-        404: { description: 'Unknown parent' },
+        400: { description: 'A parent rule, the name shape, name on a non-Effort, or a bad labels or blockedBy shape; field set' },
+        404: { description: 'Unknown parent or blocker' },
         409: { description: 'A second map under one Effort, or a taken Effort name' },
       },
     },
@@ -114,7 +115,7 @@ export const routeTable: TableRoute[] = [
       summary: 'Delete an issue and everything attached to it',
       tags: ['issues'],
       parameters: [ISSUE_NUMBER_PARAM],
-      responses: { 204: { description: 'Deleted' }, 404: { description: 'No such issue' }, 409: { description: 'Children exist; the message carries the count' } },
+      responses: { 204: { description: 'Deleted; each issue it blocked gets a blocker removal Change' }, 404: { description: 'No such issue' }, 409: { description: 'Children exist; the message carries the count' } },
     },
   },
   {
@@ -188,6 +189,50 @@ export const routeTable: TableRoute[] = [
     },
   },
   {
+    method: 'put',
+    path: '/issues/:number/labels/:label',
+    handler: issueHandlers.labelAdd,
+    openapi: {
+      summary: 'Add a label; a label group member removes its siblings in the same write',
+      tags: ['issues'],
+      parameters: [ISSUE_NUMBER_PARAM, LABEL_PARAM],
+      responses: { 204: { description: 'Added, or already carried' }, 400: { description: 'Blank label (field label)' }, 404: { description: 'No such issue' } },
+    },
+  },
+  {
+    method: 'delete',
+    path: '/issues/:number/labels/:label',
+    handler: issueHandlers.labelRemove,
+    openapi: {
+      summary: 'Remove a label',
+      tags: ['issues'],
+      parameters: [ISSUE_NUMBER_PARAM, LABEL_PARAM],
+      responses: { 204: { description: 'Removed, or never carried' }, 400: { description: 'Blank label (field label)' }, 404: { description: 'No such issue' } },
+    },
+  },
+  {
+    method: 'put',
+    path: '/issues/:number/blockers/:blocker',
+    handler: issueHandlers.blockerAdd,
+    openapi: {
+      summary: 'Mark an issue as blocked by another; records a blocker Change on the blocked issue',
+      tags: ['issues'],
+      parameters: [ISSUE_NUMBER_PARAM, BLOCKER_NUMBER_PARAM],
+      responses: { 204: { description: 'Added, or already present' }, 400: { description: 'A self-block or a cycle (field blocker)' }, 404: { description: 'No such issue or blocker' } },
+    },
+  },
+  {
+    method: 'delete',
+    path: '/issues/:number/blockers/:blocker',
+    handler: issueHandlers.blockerRemove,
+    openapi: {
+      summary: 'Remove a blocker; records a blocker Change on the blocked issue',
+      tags: ['issues'],
+      parameters: [ISSUE_NUMBER_PARAM, BLOCKER_NUMBER_PARAM],
+      responses: { 204: { description: 'Removed, or never present' }, 404: { description: 'No such issue' } },
+    },
+  },
+  {
     method: 'get',
     path: '/issues/:number/comments',
     handler: commentHandlers.list,
@@ -242,6 +287,16 @@ export const routeTable: TableRoute[] = [
       tags: ['issues'],
       parameters: [ISSUE_NUMBER_PARAM, ...PAGING_PARAMS, { name: 'field', in: 'query', schema: { type: 'string' }, description: 'Only Changes of this field' }],
       responses: { 200: { description: 'Page of Change', schema: pageSchema(CHANGE_SCHEMA) }, 400: { description: 'Bad limit or cursor' }, 404: { description: 'No such issue' } },
+    },
+  },
+  {
+    method: 'get',
+    path: '/labels',
+    handler: labelGroupList,
+    openapi: {
+      summary: 'The Label groups in group order, seeded groups first',
+      tags: ['labels'],
+      responses: { 200: { description: 'Label groups', schema: { type: 'array', items: LABEL_GROUP_SCHEMA } } },
     },
   },
 ];

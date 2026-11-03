@@ -362,6 +362,7 @@ describe('issue list', () => {
       parent: alphaMap.number,
       effort: alpha.number,
       labels: [],
+      blockedBy: [],
       createdAt: expect.any(String),
       updatedAt: expect.any(String),
       url: `${server.baseUrl}/issues/${underMap.number}`,
