@@ -13,3 +13,30 @@ export const labelGroupMembers = sqliteTable('label_group_members', {
   displayLabel: text('display_label').notNull(),
   position: integer().notNull(),
 });
+
+export const holders = sqliteTable('holders', {
+  slug: text().primaryKey(),
+  displayName: text('display_name'),
+  createdAt: text('created_at').notNull(),
+  revokedAt: text('revoked_at'),
+  lastUsedAt: text('last_used_at'),
+  updatedAt: text('updated_at').notNull(),
+  updatedBy: text('updated_by').notNull(),
+});
+
+export const holderSecrets = sqliteTable('holder_secrets', {
+  id: integer().primaryKey({ autoIncrement: true }),
+  holderSlug: text('holder_slug').notNull().references(() => holders.slug, { onDelete: 'cascade' }),
+  hash: text().notNull().unique(),
+  createdAt: text('created_at').notNull(),
+  revokedAt: text('revoked_at'),
+});
+
+export const sessions = sqliteTable('sessions', {
+  id: text().primaryKey(),
+  holderSlug: text('holder_slug').references(() => holders.slug, { onDelete: 'cascade' }),
+  createdAt: text('created_at').notNull(),
+  expiresAt: text('expires_at').notNull(),
+  lastSeenAt: text('last_seen_at').notNull(),
+  adminUntil: text('admin_until'),
+});

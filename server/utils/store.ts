@@ -18,6 +18,7 @@ export const openStore = (dataDir: string) => {
   const sqlite = new Database(storeFile(dataDir), { timeout: BUSY_TIMEOUT_MS });
   sqlite.pragma('journal_mode = WAL');
   sqlite.pragma('synchronous = NORMAL');
+  sqlite.pragma('foreign_keys = ON');
   current = drizzle(sqlite, { schema });
   return current;
 };
