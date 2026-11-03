@@ -1,4 +1,6 @@
-export type ErrorCode = 'not-found' | 'conflict' | 'invalid' | 'forbidden' | 'unauthenticated' | 'rate-limited';
+export const ERROR_CODES = ['not-found', 'conflict', 'invalid', 'forbidden', 'unauthenticated', 'rate-limited'] as const;
+
+export type ErrorCode = typeof ERROR_CODES[number];
 
 interface ApiErrorInit {
   status: number

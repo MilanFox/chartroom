@@ -1,3 +1,4 @@
+import { TEST_PASSWORDS } from './harness';
 import type { LaunchedServer } from './harness';
 
 interface RequestOptions {
@@ -55,4 +56,12 @@ export const apiClient = (server: LaunchedServer, secret?: string) => {
     return { status: response.status, body: response.status === 204 ? null : await response.json() };
   };
   return { request, json };
+};
+
+export const holderSecret = async (server: LaunchedServer, slug = 'api-user', displayName?: string) => {
+  const admin = uiClient(server);
+  await admin.login(TEST_PASSWORDS.CHARTROOM_VIEWER_PASSWORD);
+  await admin.elevate(TEST_PASSWORDS.CHARTROOM_ADMIN_PASSWORD);
+  const { body } = await admin.createHolder(slug, displayName);
+  return body.secret as string;
 };

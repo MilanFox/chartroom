@@ -1,16 +1,25 @@
 import type { H3Event } from 'h3';
 import type { Principal } from '../utils/principal';
+import { buildOpenApiDocument, MOUNT_PREFIXES } from './openapi';
 import { routeTable } from './table';
-import type { Handler, RouteMethod, TableRoute } from './table';
+import type { Handler, OperationMeta, RouteMethod, TableRoute } from './table';
 
-export interface PublicRoute {
+interface DescribedRoute {
   method: RouteMethod
   path: string
+  openapi?: OperationMeta
+}
+
+export interface PublicRoute extends DescribedRoute {
   public: true
   handler: Handler<[H3Event]>
 }
 
-export type MountRoute = TableRoute | PublicRoute;
+export interface ExtraRoute extends DescribedRoute {
+  handler: TableRoute['handler']
+}
+
+export type MountRoute = ExtraRoute | PublicRoute;
 
 interface MountOptions {
   origin: Principal['origin']
@@ -18,7 +27,6 @@ interface MountOptions {
   extraRoutes?: MountRoute[]
 }
 
-const PREFIXES = { api: '/api/v1', ui: '/ui' };
 const READ_METHODS = new Set(['GET', 'HEAD']);
 
 const isRead = (event: H3Event) => READ_METHODS.has(event.method);
@@ -47,12 +55,25 @@ const routeHandler = (route: MountRoute, viewerWall: boolean) => defineEventHand
   return route.handler(event, principal);
 });
 
+const withOpenApiRoute = (origin: Principal['origin'], extraRoutes: MountRoute[]) => {
+  const mountRoutes: MountRoute[] = [...extraRoutes];
+  mountRoutes.push({
+    method: 'get',
+    path: '/openapi.json',
+    public: true,
+    handler: (event: H3Event) => buildOpenApiDocument({ baseUrl: baseUrl(event), origin, extraRoutes: mountRoutes }),
+    openapi: { summary: 'This OpenAPI document', tags: ['meta'], responses: { 200: { description: 'The document', schema: { type: 'object' } } } },
+  });
+  return mountRoutes;
+};
+
 export const createMount = ({ origin, resolvePrincipal, extraRoutes = [] }: MountOptions) => {
-  const prefix = PREFIXES[origin];
-  const publicPaths = new Set(extraRoutes.filter(route => 'public' in route).map(route => `${route.method.toUpperCase()} ${prefix}${route.path}`));
+  const prefix = MOUNT_PREFIXES[origin];
+  const mountRoutes = withOpenApiRoute(origin, extraRoutes);
+  const publicPaths = new Set(mountRoutes.filter(route => 'public' in route).map(route => `${route.method.toUpperCase()} ${prefix}${route.path}`));
   const router = createRouter({ preemptive: true });
   for (const route of routeTable) router.add(route.path, routeHandler(route, origin === 'ui'), route.method);
-  for (const route of extraRoutes) router.add(route.path, routeHandler(route, false), route.method);
+  for (const route of mountRoutes) router.add(route.path, routeHandler(route, false), route.method);
   const dispatch = useBase(prefix, router.handler);
   return defineEventHandler(async (event) => {
     try {

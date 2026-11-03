@@ -2,6 +2,7 @@ import type { H3Event } from 'h3';
 import type { Principal } from '../../utils/principal';
 import { uiMe } from '../handlers/me';
 import type { MountRoute } from '../mount';
+import type { JsonSchema } from '../table';
 
 const login = async (event: H3Event) => {
   const ip = clientIp(event);
@@ -46,9 +47,42 @@ const drop = (_event: H3Event, principal: Principal) => {
   return uiMe({ ...principal, adminUntil: null });
 };
 
+const ME_SCHEMA: JsonSchema = { type: 'object', properties: { slug: { type: ['string', 'null'] }, displayName: { type: ['string', 'null'] }, viewer: { type: 'boolean' }, admin: { type: ['object', 'null'], properties: { until: { type: 'string' } } } }, required: ['slug', 'displayName', 'viewer', 'admin'] };
+
 export const authRoutes: MountRoute[] = [
-  { method: 'post', path: '/login', public: true, handler: login },
-  { method: 'post', path: '/logout', handler: logout },
-  { method: 'post', path: '/elevate', handler: elevate },
-  { method: 'delete', path: '/elevate', handler: drop },
+  {
+    method: 'post',
+    path: '/login',
+    public: true,
+    handler: login,
+    openapi: {
+      summary: 'Start a session with the viewer password or a holder secret',
+      tags: ['auth'],
+      requestBody: { type: 'object', properties: { secret: { type: 'string' } }, required: ['secret'] },
+      responses: { 200: { description: 'Me', schema: ME_SCHEMA }, 401: { description: 'Secret not recognised' }, 429: { description: 'Too many failed attempts' } },
+    },
+  },
+  {
+    method: 'post',
+    path: '/logout',
+    handler: logout,
+    openapi: { summary: 'End the session', tags: ['auth'], responses: { 204: { description: 'Session ended' } } },
+  },
+  {
+    method: 'post',
+    path: '/elevate',
+    handler: elevate,
+    openapi: {
+      summary: 'Elevate the session with the admin password',
+      tags: ['auth'],
+      requestBody: { type: 'object', properties: { password: { type: 'string' } }, required: ['password'] },
+      responses: { 200: { description: 'Me', schema: ME_SCHEMA }, 401: { description: 'Admin password not recognised' }, 429: { description: 'Too many failed attempts' } },
+    },
+  },
+  {
+    method: 'delete',
+    path: '/elevate',
+    handler: drop,
+    openapi: { summary: 'Drop the elevation', tags: ['auth'], responses: { 200: { description: 'Me', schema: ME_SCHEMA } } },
+  },
 ];
