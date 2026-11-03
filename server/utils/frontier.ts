@@ -17,7 +17,7 @@ const parentIsMap = () =>
 
 export const blockedCondition = () => and(eq(issues.state, 'open'), exists(openBlockerExists()))!;
 
-export const frontierViewCondition = () => and(frontierCondition(), parentIsMap())!;
+export const mapFrontierCondition = () => and(frontierCondition(), parentIsMap())!;
 
 export const frontierSizeOf = (map: number) =>
   useStore().select({ number: issues.number }).from(issues).where(and(eq(issues.parent, map), frontierCondition())).all().length;

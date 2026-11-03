@@ -197,11 +197,11 @@ const assigneeParam = (query: Query) => {
   return assignee;
 };
 
-const labelGroupParam = (query: Query, key: string) => {
-  const id = queryString(query, key);
-  if (id === null) return null;
-  if (!findLabelGroup(id)) throw invalid(`label group ${id} does not exist`, key);
-  return id;
+const missingParam = (query: Query) => {
+  const group = queryString(query, 'missing');
+  if (group === null) return null;
+  if (!findLabelGroup(group)) throw invalid(`label group ${group} does not exist`, 'missing');
+  return group;
 };
 
 const viewParam = (query: Query, principal: Principal) => {
@@ -232,8 +232,7 @@ const issueCursor = (query: Query, sort: string): IssueCursor | null => {
 
 const sortKeyOf = (sort: string) => {
   if (isIssueSort(sort)) return (row: ReturnType<typeof toRow>) => row[sort];
-  const positions = memberPositionsOf(sort);
-  return (row: ReturnType<typeof toRow>) => row.labels.map(label => positions.get(label)).find(position => position !== undefined) ?? null;
+  return (row: ReturnType<typeof toRow>) => soleMemberPositionAmong(sort, row.labels);
 };
 
 const issueList = (event: H3Event, principal: Principal) => {
@@ -250,9 +249,9 @@ const issueList = (event: H3Event, principal: Principal) => {
     q: queryString(query, 'q'),
     labels: labelsParam(query),
     assignee: assigneeParam(query),
-    missing: labelGroupParam(query, 'missing'),
+    missing: missingParam(query),
     view: viewParam(query, principal),
-    caller: principal.slug,
+    holder: principal.slug,
     sort,
     order: queryOneOf(query, 'order', SORT_ORDERS) ?? 'asc',
     after: issueCursor(query, sort),

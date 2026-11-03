@@ -14,12 +14,6 @@ export interface BlockedIssueRef {
   title: string
 }
 
-export const blockersOf = (issue: number): BlockerRef[] =>
-  useStore().select({ number: issues.number, title: issues.title, state: issues.state }).from(issueBlockers)
-    .innerJoin(issues, eq(issues.number, issueBlockers.blocker))
-    .where(eq(issueBlockers.issue, issue)).orderBy(asc(issues.number)).all()
-    .map(({ number, title, state }) => ({ number, title, open: state === 'open' }));
-
 export const blockersByIssue = (numbers: number[]) => {
   const blockers = new Map<number, BlockerRef[]>();
   const rows = useStore().select({ issue: issueBlockers.issue, number: issues.number, title: issues.title, state: issues.state }).from(issueBlockers)
@@ -28,6 +22,8 @@ export const blockersByIssue = (numbers: number[]) => {
   for (const { issue, number, title, state } of rows) blockers.set(issue, [...blockers.get(issue) ?? [], { number, title, open: state === 'open' }]);
   return blockers;
 };
+
+export const blockersOf = (issue: number): BlockerRef[] => blockersByIssue([issue]).get(issue) ?? [];
 
 export const blocksOf = (blocker: number): BlockedIssueRef[] =>
   useStore().select({ number: issues.number, title: issues.title }).from(issueBlockers)

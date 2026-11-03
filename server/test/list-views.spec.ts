@@ -148,7 +148,7 @@ describe('list filters', () => {
   const create = async (body: Record<string, unknown>) => (await alice.json('POST', '/issues', { body })).body as Row;
   const listed = async (query: string) => numbersOf((await alice.json('GET', `/issues${query}`)).body.items);
 
-  it('label twice is an AND over group members and free-form labels alike', async () => {
+  it('a developer narrows the list by two labels: both must be carried, group members and free-form alike', async () => {
     const effort = await create({ kind: 'effort', title: 'Labels', name: 'labels' });
     const frontendBug = await create({ kind: 'ticket', title: 'Frontend bug', parent: effort.number, labels: ['bug', 'frontend'] });
     const backendBug = await create({ kind: 'ticket', title: 'Backend bug', parent: effort.number, labels: ['bug', 'backend'] });
@@ -161,7 +161,7 @@ describe('list filters', () => {
     expect(await listed('?effort=labels&label=nobody-uses-this')).toEqual([]);
   });
 
-  it('assignee takes a holder slug or none', async () => {
+  it('a developer filters by who holds an issue: a holder slug, or none for unclaimed', async () => {
     const effort = await create({ kind: 'effort', title: 'Assignees', name: 'assignees' });
     const mine = await create({ kind: 'ticket', title: 'Alice holds', parent: effort.number });
     const theirs = await create({ kind: 'ticket', title: 'Bob holds', parent: effort.number });
@@ -250,7 +250,10 @@ describe('list validation', () => {
     expect(await list('?sort=priority')).toMatchObject(invalidOn('sort'));
     expect(await list('?sort=needs-triage')).toMatchObject(invalidOn('sort'));
     expect(await list('?label=bug&label=%20')).toMatchObject(invalidOn('label'));
-    expect(await list('?assignee=alice&missing=triage-state&sort=triage-state&view=mine&label=anything')).toMatchObject({ status: 200 });
+  });
+
+  it('a developer combines a Saved view with every filter and a group sort, including a label nobody carries', async () => {
+    expect(await list('?assignee=alice&missing=triage-state&sort=triage-state&view=mine&label=anything')).toMatchObject({ status: 200, body: { items: [], nextCursor: null } });
   });
 });
 
@@ -296,7 +299,7 @@ describe('group sort', () => {
     }
   });
 
-  it('works for any group and binds the cursor to it', async () => {
+  it('wayfinder sorts its tickets by wayfinder-type: any group sorts, and its cursor only pages that sort', async () => {
     const effort = await create({ kind: 'effort', title: 'Wayfinding', name: 'wayfinding' });
     const ticket = (title: string, labels: string[] = []) => create({ kind: 'ticket', title, parent: effort.number, labels });
     const task = await ticket('Task', ['wayfinder:task']);

@@ -84,7 +84,7 @@ export interface IssueQuery {
   assignee?: string | null
   missing?: string | null
   view?: IssueView | null
-  caller?: string | null
+  holder?: string | null
   sort: string
   order: SortOrder
   after?: IssueCursor | null
@@ -171,20 +171,20 @@ const beyondMemberCursor = (position: SQL, order: SortOrder, after: IssueCursor)
 const beyondCursor = ({ sort, order, after }: IssueQuery & { after: IssueCursor }) => {
   if (sort === 'number') return (order === 'asc' ? gt : lt)(issues.number, after.number);
   if (isIssueSort(sort)) return beyondCursorOn(SORT_COLUMNS[sort], order, after);
-  return beyondMemberCursor(memberPositionOf(sort), order, after);
+  return beyondMemberCursor(soleMemberPositionOnIssue(sort), order, after);
 };
 
 const sortOrdering = ({ sort, order }: IssueQuery) => {
   const direction = order === 'asc' ? asc : desc;
   if (isIssueSort(sort)) return [direction(SORT_COLUMNS[sort]), direction(issues.number)];
-  const position = memberPositionOf(sort);
+  const position = soleMemberPositionOnIssue(sort);
   return [isNull(position), direction(position), direction(issues.number)];
 };
 
 // eslint-disable-next-line no-unused-vars -- the core rule misreads type-level parameters
 const VIEW_CONDITIONS: Record<IssueView, (query: IssueQuery) => SQL> = {
-  'frontier': frontierViewCondition,
-  'mine': query => and(eq(issues.state, 'open'), eq(issues.assignee, query.caller!))!,
+  'frontier': mapFrontierCondition,
+  'mine': query => and(eq(issues.state, 'open'), eq(issues.assignee, query.holder!))!,
   'needs-triage': () => and(eq(issues.state, 'open'), inArray(issues.number, issuesLabelled('needs-triage')))!,
   'blocked': blockedCondition,
   'closed-recent': () => and(eq(issues.state, 'closed'), gte(issues.closedAt, isoAfterSeconds(-RECENTLY_CLOSED_SECONDS)))!,
