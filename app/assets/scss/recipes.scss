@@ -1,0 +1,124 @@
+@use 'scale' as *;
+
+@mixin pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 22px;
+  padding: 0 $space-2;
+  border: 1px solid transparent;
+  border-radius: $radius-pill;
+  background: var(--color-surface-alt);
+  color: var(--color-muted);
+  font-size: $font-size-meta;
+  font-weight: 500;
+  line-height: 20px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+@mixin state-pill($state) {
+  @include pill;
+  font-weight: 600;
+  text-transform: capitalize;
+  background: var(--color-tint-#{$state});
+
+  @if $state == frontier {
+    color: var(--color-frontier);
+  }
+  @else {
+    color: var(--color-state-#{$state});
+  }
+}
+
+@mixin label-chip {
+  @include pill;
+}
+
+@mixin kind-chip {
+  @include pill;
+  background: var(--color-tint-accent);
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+@mixin manual-chip {
+  @include pill;
+  border: 1px dotted var(--color-muted);
+  background: transparent;
+}
+
+@mixin card {
+  border: 1px solid var(--color-rule);
+  border-radius: $radius;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+@mixin button-secondary {
+  height: $control-height;
+  padding: 0 $space-3;
+  border: 1px solid var(--color-rule);
+  border-radius: $radius-control;
+  background: var(--color-surface);
+  color: var(--color-fg);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: $control-height - 2px;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: var(--shadow-card);
+  transition: background 120ms ease, border-color 120ms ease;
+
+  &:hover,
+  &:focus-visible {
+    background: var(--color-surface-alt);
+    border-color: var(--color-muted);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    color: var(--color-muted);
+    box-shadow: none;
+    cursor: not-allowed;
+
+    &:hover {
+      background: var(--color-surface);
+      border-color: var(--color-rule);
+    }
+  }
+}
+
+@mixin button-primary {
+  @include button-secondary;
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+
+  &:hover,
+  &:focus-visible {
+    border-color: var(--color-accent-hover);
+    background: var(--color-accent-hover);
+  }
+}
+
+@mixin button-quiet {
+  height: 26px;
+  padding: 0 $space-2;
+  border: none;
+  border-radius: $radius-control;
+  background: transparent;
+  color: var(--color-accent);
+  font-size: $font-size-meta;
+  font-weight: 500;
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    background: var(--color-tint-accent);
+  }
+}

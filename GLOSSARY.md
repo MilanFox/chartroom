@@ -49,7 +49,7 @@ Which of the four shapes an issue has: Effort, Map, Spec, or Ticket. Fixed at cr
 _Avoid_: Type, issue type, category
 
 **Label group**:
-A named set of labels of which an issue carries at most one, such as the triage state. Adding one member removes the others.
+A named set of labels of which an issue carries at most one, such as the triage state. Adding one member removes the others. Besides the seeded groups the skills rely on, an Admin may define more, such as a priority.
 _Avoid_: Label category, exclusive labels, status field
 
 **Claim**:
@@ -72,12 +72,12 @@ _Avoid_: Owner, superuser, root, admin account, admin login
 The comment that answers a ticket, posted in the same act as closing it.
 _Avoid_: Answer, closing note, outcome
 
-**System comment**:
-A comment the tracker writes itself to record a change, such as a re-parenting or a removed Link. Nobody can edit it.
-_Avoid_: Audit entry, activity, event
+**Change**:
+A record the tracker keeps of one field of an issue being written: who wrote it, through which Origin, when, and the value before and after. Shown among the comments, never one of them.
+_Avoid_: Audit entry, event, activity, history entry, system comment
 
 **Origin**:
-Whether a write came through a Token holder's UI session or through the API. Recorded on every issue, comment and Link so human input stands out among agent-written content.
+Whether a write came through a Token holder's UI session or through the API. Recorded on every issue, comment, Link and Change so human input stands out among agent-written content.
 _Avoid_: Source, channel, manual flag, AI flag
 
 **Frontier**:

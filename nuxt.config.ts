@@ -1,5 +1,6 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 import { resolve } from 'path';
+import { version } from './package.json';
 
 export default defineNuxtConfig({
   modules: [
@@ -26,6 +27,10 @@ export default defineNuxtConfig({
 
   css: ['@assets/scss/main.scss'],
 
+  runtimeConfig: {
+    version,
+  },
+
   alias: {
     '@assets': resolve(__dirname, './app/assets'),
     '@components': resolve(__dirname, './app/components'),
@@ -50,6 +55,10 @@ export default defineNuxtConfig({
   },
 
   compatibilityDate: '2025-11-01',
+
+  nitro: {
+    serverAssets: [{ baseName: 'migrations', dir: './db/migrations' }],
+  },
 
   vite: {
     build: {
