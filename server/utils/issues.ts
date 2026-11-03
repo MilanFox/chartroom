@@ -283,7 +283,8 @@ const headingOf = (line: string) => {
 
 export const insertUnderSection = (body: string, section: string, text: string) => {
   const lines = body.split('\n');
-  const start = lines.findIndex(line => headingOf(line)?.text === section);
+  const wanted = section.trim();
+  const start = lines.findIndex(line => headingOf(line)?.text === wanted);
   if (start === -1) throw invalid(`section ${section} does not exist`, 'section');
   const { level } = headingOf(lines[start]!)!;
   let end = lines.length;

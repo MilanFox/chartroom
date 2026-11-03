@@ -3,7 +3,7 @@ export interface Page<T> {
   nextCursor: string | null
 }
 
-type Query = Record<string, unknown>;
+export type Query = Record<string, unknown>;
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;

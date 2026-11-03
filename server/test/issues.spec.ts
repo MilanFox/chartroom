@@ -166,7 +166,9 @@ describe('issue core', () => {
     expect(staleAgain).toMatchObject({ status: 409, body: { error: { code: 'conflict', field: 'version', message: expect.stringMatching(/^issue #\d+ is at version 3, last written by human at \d{4}-/) } } });
     expect(lastWriteWins.body).toMatchObject({ title: 'Four', version: 4 });
     expect(await api.json('PATCH', `/issues/${bug.number}`, { body: { title: 'Five' }, headers: { 'if-match': 'abc' } })).toMatchObject(invalidOn('version'));
-    expect((await api.json('PATCH', `/issues/${bug.number}`, { body: { title: 'Five' }, headers: { 'if-match': 'W/"4"' } })).body.version).toBe(5);
+    const weak = await api.request('PATCH', `/issues/${bug.number}`, { body: { title: 'Five' }, headers: { 'if-match': 'W/"4"' } });
+    expect((await weak.json()).version).toBe(5);
+    expect(weak.headers.get('etag')).toBeNull();
   });
 
   it('bumps version on patch and append only, updatedAt on every write, and a no-op patch writes nothing', async () => {
@@ -201,6 +203,7 @@ describe('issue core', () => {
     expect((await appendTo('Empty', 'filled')).body.body).toBe('# Title\n\n## Notes\n\nfirst\n\n## Done\n\n- a\n\n### Sub\n\nnested\n\n## Empty\nfilled\n## Last\n<!-- keep -->\n');
     expect((await appendTo('Last', 'after comment')).body.body).toBe('# Title\n\n## Notes\n\nfirst\n\n## Done\n\n- a\n\n### Sub\n\nnested\n\n## Empty\n## Last\n<!-- keep -->\nafter comment\n');
     expect((await appendTo('Title', 'at the end')).body.body).toBe('# Title\n\n## Notes\n\nfirst\n\n## Done\n\n- a\n\n### Sub\n\nnested\n\n## Empty\n## Last\n<!-- keep -->\nat the end\n');
+    expect((await appendTo('  Notes ', 'trimmed')).body.body).toContain('first\ntrimmed\n');
     expect(await appendTo('Missing', 'x')).toMatchObject(invalidOn('section'));
     expect(await appendTo('Notes', '')).toMatchObject(invalidOn('text'));
 

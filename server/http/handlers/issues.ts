@@ -1,6 +1,7 @@
 import type { H3Event } from 'h3';
 import type { JsonObject } from '../../utils/body';
-import type { ChangeRecord, IssueCursor, IssueFields, IssueQuery, IssueRecord, IssueSort } from '../../utils/issues';
+import type { Query } from '../../utils/paging';
+import type { IssueCursor, IssueFields, IssueQuery, IssueRecord, IssueSort } from '../../utils/issues';
 import type { Principal } from '../../utils/principal';
 
 export const toRow = (event: H3Event, issue: IssueRecord) => ({
@@ -33,8 +34,6 @@ export const toDocument = (event: H3Event, issue: IssueRecord) => ({
   resolution: null,
   ...(issue.kind === 'effort' ? { name: issue.name, testInstructions: issue.testInstructions } : {}),
 });
-
-export const toChange = (change: ChangeRecord) => change;
 
 export const issueNumberParam = (event: H3Event) => {
   const raw = getRouterParam(event, 'number') ?? '';
@@ -104,8 +103,6 @@ const issueAppend = async (event: H3Event, principal: Principal) => {
   return toDocument(event, appendToIssue(number, request, principal));
 };
 
-type Query = Record<string, unknown>;
-
 const MAX_NUMBERS = 200;
 
 const oneOf = <T extends string>(query: Query, key: string, allowed: readonly T[]): T | null => {
@@ -134,9 +131,9 @@ const numbersParam = (query: Query) => {
 const issueCursor = (query: Query, sort: IssueSort): IssueCursor | null => {
   const key = decodeCursor(query);
   if (key === null) return null;
-  const [sortKey, number] = key;
+  const [cursorSort, sortKey, number] = key;
   const keyType = sort === 'number' ? 'number' : 'string';
-  if (typeof sortKey !== keyType || typeof number !== 'number') throw invalid('cursor is not valid', 'cursor');
+  if (cursorSort !== sort || typeof sortKey !== keyType || typeof number !== 'number') throw invalid('cursor is not valid', 'cursor');
   return { key: sortKey as string | number, number };
 };
 
@@ -159,7 +156,7 @@ const issueList = (event: H3Event) => {
   };
   const rows = listIssues(request).map(issue => toRow(event, issue));
   if (request.numbers) return { items: rows, nextCursor: null };
-  return pageOf(rows, limit, row => [row[sort], row.number]);
+  return pageOf(rows, limit, row => [sort, row[sort], row.number]);
 };
 
 const changeCursor = (query: Query) => {
@@ -175,7 +172,7 @@ const issueChanges = (event: H3Event) => {
   const query = getQuery(event);
   const limit = pageLimit(query);
   const rows = listChanges(number, { field: queryString(query, 'field'), after: changeCursor(query), limit: limit + 1 });
-  return pageOf(rows.map(toChange), limit, change => [change.at, change.id]);
+  return pageOf(rows, limit, change => [change.at, change.id]);
 };
 
 export const issueHandlers = {

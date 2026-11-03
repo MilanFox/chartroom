@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { apiClient, uiClient } from './clients';
 import { TEST_PASSWORDS, useTestServer } from './harness';
+import { ERROR_CODES } from '../utils/errors';
 
 type OpenApiDocument = {
   openapi: string
@@ -9,8 +10,6 @@ type OpenApiDocument = {
   components: { schemas: Record<string, { properties: Record<string, { enum?: string[] }> }>, securitySchemes: Record<string, unknown> }
   security: Record<string, string[]>[]
 };
-
-const ERROR_CODES = ['not-found', 'conflict', 'invalid', 'forbidden', 'unauthenticated', 'rate-limited'];
 
 describe('the OpenAPI document', () => {
   const server = useTestServer();
@@ -45,8 +44,10 @@ describe('the OpenAPI document', () => {
     expect(document.paths['/me']!.get?.summary).toBeTruthy();
     expect(document.paths['/holders']!.get?.summary).toBeTruthy();
     expect(Object.keys(document.paths)).toEqual(expect.arrayContaining(['/issues', '/issues/{number}', '/issues/{number}/body/append', '/issues/{number}/changes']));
-    expect(document.paths['/issues']!.get?.summary).toBeTruthy();
-    expect(document.paths['/issues']!.post?.summary).toBeTruthy();
+    expect(Object.keys(document.paths['/issues']!)).toEqual(['get', 'post']);
+    expect(Object.keys(document.paths['/issues/{number}']!)).toEqual(['get', 'patch', 'delete']);
+    expect(Object.keys(document.paths['/issues/{number}/body/append']!)).toEqual(['post']);
+    expect(Object.keys(document.paths['/issues/{number}/changes']!)).toEqual(['get']);
     expect(document.paths['/login']).toBeUndefined();
     expect(document.security).toEqual([{ bearer: [] }]);
     expect(document.components.securitySchemes).toEqual({ bearer: { type: 'http', scheme: 'bearer' } });

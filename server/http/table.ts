@@ -2,7 +2,7 @@ import type { H3Event } from 'h3';
 import type { Principal } from '../utils/principal';
 import { holderRoster } from './handlers/holders';
 import { CHANGE_SCHEMA, DOCUMENT_SCHEMA, ISSUE_FIELDS_SCHEMA, ISSUE_LIST_PARAMS, ISSUE_NUMBER_PARAM, issueHandlers, PAGING_PARAMS, pageSchema, ROW_SCHEMA } from './handlers/issues';
-import { me } from './handlers/me';
+import { ME_SCHEMA, me } from './handlers/me';
 
 export type RouteMethod = 'get' | 'post' | 'put' | 'patch' | 'delete';
 
@@ -34,7 +34,7 @@ export const routeTable: TableRoute[] = [
     openapi: {
       summary: 'The calling principal',
       tags: ['auth'],
-      responses: { 200: { description: 'Me', schema: { type: 'object', properties: { slug: { type: ['string', 'null'] }, displayName: { type: ['string', 'null'] }, viewer: { type: 'boolean' }, admin: { type: ['object', 'null'], properties: { until: { type: 'string' } } } }, required: ['slug', 'displayName'] } } },
+      responses: { 200: { description: 'Me', schema: ME_SCHEMA } },
     },
   },
   {
