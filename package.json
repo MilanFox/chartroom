@@ -30,7 +30,7 @@
     "@vue/test-utils": "^2.4.11",
     "@vueuse/core": "^14.1.0",
     "@vueuse/nuxt": "^14.1.0",
-    "happy-dom": "^20.11.0",
+    "happy-dom": "^21.0.4",
     "husky": "^9.1.7",
     "lint-staged": "^17.1.0",
     "postcss-pxtorem": "^6.1.0",
