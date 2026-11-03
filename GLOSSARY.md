@@ -72,12 +72,12 @@ _Avoid_: Owner, superuser, root, admin account, admin login
 The comment that answers a ticket, posted in the same act as closing it.
 _Avoid_: Answer, closing note, outcome
 
-**System comment**:
-A comment the tracker writes itself to record a change, such as a re-parenting or a removed Link. Nobody can edit it.
-_Avoid_: Audit entry, activity, event
+**Change**:
+A record the tracker keeps of one field of an issue being written: who wrote it, through which Origin, when, and the value before and after. Shown among the comments, never one of them.
+_Avoid_: Audit entry, event, activity, history entry, system comment
 
 **Origin**:
-Whether a write came through a Token holder's UI session or through the API. Recorded on every issue, comment and Link so human input stands out among agent-written content.
+Whether a write came through a Token holder's UI session or through the API. Recorded on every issue, comment, Link and Change so human input stands out among agent-written content.
 _Avoid_: Source, channel, manual flag, AI flag
 
 **Frontier**:
