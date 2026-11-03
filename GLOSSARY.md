@@ -49,7 +49,7 @@ Which of the four shapes an issue has: Effort, Map, Spec, or Ticket. Fixed at cr
 _Avoid_: Type, issue type, category
 
 **Label group**:
-A named set of labels of which an issue carries at most one, such as the triage state. Adding one member removes the others.
+A named set of labels of which an issue carries at most one, such as the triage state. Adding one member removes the others. Besides the seeded groups the skills rely on, an Admin may define more, such as a priority.
 _Avoid_: Label category, exclusive labels, status field
 
 **Claim**:
