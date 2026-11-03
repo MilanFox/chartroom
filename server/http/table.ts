@@ -59,7 +59,7 @@ export const routeTable: TableRoute[] = [
       summary: 'List issues of every Kind',
       tags: ['issues'],
       parameters: [...ISSUE_LIST_PARAMS, ...PAGING_PARAMS],
-      responses: { 200: { description: 'Page of Row', schema: pageSchema(ROW_SCHEMA) }, 400: { description: 'An unknown kind, state, sort or order, a non-numeric parent, an unknown effort, more than 200 numbers, or a bad limit or cursor; field set' } },
+      responses: { 200: { description: 'Page of Row', schema: pageSchema(ROW_SCHEMA) }, 400: { description: 'An unknown kind, state, view, assignee, sort or order, an unknown Label group in missing or sort, a blank label, view mine without a Token holder, a non-numeric parent, an unknown effort, more than 200 numbers, or a bad limit or cursor; field set' } },
     },
   },
   {

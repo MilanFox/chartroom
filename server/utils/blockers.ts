@@ -20,6 +20,15 @@ export const blockersOf = (issue: number): BlockerRef[] =>
     .where(eq(issueBlockers.issue, issue)).orderBy(asc(issues.number)).all()
     .map(({ number, title, state }) => ({ number, title, open: state === 'open' }));
 
+export const blockersByIssue = (numbers: number[]) => {
+  const blockers = new Map<number, BlockerRef[]>();
+  const rows = useStore().select({ issue: issueBlockers.issue, number: issues.number, title: issues.title, state: issues.state }).from(issueBlockers)
+    .innerJoin(issues, eq(issues.number, issueBlockers.blocker))
+    .where(inArray(issueBlockers.issue, numbers)).orderBy(asc(issues.number)).all();
+  for (const { issue, number, title, state } of rows) blockers.set(issue, [...blockers.get(issue) ?? [], { number, title, open: state === 'open' }]);
+  return blockers;
+};
+
 export const blocksOf = (blocker: number): BlockedIssueRef[] =>
   useStore().select({ number: issues.number, title: issues.title }).from(issueBlockers)
     .innerJoin(issues, eq(issues.number, issueBlockers.issue))

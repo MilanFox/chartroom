@@ -15,6 +15,14 @@ export const queryString = (query: Query, key: string) => {
   return value;
 };
 
+export const queryStrings = (query: Query, key: string): string[] => {
+  const value = query[key];
+  if (value === undefined) return [];
+  const values = Array.isArray(value) ? value : [value];
+  if (!values.every(item => typeof item === 'string')) throw invalid(`${key} must be a string`, key);
+  return values;
+};
+
 export const queryOneOf = <T extends string>(query: Query, key: string, allowed: readonly T[]): T | null => {
   const raw = queryString(query, key);
   return raw === null ? null : oneOf(raw, key, allowed);

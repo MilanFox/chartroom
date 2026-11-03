@@ -1,5 +1,5 @@
-import { and, asc, desc, eq, inArray, ne } from 'drizzle-orm';
-import { issueLabels, labelGroupMembers, labelGroups } from '../db/schema';
+import { and, asc, desc, eq, inArray, min, ne, sql } from 'drizzle-orm';
+import { issueLabels, issues, labelGroupMembers, labelGroups } from '../db/schema';
 import type { FieldWrite } from './changes';
 import type { Principal } from './principal';
 import type { Store } from './store';
@@ -7,6 +7,33 @@ import type { Store } from './store';
 export const labelsOf = (issue: number): string[] =>
   useStore().select({ label: issueLabels.label }).from(issueLabels).where(eq(issueLabels.issue, issue)).orderBy(asc(issueLabels.label)).all()
     .map(row => row.label);
+
+export const labelsByIssue = (numbers: number[]) => {
+  const labels = new Map<number, string[]>();
+  for (const row of useStore().select().from(issueLabels).where(inArray(issueLabels.issue, numbers)).orderBy(asc(issueLabels.label)).all()) {
+    labels.set(row.issue, [...labels.get(row.issue) ?? [], row.label]);
+  }
+  return labels;
+};
+
+export const findLabelGroup = (id: string) =>
+  useStore().select().from(labelGroups).where(eq(labelGroups.id, id)).get() ?? null;
+
+export const issuesLabelled = (label: string) =>
+  useStore().select({ issue: issueLabels.issue }).from(issueLabels).where(eq(issueLabels.label, label));
+
+export const issuesInGroup = (group: string) =>
+  useStore().select({ issue: issueLabels.issue }).from(issueLabels)
+    .innerJoin(labelGroupMembers, eq(labelGroupMembers.id, issueLabels.label)).where(eq(labelGroupMembers.groupId, group));
+
+export const memberPositionOf = (group: string) =>
+  sql<number | null>`(${useStore().select({ position: min(labelGroupMembers.position) }).from(issueLabels)
+    .innerJoin(labelGroupMembers, eq(labelGroupMembers.id, issueLabels.label))
+    .where(and(eq(issueLabels.issue, issues.number), eq(labelGroupMembers.groupId, group)))})`;
+
+export const memberPositionsOf = (group: string) =>
+  new Map(useStore().select({ id: labelGroupMembers.id, position: labelGroupMembers.position }).from(labelGroupMembers)
+    .where(eq(labelGroupMembers.groupId, group)).all().map(member => [member.id, member.position]));
 
 export const listLabelGroups = () => {
   const groups = useStore().select().from(labelGroups).orderBy(desc(labelGroups.seeded), asc(labelGroups.position)).all();
