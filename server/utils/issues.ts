@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, gt, inArray, lt, or, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gt, gte, inArray, isNull, lt, notInArray, or, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import type { SQLiteColumn } from 'drizzle-orm/sqlite-core';
 import { changes, issues } from '../db/schema';
@@ -15,6 +15,8 @@ export const KINDS: Kind[] = ['effort', 'map', 'spec', 'ticket'];
 export const ISSUE_STATES: IssueState[] = ['open', 'closed'];
 export const ISSUE_SORTS: IssueSort[] = ['number', 'createdAt', 'updatedAt', 'title'];
 export const SORT_ORDERS: SortOrder[] = ['asc', 'desc'];
+export const UNASSIGNED = 'none';
+export const ISSUE_VIEWS: IssueView[] = ['frontier', 'mine', 'needs-triage', 'blocked', 'closed-recent'];
 
 export const PARENT_RULES: Record<Kind, Kind[]> = {
   effort: [],
@@ -26,6 +28,7 @@ export const PARENT_RULES: Record<Kind, Kind[]> = {
 const PARENT_REQUIRED = new Set<Kind>(['map', 'spec']);
 const EFFORT_ONLY_FIELDS = ['name', 'testInstructions'] as const;
 const EFFORT_NAME_SHAPE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+const RECENTLY_CLOSED_SECONDS = 7 * 24 * 60 * 60;
 const LOGGED_FIELDS = ['title', 'body', 'parent', 'name', 'testInstructions'] as const;
 
 export interface IssueFields {
@@ -63,9 +66,10 @@ export type IssueState = 'open' | 'closed';
 export type IssueStatus = 'open' | 'claimed' | 'blocked' | 'closed';
 export type IssueSort = 'number' | 'createdAt' | 'updatedAt' | 'title';
 export type SortOrder = 'asc' | 'desc';
+export type IssueView = 'frontier' | 'mine' | 'needs-triage' | 'blocked' | 'closed-recent';
 
 export interface IssueCursor {
-  key: string | number
+  key: string | number | null
   number: number
 }
 
@@ -76,13 +80,20 @@ export interface IssueQuery {
   effort?: number | null
   numbers?: number[] | null
   q?: string | null
-  sort: IssueSort
+  labels?: string[] | null
+  assignee?: string | null
+  missing?: string | null
+  view?: IssueView | null
+  holder?: string | null
+  sort: string
   order: SortOrder
   after?: IssueCursor | null
   limit: number
 }
 
 const isSet = <T>(value: T | null | undefined): value is T => value !== undefined && value !== null;
+
+export const isIssueSort = (value: string): value is IssueSort => ISSUE_SORTS.includes(value as IssueSort);
 
 export const isKind = (value: unknown): value is Kind => KINDS.includes(value as Kind);
 
@@ -150,19 +161,47 @@ export const beyondCursorOn = (column: SQLiteColumn, order: SortOrder, after: Is
   return or(beyond(column, String(after.key)), and(eq(column, String(after.key)), beyond(issues.number, after.number)))!;
 };
 
+const beyondMemberCursor = (position: SQL, order: SortOrder, after: IssueCursor) => {
+  const beyond = order === 'asc' ? gt : lt;
+  const beyondNumber = beyond(issues.number, after.number);
+  if (after.key === null) return and(isNull(position), beyondNumber)!;
+  return or(beyond(position, after.key), and(eq(position, after.key), beyondNumber), isNull(position))!;
+};
+
 const beyondCursor = ({ sort, order, after }: IssueQuery & { after: IssueCursor }) => {
   if (sort === 'number') return (order === 'asc' ? gt : lt)(issues.number, after.number);
-  return beyondCursorOn(SORT_COLUMNS[sort], order, after);
+  if (isIssueSort(sort)) return beyondCursorOn(SORT_COLUMNS[sort], order, after);
+  return beyondMemberCursor(soleMemberPositionOnIssue(sort), order, after);
+};
+
+const sortOrdering = ({ sort, order }: IssueQuery) => {
+  const direction = order === 'asc' ? asc : desc;
+  if (isIssueSort(sort)) return [direction(SORT_COLUMNS[sort]), direction(issues.number)];
+  const position = soleMemberPositionOnIssue(sort);
+  return [isNull(position), direction(position), direction(issues.number)];
+};
+
+// eslint-disable-next-line no-unused-vars -- the core rule misreads type-level parameters
+const VIEW_CONDITIONS: Record<IssueView, (query: IssueQuery) => SQL> = {
+  'frontier': mapFrontierCondition,
+  'mine': query => and(eq(issues.state, 'open'), eq(issues.assignee, query.holder!))!,
+  'needs-triage': () => and(eq(issues.state, 'open'), inArray(issues.number, issuesLabelled('needs-triage')))!,
+  'blocked': blockedCondition,
+  'closed-recent': () => and(eq(issues.state, 'closed'), gte(issues.closedAt, isoAfterSeconds(-RECENTLY_CLOSED_SECONDS)))!,
 };
 
 const filterConditions = (query: IssueQuery) => {
   const conditions: SQL[] = [];
+  if (isSet(query.view)) conditions.push(VIEW_CONDITIONS[query.view](query));
   if (isSet(query.kind)) conditions.push(eq(issues.kind, query.kind));
   if (isSet(query.state)) conditions.push(eq(issues.state, query.state));
   if (isSet(query.parent)) conditions.push(eq(issues.parent, query.parent));
   if (isSet(query.effort)) conditions.push(inArray(issues.number, subtreeNumbers(query.effort)));
   if (isSet(query.numbers)) conditions.push(inArray(issues.number, query.numbers));
   if (isSet(query.q) && query.q !== '') conditions.push(containsText(query.q));
+  for (const label of query.labels ?? []) conditions.push(inArray(issues.number, issuesLabelled(label)));
+  if (isSet(query.assignee)) conditions.push(query.assignee === UNASSIGNED ? isNull(issues.assignee) : eq(issues.assignee, query.assignee));
+  if (isSet(query.missing)) conditions.push(notInArray(issues.number, issuesInGroup(query.missing)));
   return conditions;
 };
 
@@ -173,9 +212,7 @@ export const listIssues = (query: IssueQuery): IssueRecord[] => {
     return query.numbers.map(number => found.get(number)).filter(isSet);
   }
   if (isSet(query.after)) conditions.push(beyondCursor({ ...query, after: query.after }));
-  const direction = query.order === 'asc' ? asc : desc;
-  return useStore().select().from(issues).where(and(...conditions))
-    .orderBy(direction(SORT_COLUMNS[query.sort]), direction(issues.number)).limit(query.limit).all();
+  return useStore().select().from(issues).where(and(...conditions)).orderBy(...sortOrdering(query)).limit(query.limit).all();
 };
 
 const assertSingleMap = (effort: number, self: number | null) => {

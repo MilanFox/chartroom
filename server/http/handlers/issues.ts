@@ -1,14 +1,20 @@
 import type { H3Event } from 'h3';
 import type { JsonObject } from '../../utils/body';
 import type { Query } from '../../utils/paging';
-import type { IssueCursor, IssueFields, IssueQuery, IssueRecord, IssueSort } from '../../utils/issues';
+import type { IssueCursor, IssueFields, IssueQuery, IssueRecord } from '../../utils/issues';
+import type { BlockerRef } from '../../utils/blockers';
 import type { Principal } from '../../utils/principal';
 import { COMMENT_SCHEMA, toComment } from './comments';
 import { LINK_SCHEMA, toLink } from './links';
 import { blockerNumberParam, issueNumberParam, labelParam } from './params';
 
-export const toRow = (event: H3Event, issue: IssueRecord) => {
-  const blockers = blockersOf(issue.number);
+interface RowRelations {
+  labels: string[]
+  blockers: BlockerRef[]
+}
+
+export const toRow = (event: H3Event, issue: IssueRecord, relations?: RowRelations) => {
+  const { labels, blockers } = relations ?? { labels: labelsOf(issue.number), blockers: blockersOf(issue.number) };
   return {
     number: issue.number,
     kind: issue.kind,
@@ -18,7 +24,7 @@ export const toRow = (event: H3Event, issue: IssueRecord) => {
     assignee: issue.assignee,
     parent: issue.parent,
     effort: effortNumberOf(issue),
-    labels: labelsOf(issue.number),
+    labels,
     blockedBy: blockers.map(({ number, open }) => ({ number, open })),
     createdAt: issue.createdAt,
     updatedAt: issue.updatedAt,
@@ -43,6 +49,13 @@ export const toDocument = (event: H3Event, issue: IssueRecord) => {
     resolution: resolution === null ? null : toComment(event, resolution),
     ...(issue.kind === 'effort' ? { name: issue.name, testInstructions: issue.testInstructions } : {}),
   };
+};
+
+const toRows = (event: H3Event, records: IssueRecord[]) => {
+  const numbers = records.map(issue => issue.number);
+  const labels = labelsByIssue(numbers);
+  const blockers = blockersByIssue(numbers);
+  return records.map(issue => toRow(event, issue, { labels: labels.get(issue.number) ?? [], blockers: blockers.get(issue.number) ?? [] }));
 };
 
 const parentField = (body: JsonObject) => {
@@ -172,19 +185,60 @@ const numbersParam = (query: Query) => {
   return [...new Set(parts.map(Number))];
 };
 
-const issueCursor = (query: Query, sort: IssueSort): IssueCursor | null => {
+const labelsParam = (query: Query) => queryStrings(query, 'label').map((label) => {
+  if (label.trim() === '') throw invalid('label must not be blank', 'label');
+  return label.trim();
+});
+
+const assigneeParam = (query: Query) => {
+  const assignee = queryString(query, 'assignee');
+  if (assignee === null || assignee === UNASSIGNED) return assignee;
+  if (!findHolder(assignee)) throw invalid(`holder ${assignee} does not exist`, 'assignee');
+  return assignee;
+};
+
+const missingParam = (query: Query) => {
+  const group = queryString(query, 'missing');
+  if (group === null) return null;
+  if (!findLabelGroup(group)) throw invalid(`label group ${group} does not exist`, 'missing');
+  return group;
+};
+
+const viewParam = (query: Query, principal: Principal) => {
+  const view = queryOneOf(query, 'view', ISSUE_VIEWS);
+  if (view === 'mine' && principal.slug === null) throw invalid('view mine needs a Token holder', 'view');
+  return view;
+};
+
+const sortParam = (query: Query) => {
+  const sort = queryString(query, 'sort') ?? 'number';
+  if (isIssueSort(sort) || findLabelGroup(sort)) return sort;
+  throw invalid(`sort must be one of ${ISSUE_SORTS.join(', ')} or a label group id`, 'sort');
+};
+
+const isCursorKeyFor = (sort: string, key: unknown) => {
+  if (sort === 'number') return typeof key === 'number';
+  if (isIssueSort(sort)) return typeof key === 'string';
+  return key === null || typeof key === 'number';
+};
+
+const issueCursor = (query: Query, sort: string): IssueCursor | null => {
   const key = decodeCursor(query);
   if (key === null) return null;
   const [cursorSort, sortKey, number] = key;
-  const keyType = sort === 'number' ? 'number' : 'string';
-  if (cursorSort !== sort || typeof sortKey !== keyType || typeof number !== 'number') throw invalid('cursor is not valid', 'cursor');
-  return { key: sortKey as string | number, number };
+  if (cursorSort !== sort || !isCursorKeyFor(sort, sortKey) || typeof number !== 'number') throw invalid('cursor is not valid', 'cursor');
+  return { key: sortKey as IssueCursor['key'], number };
 };
 
-const issueList = (event: H3Event) => {
+const sortKeyOf = (sort: string) => {
+  if (isIssueSort(sort)) return (row: ReturnType<typeof toRow>) => row[sort];
+  return (row: ReturnType<typeof toRow>) => soleMemberPositionAmong(sort, row.labels);
+};
+
+const issueList = (event: H3Event, principal: Principal) => {
   const query = getQuery(event);
   const limit = pageLimit(query);
-  const sort = queryOneOf(query, 'sort', ISSUE_SORTS) ?? 'number';
+  const sort = sortParam(query);
   const effort = queryString(query, 'effort');
   const request: IssueQuery = {
     kind: queryOneOf(query, 'kind', KINDS),
@@ -193,14 +247,20 @@ const issueList = (event: H3Event) => {
     effort: effort === null ? null : requireEffort(effort).number,
     numbers: numbersParam(query),
     q: queryString(query, 'q'),
+    labels: labelsParam(query),
+    assignee: assigneeParam(query),
+    missing: missingParam(query),
+    view: viewParam(query, principal),
+    holder: principal.slug,
     sort,
     order: queryOneOf(query, 'order', SORT_ORDERS) ?? 'asc',
     after: issueCursor(query, sort),
     limit: limit + 1,
   };
-  const rows = listIssues(request).map(issue => toRow(event, issue));
+  const rows = toRows(event, listIssues(request));
   if (request.numbers) return { items: rows, nextCursor: null };
-  return pageOf(rows, limit, row => [sort, row[sort], row.number]);
+  const keyOf = sortKeyOf(sort);
+  return pageOf(rows, limit, row => [sort, keyOf(row), row.number]);
 };
 
 const changeCursor = (query: Query) => {
@@ -330,7 +390,11 @@ export const ISSUE_LIST_PARAMS = [
   queryParam('effort', { type: 'string' }, 'An Effort slug or number: the Effort and its whole subtree'),
   queryParam('numbers', { type: 'string' }, 'Comma-separated issue numbers, at most 200, returned in the given order regardless of sort; unknown numbers are skipped and the result never pages'),
   queryParam('q', { type: 'string' }, 'Case-insensitive substring over title and body'),
-  queryParam('sort', { type: 'string', enum: ISSUE_SORTS, default: 'number' }, 'The sort key; number breaks ties'),
+  queryParam('label', stringList, 'Repeatable; only issues carrying every given label, a Label group member or a free-form label'),
+  queryParam('assignee', { type: 'string' }, `A holder slug, or ${UNASSIGNED} for unassigned issues`),
+  queryParam('missing', { type: 'string' }, 'A Label group id: only issues carrying none of its members'),
+  queryParam('view', { type: 'string', enum: ISSUE_VIEWS }, 'A Saved view; explicit filters narrow within it. frontier: open, unassigned, no open blocker, Parent is a map. mine: open and held by the caller, refused without a Token holder. needs-triage: open and labelled needs-triage. blocked: open with an open blocker. closed-recent: closed in the last 7 days'),
+  queryParam('sort', { type: 'string', default: 'number' }, `One of ${ISSUE_SORTS.join(', ')}, or a Label group id to order by its member order with issues carrying no member last in either order; number breaks ties`),
   queryParam('order', { type: 'string', enum: SORT_ORDERS, default: 'asc' }, 'The sort direction'),
 ];
 
