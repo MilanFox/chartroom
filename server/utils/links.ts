@@ -50,10 +50,13 @@ export const createLink = (issue: number, input: NewLink, principal: Principal) 
   const { actor, origin, at } = stampFor(principal);
   return useStore().transaction((tx) => {
     const { id } = tx.insert(links).values({ ...input, issue, addedBy: actor, origin, createdAt: at }).returning({ id: links.id }).get();
+    logChanges(tx, { actor, origin, at, issue }, [{ field: 'link', before: null, after: loggedLink({ id, ...input }) }]);
     touchIssue(tx, issue, at);
     return tx.select().from(links).where(eq(links.id, id)).get()!;
   });
 };
+
+const loggedLink = ({ id, title, url }: { id: number, title: string, url: string }) => JSON.stringify({ id, title, url });
 
 const requireLink = ({ issue, id }: LinkRef) => {
   requireIssue(issue);
@@ -79,7 +82,7 @@ export const deleteLink = (ref: LinkRef, principal: Principal) => {
   const stamp = stampFor(principal);
   useStore().transaction((tx) => {
     tx.delete(links).where(eq(links.id, ref.id)).run();
-    logChanges(tx, { ...stamp, issue: ref.issue }, [{ field: 'link', before: JSON.stringify({ id: link.id, title: link.title, url: link.url }), after: null }]);
+    logChanges(tx, { ...stamp, issue: ref.issue }, [{ field: 'link', before: loggedLink(link), after: null }]);
     touchIssue(tx, ref.issue, stamp.at);
   });
 };

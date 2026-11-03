@@ -6,18 +6,20 @@ const invalidOn = (field: string) => ({ status: 400, body: { error: { code: 'inv
 const notFound = { status: 404, body: { error: { code: 'not-found' } } };
 const sleep = (ms: number) => new Promise(done => setTimeout(done, ms));
 type Client = ReturnType<typeof apiClient>;
-let alice: Client;
-const create = async (kind: string, title: string, extra: Record<string, unknown> = {}) =>
-  (await alice.json('POST', '/issues', { body: { kind, title, ...extra } })).body;
+const createIssue = async (client: Client, issue: { kind: string, title: string, [field: string]: unknown }) =>
+  (await client.json('POST', '/issues', { body: issue })).body;
 const addLink = (client: Client, number: number, link: Record<string, unknown>) =>
   client.json('POST', `/issues/${number}/links`, { body: { role: 'artifact', type: 'branch', title: 'X', ...link } });
 
 describe('efforts', () => {
   const server = useTestServer();
+  let alice: Client;
 
   beforeAll(async () => {
     alice = apiClient(server, await holderSecret(server, 'alice', 'Alice'));
   });
+
+  const create = (kind: string, title: string, extra: Record<string, unknown> = {}) => createIssue(alice, { kind, title, ...extra });
 
   const chart = async (name: string) => {
     const effort = await create('effort', `Effort ${name}`, { name });
@@ -99,7 +101,6 @@ describe('efforts', () => {
     const s1 = await create('ticket', 'S1', { parent: spec.number });
     await create('ticket', 'S2', { parent: spec.number, blockedBy: [s1.number] });
     const s3 = await create('ticket', 'S3', { parent: spec.number });
-    await alice.json('POST', `/issues/${s1.number}/claim`);
     const bug = await create('ticket', 'bug', { parent: effort.number, labels: ['needs-triage'] });
     await create('ticket', 'bug2', { parent: effort.number });
     await create('ticket', 'floating', { labels: ['needs-triage'] });
@@ -107,11 +108,12 @@ describe('efforts', () => {
     const rollup = async () => (await alice.json('GET', '/efforts/status')).body.statusRollup;
     expect(await rollup()).toEqual({
       map: { state: 'open', frontier: 1 },
-      specs: [{ number: spec.number, tickets: { open: 1, claimed: 1, blocked: 1, closed: 0 } }],
+      specs: [{ number: spec.number, tickets: { open: 2, claimed: 0, blocked: 1, closed: 0 } }],
       triage: { 'needs-triage': 1, 'needs-info': 0, 'ready-for-agent': 0, 'ready-for-human': 0, 'wontfix': 0, 'none': 1 },
       open: 9,
     });
 
+    await alice.json('POST', `/issues/${s1.number}/claim`);
     await alice.json('POST', `/issues/${a.number}/close`);
     await alice.json('POST', `/issues/${s3.number}/close`);
     await alice.json('PUT', `/issues/${bug.number}/labels/wontfix`);

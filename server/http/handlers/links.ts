@@ -17,12 +17,6 @@ export const toLink = (link: LinkRecord) => ({
   createdAt: link.createdAt,
 });
 
-const oneOf = <T extends string>(body: JsonObject, field: string, allowed: readonly T[]): T => {
-  const value = body[field];
-  if (!allowed.includes(value as T)) throw invalid(`${field} must be one of ${allowed.join(', ')}`, field);
-  return value as T;
-};
-
 const absoluteUrl = (body: JsonObject) => {
   const value = body.url;
   if (typeof value !== 'string' || !URL.canParse(value)) throw invalid('url must be an absolute URL', 'url');
@@ -31,8 +25,8 @@ const absoluteUrl = (body: JsonObject) => {
 
 const linkFields = (body: JsonObject): LinkFields => {
   const fields: LinkFields = {};
-  if ('role' in body) fields.role = oneOf(body, 'role', LINK_ROLES);
-  if ('type' in body) fields.type = oneOf(body, 'type', LINK_TYPES);
+  if ('role' in body) fields.role = oneOf(body.role, 'role', LINK_ROLES);
+  if ('type' in body) fields.type = oneOf(body.type, 'type', LINK_TYPES);
   if ('title' in body) fields.title = requireText(body, 'title');
   return fields;
 };
@@ -56,7 +50,7 @@ const linkList = (event: H3Event) => {
 const linkCreate = async (event: H3Event, principal: Principal) => {
   const number = issueNumberParam(event);
   const body = await readJsonObject(event);
-  const input = { role: oneOf(body, 'role', LINK_ROLES), type: oneOf(body, 'type', LINK_TYPES), url: absoluteUrl(body), title: requireText(body, 'title') };
+  const input = { role: oneOf(body.role, 'role', LINK_ROLES), type: oneOf(body.type, 'type', LINK_TYPES), url: absoluteUrl(body), title: requireText(body, 'title') };
   setResponseStatus(event, 201);
   return toLink(createLink(number, input, principal));
 };

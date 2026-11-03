@@ -3,9 +3,10 @@ import type { IssueCursor, IssueRecord } from '../../utils/issues';
 import type { Query } from '../../utils/paging';
 import { DOCUMENT_SCHEMA, pageSchema, PAGING_PARAMS, ROW_SCHEMA, toDocument, toRow } from './issues';
 import { LINK_SCHEMA } from './links';
+import { effortHandleParam } from './params';
 
 export const toEffortDocument = (event: H3Event, effort: IssueRecord) => {
-  const children = childNumbers(effort.number).map(number => requireIssue(number));
+  const children = childrenOf(effort.number);
   const map = children.find(child => child.kind === 'map');
   return {
     ...toDocument(event, effort),
@@ -15,8 +16,6 @@ export const toEffortDocument = (event: H3Event, effort: IssueRecord) => {
     specs: children.filter(child => child.kind === 'spec').map(spec => toRow(event, spec)),
   };
 };
-
-const handleParam = (event: H3Event) => getRouterParam(event, 'handle', { decode: true }) ?? '';
 
 const effortCursor = (query: Query, sort: EffortSort): IssueCursor | null => {
   const key = decodeCursor(query);
@@ -35,10 +34,10 @@ const effortList = (event: H3Event) => {
   return pageOf(rows, limit, row => [sort, row[sort], row.number]);
 };
 
-const effortRead = (event: H3Event) => toEffortDocument(event, resolveEffort(handleParam(event)));
+const effortRead = (event: H3Event) => toEffortDocument(event, resolveEffort(effortHandleParam(event)));
 
 const effortArtifacts = (event: H3Event) => {
-  const effort = resolveEffort(handleParam(event));
+  const effort = resolveEffort(effortHandleParam(event));
   setResponseHeader(event, 'content-type', 'text/markdown; charset=utf-8');
   return artifactsMarkdownOf(effort.number);
 };

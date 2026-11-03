@@ -67,7 +67,7 @@ describe('links', () => {
     expect((await addLink(alice, other.number, { url: 'https://x.example', title: 'c' })).status).toBe(201);
   });
 
-  it('edits role, type and title and removes a Link recording a link Change with id, title and url in before; version stays', async () => {
+  it('edits role, type and title and removes a Link; add and remove log a link Change with id, title and url; version stays', async () => {
     const ticket = await createTicket(alice, 'T');
     const { body: link } = await addLink(alice, ticket.number, { url: 'https://pr-12.example', title: 'Preview' });
 
@@ -80,9 +80,11 @@ describe('links', () => {
     expect(await alice.json('DELETE', `/issues/${ticket.number}/links/${link.id}`)).toMatchObject({ status: 204 });
     expect(await alice.json('DELETE', `/issues/${ticket.number}/links/${link.id}`)).toMatchObject(notFound);
     const changes = (await alice.json('GET', `/issues/${ticket.number}/changes?field=link`)).body.items;
-    expect(changes).toHaveLength(1);
-    expect(changes[0]).toMatchObject({ field: 'link', actor: 'alice', after: null });
-    expect(JSON.parse(changes[0].before)).toEqual({ id: link.id, title: 'Preview 12', url: 'https://pr-12.example' });
+    expect(changes).toHaveLength(2);
+    expect(changes[0]).toMatchObject({ field: 'link', actor: 'alice', before: null });
+    expect(JSON.parse(changes[0].after)).toEqual({ id: link.id, title: 'Preview', url: 'https://pr-12.example' });
+    expect(changes[1]).toMatchObject({ field: 'link', actor: 'alice', after: null });
+    expect(JSON.parse(changes[1].before)).toEqual({ id: link.id, title: 'Preview 12', url: 'https://pr-12.example' });
     expect((await alice.json('GET', `/issues/${ticket.number}`)).body).toMatchObject({ version: 1, links: [] });
   });
 });

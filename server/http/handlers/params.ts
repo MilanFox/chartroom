@@ -24,6 +24,8 @@ export const labelParam = (event: H3Event) => {
   return label;
 };
 
+export const effortHandleParam = (event: H3Event) => getRouterParam(event, 'handle', { decode: true }) ?? '';
+
 export const linkIdParam = (event: H3Event) => {
   const raw = getRouterParam(event, 'id') ?? '';
   if (!/^\d+$/.test(raw)) throw notFound(`link ${raw} does not exist`);
