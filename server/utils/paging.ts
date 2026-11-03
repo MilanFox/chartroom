@@ -15,6 +15,11 @@ export const queryString = (query: Query, key: string) => {
   return value;
 };
 
+export const queryOneOf = <T extends string>(query: Query, key: string, allowed: readonly T[]): T | null => {
+  const raw = queryString(query, key);
+  return raw === null ? null : oneOf(raw, key, allowed);
+};
+
 export const pageLimit = (query: Query) => {
   const raw = queryString(query, 'limit');
   if (raw === null) return DEFAULT_LIMIT;

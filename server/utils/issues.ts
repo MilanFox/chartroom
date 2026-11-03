@@ -1,5 +1,6 @@
 import { and, asc, count, desc, eq, gt, inArray, lt, or, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
+import type { SQLiteColumn } from 'drizzle-orm/sqlite-core';
 import { changes, issues } from '../db/schema';
 import type { BlockerRef } from './blockers';
 import type { FieldWrite, LoggedValue } from './changes';
@@ -104,9 +105,10 @@ export const touchIssue = (tx: Store, number: number, at: string) => {
   tx.update(issues).set({ updatedAt: at }).where(eq(issues.number, number)).run();
 };
 
-export const childNumbers = (number: number) =>
-  useStore().select({ number: issues.number }).from(issues).where(eq(issues.parent, number)).orderBy(asc(issues.number)).all()
-    .map(row => row.number);
+export const childrenOf = (parent: number): IssueRecord[] =>
+  useStore().select().from(issues).where(eq(issues.parent, parent)).orderBy(asc(issues.number)).all();
+
+export const childNumbers = (number: number) => childrenOf(number).map(child => child.number);
 
 export const effortNumberOf = (issue: IssueRecord): number | null => {
   let ancestor = issue.parent === null ? null : findIssue(issue.parent);
@@ -124,10 +126,11 @@ export const subtreeNumbers = (root: number) => {
   return numbers;
 };
 
+export const findByHandle = (handle: string): IssueRecord | null =>
+  /^\d+$/.test(handle) ? findIssue(Number(handle)) : useStore().select().from(issues).where(eq(issues.name, handle)).get() ?? null;
+
 export const requireEffort = (reference: string): IssueRecord => {
-  const effort = /^\d+$/.test(reference)
-    ? findIssue(Number(reference))
-    : useStore().select().from(issues).where(eq(issues.name, reference)).get() ?? null;
+  const effort = findByHandle(reference);
   if (!effort || effort.kind !== 'effort') throw invalid(`effort ${reference} does not exist`, 'effort');
   return effort;
 };
@@ -142,11 +145,14 @@ const SORT_COLUMNS = {
 const containsText = (needle: string) =>
   sql`(instr(lower(${issues.title}), lower(${needle})) > 0 or instr(lower(${issues.body}), lower(${needle})) > 0)`;
 
-const beyondCursor = ({ sort, order, after }: IssueQuery & { after: IssueCursor }) => {
+export const beyondCursorOn = (column: SQLiteColumn, order: SortOrder, after: IssueCursor) => {
   const beyond = order === 'asc' ? gt : lt;
-  if (sort === 'number') return beyond(issues.number, after.number);
-  const column = SORT_COLUMNS[sort];
   return or(beyond(column, String(after.key)), and(eq(column, String(after.key)), beyond(issues.number, after.number)))!;
+};
+
+const beyondCursor = ({ sort, order, after }: IssueQuery & { after: IssueCursor }) => {
+  if (sort === 'number') return (order === 'asc' ? gt : lt)(issues.number, after.number);
+  return beyondCursorOn(SORT_COLUMNS[sort], order, after);
 };
 
 const filterConditions = (query: IssueQuery) => {

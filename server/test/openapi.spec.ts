@@ -56,6 +56,11 @@ describe('the OpenAPI document', () => {
     expect(Object.keys(document.paths['/issues/{number}/comments/{id}']!)).toEqual(['patch', 'delete']);
     expect(Object.keys(document.paths['/issues/{number}/labels/{label}']!)).toEqual(['put', 'delete']);
     expect(Object.keys(document.paths['/issues/{number}/blockers/{blocker}']!)).toEqual(['put', 'delete']);
+    expect(Object.keys(document.paths['/issues/{number}/links']!)).toEqual(['get', 'post']);
+    expect(Object.keys(document.paths['/issues/{number}/links/{id}']!)).toEqual(['patch', 'delete']);
+    expect(Object.keys(document.paths['/efforts']!)).toEqual(['get']);
+    expect(Object.keys(document.paths['/efforts/{handle}']!)).toEqual(['get']);
+    expect(Object.keys(document.paths['/efforts/{handle}/artifacts.md']!)).toEqual(['get']);
     expect(Object.keys(document.paths['/labels']!)).toEqual(['get']);
     expect(document.paths['/login']).toBeUndefined();
     expect(document.security).toEqual([{ bearer: [] }]);

@@ -4,6 +4,7 @@ import type { Query } from '../../utils/paging';
 import type { IssueCursor, IssueFields, IssueQuery, IssueRecord, IssueSort } from '../../utils/issues';
 import type { Principal } from '../../utils/principal';
 import { COMMENT_SCHEMA, toComment } from './comments';
+import { LINK_SCHEMA, toLink } from './links';
 import { blockerNumberParam, issueNumberParam, labelParam } from './params';
 
 export const toRow = (event: H3Event, issue: IssueRecord) => {
@@ -37,7 +38,7 @@ export const toDocument = (event: H3Event, issue: IssueRecord) => {
     blockedBy: blockersOf(issue.number),
     blocks: blocksOf(issue.number),
     children: childNumbers(issue.number),
-    links: [],
+    links: linksOf(issue.number).map(toLink),
     comments: commentsOf(issue.number).map(comment => toComment(event, comment)),
     resolution: resolution === null ? null : toComment(event, resolution),
     ...(issue.kind === 'effort' ? { name: issue.name, testInstructions: issue.testInstructions } : {}),
@@ -155,13 +156,6 @@ const blockerRemove = (event: H3Event, principal: Principal) => {
 
 const MAX_NUMBERS = 200;
 
-const oneOf = <T extends string>(query: Query, key: string, allowed: readonly T[]): T | null => {
-  const raw = queryString(query, key);
-  if (raw === null) return null;
-  if (!allowed.includes(raw as T)) throw invalid(`${key} must be one of ${allowed.join(', ')}`, key);
-  return raw as T;
-};
-
 const numberParam = (query: Query, key: string) => {
   const raw = queryString(query, key);
   if (raw === null) return null;
@@ -190,17 +184,17 @@ const issueCursor = (query: Query, sort: IssueSort): IssueCursor | null => {
 const issueList = (event: H3Event) => {
   const query = getQuery(event);
   const limit = pageLimit(query);
-  const sort = oneOf(query, 'sort', ISSUE_SORTS) ?? 'number';
+  const sort = queryOneOf(query, 'sort', ISSUE_SORTS) ?? 'number';
   const effort = queryString(query, 'effort');
   const request: IssueQuery = {
-    kind: oneOf(query, 'kind', KINDS),
-    state: oneOf(query, 'state', ISSUE_STATES),
+    kind: queryOneOf(query, 'kind', KINDS),
+    state: queryOneOf(query, 'state', ISSUE_STATES),
     parent: numberParam(query, 'parent'),
     effort: effort === null ? null : requireEffort(effort).number,
     numbers: numbersParam(query),
     q: queryString(query, 'q'),
     sort,
-    order: oneOf(query, 'order', SORT_ORDERS) ?? 'asc',
+    order: queryOneOf(query, 'order', SORT_ORDERS) ?? 'asc',
     after: issueCursor(query, sort),
     limit: limit + 1,
   };
@@ -245,7 +239,6 @@ export const issueHandlers = {
 
 const nullable = (type: string) => ({ type: [type, 'null'] });
 const stringList = { type: 'array', items: { type: 'string' } };
-const objectList = { type: 'array', items: { type: 'object' } };
 const numberList = { type: 'array', items: { type: 'integer' } };
 const issueRef = (properties: Record<string, unknown>) => ({ type: 'object', properties: { number: { type: 'integer' }, ...properties }, required: ['number', ...Object.keys(properties)] });
 const BLOCKER_LIST = { type: 'array', items: issueRef({ open: { type: 'boolean' } }), description: 'Blockers by number; open means the blocker still blocks' };
@@ -278,7 +271,7 @@ const DOCUMENT_PROPERTIES = {
   blockedBy: { ...BLOCKER_LIST, items: issueRef({ title: { type: 'string' }, open: { type: 'boolean' } }) },
   blocks: { type: 'array', items: issueRef({ title: { type: 'string' } }), description: 'The issues this one blocks' },
   children: { type: 'array', items: { type: 'integer' } },
-  links: objectList,
+  links: { type: 'array', items: LINK_SCHEMA },
   comments: { type: 'array', items: COMMENT_SCHEMA },
   resolution: { oneOf: [COMMENT_SCHEMA, { type: 'null' }] },
   name: { ...nullable('string'), description: 'Effort only' },

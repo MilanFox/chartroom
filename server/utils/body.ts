@@ -16,6 +16,11 @@ export const readJsonObject = async (event: H3Event): Promise<JsonObject> => {
   return parsed as JsonObject;
 };
 
+export const oneOf = <T extends string>(value: unknown, field: string, allowed: readonly T[]): T => {
+  if (!allowed.includes(value as T)) throw invalid(`${field} must be one of ${allowed.join(', ')}`, field);
+  return value as T;
+};
+
 export const requireString = (body: JsonObject, field: string) => {
   const value = body[field];
   if (typeof value !== 'string' || value === '') throw invalid(`${field} must be a non-empty string`, field);
