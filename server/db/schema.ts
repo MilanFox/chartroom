@@ -69,3 +69,14 @@ export const changes = sqliteTable('changes', {
   before: text(),
   after: text(),
 });
+
+export const comments = sqliteTable('comments', {
+  id: integer().primaryKey({ autoIncrement: true }),
+  issue: integer().notNull().references(() => issues.number, { onDelete: 'cascade' }),
+  author: text().notNull(),
+  body: text().notNull(),
+  origin: text().notNull(),
+  resolution: integer({ mode: 'boolean' }).notNull().default(false),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});

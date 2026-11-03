@@ -1,8 +1,8 @@
 import { and, asc, count, desc, eq, gt, inArray, lt, or, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import { changes, issues } from '../db/schema';
+import type { FieldWrite, LoggedValue } from './changes';
 import type { Principal } from './principal';
-import type { Store } from './store';
 
 export type Kind = 'effort' | 'map' | 'spec' | 'ticket';
 export type IssueRecord = typeof issues.$inferSelect;
@@ -24,9 +24,6 @@ const PARENT_REQUIRED = new Set<Kind>(['map', 'spec']);
 const EFFORT_ONLY_FIELDS = ['name', 'testInstructions'] as const;
 const EFFORT_NAME_SHAPE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const LOGGED_FIELDS = ['title', 'body', 'parent', 'name', 'testInstructions'] as const;
-
-type LoggedField = typeof LOGGED_FIELDS[number];
-type LoggedValue = string | number | null;
 
 export interface IssueFields {
   title?: string
@@ -58,6 +55,7 @@ export interface ChangeQuery {
 }
 
 export type IssueState = 'open' | 'closed';
+export type IssueStatus = 'open' | 'claimed' | 'closed';
 export type IssueSort = 'number' | 'createdAt' | 'updatedAt' | 'title';
 export type SortOrder = 'asc' | 'desc';
 
@@ -79,25 +77,14 @@ export interface IssueQuery {
   limit: number
 }
 
-interface WriteStamp {
-  actor: string
-  origin: Principal['origin']
-  at: string
-}
-
-interface ChangeContext extends WriteStamp {
-  issue: number
-}
-
-interface FieldWrite {
-  field: LoggedField
-  before: LoggedValue
-  after: LoggedValue
-}
-
 const isSet = <T>(value: T | null | undefined): value is T => value !== undefined && value !== null;
 
 export const isKind = (value: unknown): value is Kind => KINDS.includes(value as Kind);
+
+export const statusOf = (issue: IssueRecord): IssueStatus => {
+  if (issue.state === 'closed') return 'closed';
+  return issue.assignee === null ? 'open' : 'claimed';
+};
 
 export const findIssue = (number: number): IssueRecord | null =>
   useStore().select().from(issues).where(eq(issues.number, number)).get() ?? null;
@@ -207,22 +194,6 @@ const assertNameFree = (name: string | null | undefined, self: number | null) =>
   if (existing && existing.number !== self) throw conflict(`name ${name} is taken by #${existing.number}`, 'name');
 };
 
-const stampFor = (principal: Principal): WriteStamp => ({ actor: actorSlug(principal), origin: principal.origin, at: nowIso() });
-
-const asLogged = (value: LoggedValue) => (value === null ? null : String(value));
-
-const logChanges = (tx: Store, context: ChangeContext, writes: FieldWrite[]) => {
-  tx.insert(changes).values(writes.map(write => ({
-    issue: context.issue,
-    actor: context.actor,
-    origin: context.origin,
-    at: context.at,
-    field: write.field,
-    before: asLogged(write.before),
-    after: asLogged(write.after),
-  }))).run();
-};
-
 const describeLastWrite = (issue: IssueRecord) => {
   const last = useStore().select().from(changes).where(eq(changes.issue, issue.number)).orderBy(desc(changes.id)).get();
   return last ? `${last.actor} at ${last.at}` : `${issue.createdBy} at ${issue.createdAt}`;
@@ -272,6 +243,47 @@ export const patchIssue = (number: number, { fields, expectedVersion }: PatchReq
     logChanges(tx, { ...stamp, issue: number }, writes);
   });
   return requireIssue(number);
+};
+
+const writeField = (number: number, write: FieldWrite, principal: Principal) => {
+  const stamp = stampFor(principal);
+  useStore().transaction((tx) => {
+    tx.update(issues).set({ [write.field]: write.after, updatedAt: stamp.at }).where(eq(issues.number, number)).run();
+    logChanges(tx, { ...stamp, issue: number }, [write]);
+  });
+  return requireIssue(number);
+};
+
+export const claimIssue = (number: number, principal: Principal) => {
+  const issue = requireIssue(number);
+  const actor = actorSlug(principal);
+  if (issue.state === 'closed') throw invalid(`issue #${number} is closed`, 'state');
+  if (issue.assignee === actor) return issue;
+  if (issue.assignee !== null) throw conflict(`issue #${number} is held by ${issue.assignee}`, 'assignee');
+  return writeField(number, { field: 'assignee', before: null, after: actor }, principal);
+};
+
+export const unassignIssue = (number: number, principal: Principal) => {
+  const issue = requireIssue(number);
+  if (issue.assignee === null) return issue;
+  return writeField(number, { field: 'assignee', before: issue.assignee, after: null }, principal);
+};
+
+export const closeIssue = (number: number, comment: string | null, principal: Principal) =>
+  useStore().transaction((tx) => {
+    const issue = requireIssue(number);
+    if (issue.state === 'closed') throw invalid(`issue #${number} is already closed`, 'state');
+    const stamp = stampFor(principal);
+    if (comment !== null) insertComment(tx, { issue: number, body: comment, at: stamp.at, resolution: true }, principal);
+    tx.update(issues).set({ state: 'closed', closedAt: stamp.at, updatedAt: stamp.at }).where(eq(issues.number, number)).run();
+    logChanges(tx, { ...stamp, issue: number }, [{ field: 'state', before: 'open', after: 'closed' }]);
+    return requireIssue(number);
+  });
+
+export const reopenIssue = (number: number, principal: Principal) => {
+  const issue = requireIssue(number);
+  if (issue.state === 'open') return issue;
+  return writeField(number, { field: 'state', before: 'closed', after: 'open' }, principal);
 };
 
 const HEADING = /^(#{1,6})\s+(.*)$/;
