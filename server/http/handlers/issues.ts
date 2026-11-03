@@ -4,22 +4,26 @@ import type { Query } from '../../utils/paging';
 import type { IssueCursor, IssueFields, IssueQuery, IssueRecord, IssueSort } from '../../utils/issues';
 import type { Principal } from '../../utils/principal';
 import { COMMENT_SCHEMA, toComment } from './comments';
-import { issueNumberParam } from './params';
+import { blockerNumberParam, issueNumberParam, labelParam } from './params';
 
-export const toRow = (event: H3Event, issue: IssueRecord) => ({
-  number: issue.number,
-  kind: issue.kind,
-  title: issue.title,
-  state: issue.state,
-  status: statusOf(issue),
-  assignee: issue.assignee,
-  parent: issue.parent,
-  effort: effortNumberOf(issue),
-  labels: [] as string[],
-  createdAt: issue.createdAt,
-  updatedAt: issue.updatedAt,
-  url: `${baseUrl(event)}/issues/${issue.number}`,
-});
+export const toRow = (event: H3Event, issue: IssueRecord) => {
+  const blockers = blockersOf(issue.number);
+  return {
+    number: issue.number,
+    kind: issue.kind,
+    title: issue.title,
+    state: issue.state,
+    status: statusOf(issue, blockers),
+    assignee: issue.assignee,
+    parent: issue.parent,
+    effort: effortNumberOf(issue),
+    labels: labelsOf(issue.number),
+    blockedBy: blockers.map(({ number, open }) => ({ number, open })),
+    createdAt: issue.createdAt,
+    updatedAt: issue.updatedAt,
+    url: `${baseUrl(event)}/issues/${issue.number}`,
+  };
+};
 
 export const toDocument = (event: H3Event, issue: IssueRecord) => {
   const resolution = resolutionOf(issue.number);
@@ -30,8 +34,8 @@ export const toDocument = (event: H3Event, issue: IssueRecord) => {
     origin: issue.origin,
     closedAt: issue.closedAt,
     version: issue.version,
-    blockedBy: [],
-    blocks: [],
+    blockedBy: blockersOf(issue.number),
+    blocks: blocksOf(issue.number),
     children: childNumbers(issue.number),
     links: [],
     comments: commentsOf(issue.number).map(comment => toComment(event, comment)),
@@ -50,6 +54,20 @@ const parentField = (body: JsonObject) => {
 const textField = (body: JsonObject, field: string) => {
   const value = body[field];
   if (typeof value !== 'string') throw invalid(`${field} must be a string`, field);
+  return value;
+};
+
+const labelsField = (body: JsonObject) => {
+  const value = body.labels;
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value) || !value.every(label => typeof label === 'string' && label.trim() !== '')) throw invalid('labels must be an array of non-blank strings', 'labels');
+  return value.map(label => label.trim());
+};
+
+const blockedByField = (body: JsonObject) => {
+  const value = body.blockedBy;
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value) || !value.every(number => typeof number === 'number' && Number.isInteger(number) && number > 0)) throw invalid('blockedBy must be an array of issue numbers', 'blockedBy');
   return value;
 };
 
@@ -76,7 +94,7 @@ const issueCreate = async (event: H3Event, principal: Principal) => {
   const kind = requireString(body, 'kind');
   if (!isKind(kind)) throw invalid(`kind must be one of ${KINDS.join(', ')}`, 'kind');
   const fields = fieldsFrom(body);
-  const issue = createIssue({ ...fields, kind, title: requireString(body, 'title') }, principal);
+  const issue = createIssue({ ...fields, kind, title: requireString(body, 'title'), labels: labelsField(body), blockedBy: blockedByField(body) }, principal);
   setResponseStatus(event, 201);
   return toDocument(event, issue);
 };
@@ -90,8 +108,8 @@ const issueEdit = async (event: H3Event, principal: Principal) => {
   return toDocument(event, patchIssue(number, { fields, expectedVersion }, principal));
 };
 
-const issueRemove = (event: H3Event) => {
-  deleteIssue(issueNumberParam(event));
+const issueRemove = (event: H3Event, principal: Principal) => {
+  deleteIssue(issueNumberParam(event), principal);
   return sendNoContent(event);
 };
 
@@ -114,6 +132,26 @@ const issueClose = async (event: H3Event, principal: Principal) => {
 };
 
 const issueReopen = (event: H3Event, principal: Principal) => toDocument(event, reopenIssue(issueNumberParam(event), principal));
+
+const labelAdd = (event: H3Event, principal: Principal) => {
+  addLabel(issueNumberParam(event), labelParam(event), principal);
+  return sendNoContent(event);
+};
+
+const labelRemove = (event: H3Event, principal: Principal) => {
+  removeLabel(issueNumberParam(event), labelParam(event), principal);
+  return sendNoContent(event);
+};
+
+const blockerAdd = (event: H3Event, principal: Principal) => {
+  addBlocker(issueNumberParam(event), blockerNumberParam(event), principal);
+  return sendNoContent(event);
+};
+
+const blockerRemove = (event: H3Event, principal: Principal) => {
+  removeBlocker(issueNumberParam(event), blockerNumberParam(event), principal);
+  return sendNoContent(event);
+};
 
 const MAX_NUMBERS = 200;
 
@@ -199,22 +237,30 @@ export const issueHandlers = {
   close: issueClose,
   reopen: issueReopen,
   changes: issueChanges,
+  labelAdd,
+  labelRemove,
+  blockerAdd,
+  blockerRemove,
 };
 
 const nullable = (type: string) => ({ type: [type, 'null'] });
 const stringList = { type: 'array', items: { type: 'string' } };
 const objectList = { type: 'array', items: { type: 'object' } };
+const numberList = { type: 'array', items: { type: 'integer' } };
+const issueRef = (properties: Record<string, unknown>) => ({ type: 'object', properties: { number: { type: 'integer' }, ...properties }, required: ['number', ...Object.keys(properties)] });
+const BLOCKER_LIST = { type: 'array', items: issueRef({ open: { type: 'boolean' } }), description: 'Blockers by number; open means the blocker still blocks' };
 
 const ROW_PROPERTIES = {
   number: { type: 'integer' },
   kind: { type: 'string', enum: KINDS },
   title: { type: 'string' },
   state: { type: 'string', enum: ['open', 'closed'] },
-  status: { type: 'string', enum: ['open', 'claimed', 'closed'] },
+  status: { type: 'string', enum: ['open', 'claimed', 'blocked', 'closed'] },
   assignee: nullable('string'),
   parent: nullable('integer'),
   effort: nullable('integer'),
   labels: stringList,
+  blockedBy: BLOCKER_LIST,
   createdAt: { type: 'string', format: 'date-time' },
   updatedAt: { type: 'string', format: 'date-time' },
   url: { type: 'string', format: 'uri' },
@@ -229,8 +275,8 @@ const DOCUMENT_PROPERTIES = {
   origin: { type: 'string', enum: ['ui', 'api'] },
   closedAt: nullable('string'),
   version: { type: 'integer' },
-  blockedBy: objectList,
-  blocks: objectList,
+  blockedBy: { ...BLOCKER_LIST, items: issueRef({ title: { type: 'string' }, open: { type: 'boolean' } }) },
+  blocks: { type: 'array', items: issueRef({ title: { type: 'string' } }), description: 'The issues this one blocks' },
   children: { type: 'array', items: { type: 'integer' } },
   links: objectList,
   comments: { type: 'array', items: COMMENT_SCHEMA },
@@ -272,7 +318,15 @@ export const ISSUE_FIELDS_SCHEMA = {
   testInstructions: { ...nullable('string'), description: 'Effort only' },
 };
 
+export const ISSUE_CREATE_SCHEMA = {
+  ...ISSUE_FIELDS_SCHEMA,
+  labels: { ...stringList, description: 'Applied in order; a label group member removes its siblings' },
+  blockedBy: { ...numberList, description: 'Blocker issue numbers; every one must exist' },
+};
+
 export const ISSUE_NUMBER_PARAM = { name: 'number', in: 'path' as const, required: true, schema: { type: 'integer' } };
+export const BLOCKER_NUMBER_PARAM = { name: 'blocker', in: 'path' as const, required: true, schema: { type: 'integer' } };
+export const LABEL_PARAM = { name: 'label', in: 'path' as const, required: true, schema: { type: 'string' }, description: 'URL-encoded, trimmed, non-blank' };
 
 const queryParam = (name: string, schema: Record<string, unknown>, description: string) => ({ name, in: 'query' as const, schema, description });
 
