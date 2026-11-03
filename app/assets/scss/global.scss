@@ -3,23 +3,12 @@ Careful: Anything imported or written here will be automatically imported and lo
 Only use it for variables and light-weight stuff.
 */
 
+@forward 'scale';
+@forward 'recipes';
+
 @use 'sass:map';
 
-/* Design tokens — reference these in components; never hardcode raw values. */
-
-$color-primary: #2563eb;
-$color-text: #111827;
-$color-surface: #ffffff;
-
-$spacing-xs: 4px;
-$spacing-sm: 8px;
-$spacing-md: 16px;
-$spacing-lg: 32px;
-$spacing-xl: 64px;
-
-$font-size-sm: 14px;
-$font-size-md: 16px;
-$font-size-lg: 20px;
+/* Design tokens live in scale.scss (SCSS) and tokens.scss (CSS custom properties); never hardcode raw values. */
 
 /* Breakpoints — mobile-first, use via respond(). */
 
