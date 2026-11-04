@@ -55,9 +55,11 @@ const steps = computed(() => firstRunChecklist({ holders: admin.holders?.length 
 
 const optionalParts = computed(() => {
   const { optional, optionalLinks } = strings.value.admin.firstRun;
-  return optional.split(/\{(\w+Link)\}/).map((part, index) => (index % 2
-    ? { text: optionalLinks[part as keyof typeof optionalLinks], section: OPTIONAL_SECTIONS[part] }
-    : { text: part, section: undefined }));
+  return optional.split(/\{(\w+Link)\}/).map((part, index) => {
+    if (index % 2 === 0) return { text: part, section: undefined };
+    const link = part as keyof typeof optionalLinks;
+    return { text: optionalLinks[link], section: OPTIONAL_SECTIONS[link] };
+  });
 });
 
 const cancel = async () => {

@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import { Readable } from 'node:stream';
@@ -116,10 +116,12 @@ describe('chartroom init', () => {
         `2. Open http://localhost:3000 and sign in with the viewer password (in ${dir}/.env)`,
         `3. Admin → "Enter admin password…" → elevate with the admin password (in ${dir}/.env)`,
         '4. Token holders → create one and copy its secret, it is shown once',
-        '5. In your project repo, run:',
-        '  export CHARTROOM_URL=http://localhost:3000',
-        '  export CHARTROOM_TOKEN=<the secret>',
-        '  npx -y chartroom-cli@7 adapter --write docs/agents',
+        '5. In your project repo, run /setup-matt-pocock-skills (issue tracker: Other, "Chartroom at http://localhost:3000"), then:',
+        '  npm install -g chartroom-cli@7',
+        '  Put these two lines in the repo\'s untracked .env:',
+        '    CHARTROOM_URL=http://localhost:3000',
+        '    CHARTROOM_TOKEN=<the secret>',
+        '  chartroom adapter --write docs/agents',
         '',
         'Project name, Effort word and Environments are optional; change them any time on the admin page.',
         'More: https://github.com/MilanFox/chartroom/blob/main/docs/operating.md',
@@ -182,6 +184,19 @@ describe('chartroom init', () => {
     expect((await chartroom(['frobnicate'])).stderr).toContain('\n  init [dir]\n');
   });
 
+  it('ignores a .env in the working directory, even an unreadable one', async () => {
+    const cwd = freshDir();
+    mkdirSync(join(cwd, '.env'));
+    const dir = join(freshDir(), 'instance');
+
+    let stderr = '';
+
+    const code = await runCli({ argv: ['init', dir], env: {}, cwd, stdin: Readable.from(['']), stdout: { write: () => true }, stderr: { write: (chunk: string) => (stderr += chunk, true) } });
+
+    expect({ code, stderr }).toEqual({ code: 0, stderr: '' });
+    expect(readdirSync(dir).sort()).toEqual(['.env', 'compose.yaml']);
+  });
+
   it('a flag or a second directory is a usage error with exit 2 and writes nothing', async () => {
     for (const extra of [['--force'], ['a', 'b']]) {
       const cwdBefore = readdirSync('.');
@@ -214,12 +229,14 @@ describe('chartroom init', () => {
         for (const line of box.slice(1, -1)) expect(line, String(columns)).toMatch(/^│ .* │$/);
         const boxText = box.slice(1, -1).map(line => line.slice(2, -2).trim()).join(' ');
         expect(boxText.replaceAll(' ', ''), String(columns)).toContain(LONG_URL);
-        expect(boxText, String(columns)).toContain('5. In your project repo, run:');
-        expect(boxText, String(columns)).not.toContain('export');
+        expect(boxText.replaceAll(' ', ''), String(columns)).toContain(`5.Inyourprojectrepo,run/setup-matt-pocock-skills(issuetracker:Other,"Chartroomat${LONG_URL}"),then:`);
+        expect(boxText, String(columns)).not.toContain('npm install');
         expect(lines.slice(bottom + 1).filter(line => line.startsWith('  ')), String(columns)).toEqual([
-          `  export CHARTROOM_URL=${LONG_URL}`,
-          '  export CHARTROOM_TOKEN=<the secret>',
-          '  npx -y chartroom-cli@7 adapter --write docs/agents',
+          '  npm install -g chartroom-cli@7',
+          '  Put these two lines in the repo\'s untracked .env:',
+          `    CHARTROOM_URL=${LONG_URL}`,
+          '    CHARTROOM_TOKEN=<the secret>',
+          '  chartroom adapter --write docs/agents',
         ]);
       }
     });
@@ -231,7 +248,7 @@ describe('chartroom init', () => {
 
       expect(result.stderr).toContain('\n\u001b[36m◆\u001b[0m \u001b[1mAdmin password\u001b[0m \u001b[2m(1/7)\u001b[0m\n');
       expect(result.stdout.split('\n')[0]).toBe(`\u001b[32m✔\u001b[0m \u001b[1mChartroom is running in ${dir}\u001b[0m`);
-      expect(result.stdout).toContain('\n  \u001b[36mexport CHARTROOM_URL=http://localhost:3000\u001b[0m\n');
+      expect(result.stdout).toContain('\n    \u001b[36mCHARTROOM_URL=http://localhost:3000\u001b[0m\n');
     });
 
     it('writes plain text without a box when NO_COLOR is set or the stream is not a terminal', async () => {
@@ -271,7 +288,7 @@ describe('chartroom init', () => {
       expect(result.stderr).not.toContain('typed-viewer');
       expect(result.stderr).toContain('Admin password: set\nViewer password: set\n');
       expect(result.stdout).toContain('2. Open https://chart.example.com and sign in with your viewer password\n   Put a TLS reverse proxy in front: https://github.com/MilanFox/chartroom/blob/main/docs/operating.md#tls-at-the-reverse-proxy\n');
-      expect(result.stdout).toContain('\n  export CHARTROOM_URL=https://chart.example.com\n');
+      expect(result.stdout).toContain('\n    CHARTROOM_URL=https://chart.example.com\n');
       expect(result.stdout).not.toContain('typed-');
       expect(result.stdout).toMatch(new RegExp(`^✔ Wrote compose\\.yaml and \\.env to ${dir}\\n\\nFirst start:\\n`));
       expect(result.stdout).not.toContain(join(dir, '.env'));
@@ -397,7 +414,7 @@ describe('chartroom init', () => {
       expect(result.stdout).not.toContain('docker compose up -d');
       expect(result.stdout).toMatch(new RegExp(`^✔ Chartroom is running in ${dir}\\n`));
       expect(result.stdout).toContain('\n1. Open http://localhost:3000 and sign in with your viewer password\n2. Admin');
-      expect(result.stdout).toContain('\n4. In your project repo, run:\n');
+      expect(result.stdout).toContain('\n4. In your project repo, run /setup-matt-pocock-skills (issue tracker: Other, "Chartroom at http://localhost:3000"), then:\n');
     });
 
     it('a failed start exits with its code and keeps the docker step in the checklist', async () => {
