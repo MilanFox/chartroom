@@ -1,7 +1,7 @@
 import type { H3Event } from 'h3';
 import type { Principal } from '../utils/principal';
 import { holderRoster } from './handlers/holders';
-import { BLOCKER_NUMBER_PARAM, CHANGE_SCHEMA, DOCUMENT_SCHEMA, ISSUE_CREATE_SCHEMA, ISSUE_FIELDS_SCHEMA, ISSUE_LIST_PARAMS, ISSUE_NUMBER_PARAM, issueHandlers, LABEL_PARAM, PAGING_PARAMS, pageSchema, ROW_SCHEMA } from './handlers/issues';
+import { BLOCKER_NUMBER_PARAM, CHANGE_SCHEMA, DOCUMENT_SCHEMA, ISSUE_CREATE_SCHEMA, ISSUE_FIELDS_SCHEMA, ISSUE_LIST_PARAMS, ISSUE_NUMBER_PARAM, ISSUE_PAGE_SCHEMA, issueHandlers, LABEL_PARAM, PAGING_PARAMS, pageSchema } from './handlers/issues';
 import { EFFORT_DOCUMENT_SCHEMA, EFFORT_HANDLE_PARAM, EFFORT_LIST_PARAMS, EFFORT_PAGE_SCHEMA, effortHandlers } from './handlers/efforts';
 import { COMMENT_BODY_SCHEMA, COMMENT_ID_PARAM, COMMENT_SCHEMA, commentHandlers } from './handlers/comments';
 import { LABEL_GROUP_SCHEMA, labelGroupList } from './handlers/labels';
@@ -61,7 +61,7 @@ export const routeTable: TableRoute[] = [
       summary: 'List issues of every Kind',
       tags: ['issues'],
       parameters: [...ISSUE_LIST_PARAMS, ...PAGING_PARAMS],
-      responses: { 200: { description: 'Page of Row', schema: pageSchema(ROW_SCHEMA) }, 400: { description: 'An unknown kind, state, view, assignee, sort or order, an unknown Label group in missing or sort, a blank label, view mine without a Token holder, a non-numeric parent, an unknown effort, more than 200 numbers, or a bad limit or cursor; field set' } },
+      responses: { 200: { description: 'Page of Row with per-Effort totals', schema: ISSUE_PAGE_SCHEMA }, 400: { description: 'An unknown kind, state, view, assignee, sort or order, an unknown Label group in missing or sort, a blank label, view mine without a Token holder, a non-numeric parent, an unknown effort, more than 200 numbers, or a bad limit or cursor; field set' } },
     },
   },
   {

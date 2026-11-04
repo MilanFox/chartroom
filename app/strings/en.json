@@ -247,5 +247,74 @@
       "closedAt": "closed {date}",
       "reopen": "Reopen"
     }
+  },
+  "workbench": {
+    "title": "Issues",
+    "filters": "Filters",
+    "views": {
+      "label": "Saved views",
+      "all": "Open issues",
+      "frontier": "Frontier",
+      "mine": "My stuff",
+      "needs-triage": "Needs triage",
+      "blocked": "Blocked",
+      "closed-recent": "Closed last 7 days"
+    },
+    "search": "Search issues",
+    "searchPlaceholder": "Search title and body",
+    "searchHint": "Closed issues appear while a query is set.",
+    "includeClosed": "Include closed",
+    "narrow": "Narrow",
+    "kind": "Kind",
+    "anyKind": "Any kind",
+    "state": "State",
+    "states": {
+      "default": "Open (default)",
+      "open": "Open only",
+      "closed": "Closed only",
+      "all": "Open and closed"
+    },
+    "anyMember": "Any",
+    "noMember": "No {group}",
+    "freeFormLabel": "Other labels",
+    "freeFormHint": "Comma-separated; every label must match.",
+    "assignee": "Assignee",
+    "anyAssignee": "Anyone",
+    "unassigned": "Unassigned",
+    "holder": "@{slug}",
+    "namedHolder": "@{slug} ({name})",
+    "revokedHolder": "{holder}, revoked",
+    "effort": "{effort}",
+    "anyEffort": "Any {effort}",
+    "parent": "Parent #{number}",
+    "removeParent": "Remove the Parent #{number} filter",
+    "sort": "Sort by",
+    "sorts": {
+      "updatedAt": "Last updated",
+      "number": "Number",
+      "state": "State",
+      "title": "Title"
+    },
+    "groupSort": "{group} order",
+    "order": "Order",
+    "orders": {
+      "desc": "Descending",
+      "asc": "Ascending"
+    },
+    "picked": "A picked set of {count} issues in the given order, any state; other filters are ignored.",
+    "showAll": "Show all open issues",
+    "loaded": "{count} issues loaded",
+    "loadedMore": "{count} issues loaded, more available",
+    "groupCount": "{count} issues",
+    "groupCountOne": "1 issue",
+    "lastUpdate": "last update {date}",
+    "noEffort": "No {effort}",
+    "results": "Issues",
+    "empty": "No issues match.",
+    "loadMore": "Load 100 more",
+    "loading": "Loading…",
+    "loadFailed": "The list could not be loaded. Check the filters, then try again.",
+    "loadMoreFailed": "Loading more failed. Try again.",
+    "number": "#{number}"
   }
 }

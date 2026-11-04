@@ -66,6 +66,15 @@ export interface IssueRow {
   url: string
 }
 
+export interface EffortCount {
+  effort: number | null
+  count: number
+}
+
+export interface IssuePage extends Page<IssueRow> {
+  effortCounts: EffortCount[]
+}
+
 export interface IssueComment {
   id: number
   issue: number
@@ -113,4 +122,15 @@ export interface LabelGroup {
   seeded: boolean
   exclusive: true
   labels: { id: string, displayLabel: string }[]
+}
+
+export interface Holder {
+  slug: string
+  displayName: string | null
+  revoked: boolean
+}
+
+export interface FreeFormLabel {
+  label: string
+  count: number
 }
