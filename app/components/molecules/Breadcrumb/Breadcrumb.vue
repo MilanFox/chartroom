@@ -1,5 +1,5 @@
 <template>
-  <nav :aria-label="strings.breadcrumb.label" class="breadcrumb">
+  <nav v-if="crumbs.length > 1" :aria-label="strings.breadcrumb.label" class="breadcrumb">
     <ol class="breadcrumb__list">
       <template v-for="(crumb, index) in crumbs" :key="index">
         <li class="breadcrumb__crumb" :class="{ 'breadcrumb__crumb--middle': index > 0 && index < lastIndex }">
