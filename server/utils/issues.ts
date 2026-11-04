@@ -10,7 +10,7 @@ import { blockedCondition, mapFrontierCondition } from './frontier';
 import type { Caller } from './caller';
 import type { Store } from './store';
 import type { IssueState, IssueStatus, IssueView, Kind } from '#shared/domain';
-import { ISSUE_STATES, ISSUE_VIEWS, KINDS, PARENT_RULES, UNASSIGNED } from '#shared/domain';
+import { EFFORT_ONLY_FIELDS, ISSUE_STATES, ISSUE_VIEWS, KINDS, LOGGED_FIELDS, PARENT_RULES, UNASSIGNED } from '#shared/domain';
 
 export type { IssueState, IssueStatus, IssueView, Kind };
 export { ISSUE_STATES, ISSUE_VIEWS, KINDS, PARENT_RULES, UNASSIGNED };
@@ -22,10 +22,8 @@ export const ISSUE_SORTS: IssueSort[] = ['number', 'createdAt', 'updatedAt', 'ti
 export const SORT_ORDERS: SortOrder[] = ['asc', 'desc'];
 
 const PARENT_REQUIRED = new Set<Kind>(['map', 'spec']);
-const EFFORT_ONLY_FIELDS = ['name', 'testInstructions'] as const;
 export const LOWERCASE_SLUG_SHAPE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const RECENTLY_CLOSED_SECONDS = 7 * 24 * 60 * 60;
-const LOGGED_FIELDS = ['title', 'body', 'parent', 'name', 'testInstructions'] as const;
 
 export interface IssueFields {
   title?: string

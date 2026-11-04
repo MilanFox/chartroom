@@ -4,7 +4,11 @@ export type IssueStatus = 'open' | 'claimed' | 'blocked' | 'closed';
 export type IssueView = 'frontier' | 'mine' | 'needs-triage' | 'blocked' | 'closed-recent';
 export type LinkRole = 'resource' | 'artifact';
 export type LinkType = 'branch' | 'file' | 'preview' | 'doc' | 'external';
-export type ChangeField = 'title' | 'body' | 'parent' | 'name' | 'testInstructions' | 'state' | 'assignee' | 'comment' | 'label' | 'blocker' | 'link';
+
+export const LOGGED_FIELDS = ['title', 'body', 'parent', 'name', 'testInstructions'] as const;
+export const EFFORT_ONLY_FIELDS = ['name', 'testInstructions'] as const;
+
+export type ChangeField = typeof LOGGED_FIELDS[number] | 'state' | 'assignee' | 'comment' | 'label' | 'blocker' | 'link';
 
 export const KINDS: Kind[] = ['effort', 'map', 'spec', 'ticket'];
 export const ISSUE_STATES: IssueState[] = ['open', 'closed'];
