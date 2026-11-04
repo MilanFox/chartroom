@@ -351,7 +351,6 @@ interface Feedback {
   issues: number[]
 }
 
-const admin = useAdminStore();
 const labelGroupsStore = useLabelGroupsStore();
 const { strings, format } = useStrings();
 const baseId = useId();
@@ -434,12 +433,12 @@ const attempt = async (key: string, write: () => Promise<unknown>) => {
 
 const moveGroup = async (groupId: string, offset: number) => {
   const direction = offset < 0 ? 'up' : 'down';
-  if (await attempt(`card-${groupId}`, () => admin.moveLabelGroup(groupId, offset))) focusById(`${baseId}-group-${direction}-${groupId}`);
+  if (await attempt(`card-${groupId}`, () => labelGroupsStore.moveLabelGroup(groupId, offset))) focusById(`${baseId}-group-${direction}-${groupId}`);
 };
 
 const moveMember = async (groupId: string, memberId: string, offset: number) => {
   const direction = offset < 0 ? 'up' : 'down';
-  if (await attempt(`card-${groupId}`, () => admin.moveGroupMember(groupId, memberId, offset))) focusById(`${baseId}-${direction}-${groupId}-${memberId}`);
+  if (await attempt(`card-${groupId}`, () => labelGroupsStore.moveGroupMember(groupId, memberId, offset))) focusById(`${baseId}-${direction}-${groupId}-${memberId}`);
 };
 
 const dragStart = (groupId: string, memberId: string, event: DragEvent) => {
@@ -462,7 +461,7 @@ const drop = async (group: string, targetIndex: number, event: DragEvent) => {
   event.preventDefault();
   const sourceIndex = adminGroups.value.find(candidate => candidate.id === group)?.labels.findIndex(member => member.id === source.memberId) ?? -1;
   if (sourceIndex < 0 || sourceIndex === targetIndex) return;
-  await attempt(`card-${group}`, () => admin.moveGroupMember(group, source.memberId, targetIndex - sourceIndex));
+  await attempt(`card-${group}`, () => labelGroupsStore.moveGroupMember(group, source.memberId, targetIndex - sourceIndex));
 };
 
 const saveNames = async (group: LabelGroup) => {
@@ -471,10 +470,10 @@ const saveNames = async (group: LabelGroup) => {
   saving.value = group.id;
   feedback.value[`card-${group.id}`] = undefined;
   const renames = [
-    ...(draft.displayName.trim() !== group.displayName ? [{ field: `name-${group.id}`, write: () => admin.renameLabelGroup(group.id, draft.displayName.trim()) }] : []),
+    ...(draft.displayName.trim() !== group.displayName ? [{ field: `name-${group.id}`, write: () => labelGroupsStore.renameLabelGroup(group.id, draft.displayName.trim()) }] : []),
     ...group.labels
       .filter(member => (draft.members[member.id] ?? '').trim() !== member.displayLabel)
-      .map(member => ({ field: `member-${group.id}-${member.id}`, write: () => admin.renameGroupMember(group.id, member.id, (draft.members[member.id] ?? '').trim()) })),
+      .map(member => ({ field: `member-${group.id}-${member.id}`, write: () => labelGroupsStore.renameGroupMember(group.id, member.id, (draft.members[member.id] ?? '').trim()) })),
   ];
   try {
     for (const rename of renames) {
@@ -500,7 +499,7 @@ const addMember = async (group: LabelGroup) => {
   feedback.value[`add-${group.id}`] = undefined;
   fieldErrors.value[`add-${group.id}`] = '';
   try {
-    await admin.addGroupMember(group.id, { id: addition.id.trim(), displayLabel: addition.displayLabel.trim() || null });
+    await labelGroupsStore.addGroupMember(group.id, { id: addition.id.trim(), displayLabel: addition.displayLabel.trim() || null });
     additions[group.id] = { id: '', displayLabel: '' };
   }
   catch (failure) {
@@ -512,14 +511,14 @@ const addMember = async (group: LabelGroup) => {
 };
 
 const removeMember = async (groupId: string, memberId: string) => {
-  if (await attempt(`card-${groupId}`, () => admin.removeGroupMember(groupId, memberId))) {
+  if (await attempt(`card-${groupId}`, () => labelGroupsStore.removeGroupMember(groupId, memberId))) {
     confirming.value = null;
     focusById(`${baseId}-add-${groupId}`);
   }
 };
 
 const deleteGroup = async (groupId: string) => {
-  if (await attempt(`card-${groupId}`, () => admin.deleteLabelGroup(groupId))) {
+  if (await attempt(`card-${groupId}`, () => labelGroupsStore.deleteLabelGroup(groupId))) {
     confirming.value = null;
     focusById(`${baseId}-new-id`);
   }
@@ -533,7 +532,7 @@ const createGroup = async () => {
   const id = newGroup.id.trim();
   const firstMember = newGroup.firstMember.trim();
   try {
-    await admin.createLabelGroup({ id, displayName: newGroup.displayName.trim() || null, labels: firstMember ? [{ id: firstMember, displayLabel: null }] : [] });
+    await labelGroupsStore.createLabelGroup({ id, displayName: newGroup.displayName.trim() || null, labels: firstMember ? [{ id: firstMember, displayLabel: null }] : [] });
     Object.assign(newGroup, { id: '', displayName: '', firstMember: '' });
     focusById(`${baseId}-add-${id}`);
   }
