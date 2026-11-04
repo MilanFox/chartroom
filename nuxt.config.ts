@@ -37,8 +37,6 @@ export default defineNuxtConfig({
     '@organisms': resolve(__dirname, './app/components/organisms'),
     '@stores': resolve(__dirname, './app/stores'),
     '@composables': resolve(__dirname, './app/composables'),
-    '@constants': resolve(__dirname, './shared/constants'),
-    '@server': resolve(__dirname, './server'),
     '@layouts': resolve(__dirname, './app/layouts'),
     '@middleware': resolve(__dirname, './app/middleware'),
   },

@@ -1,8 +1,8 @@
 import { changes } from '../db/schema';
 import type { Principal } from './principal';
 import type { Store } from './store';
+import type { ChangeField } from '#shared/domain';
 
-export type LoggedField = 'title' | 'body' | 'parent' | 'name' | 'testInstructions' | 'state' | 'assignee' | 'comment' | 'label' | 'blocker' | 'link';
 export type LoggedValue = string | number | null;
 
 export interface WriteStamp {
@@ -16,7 +16,7 @@ export interface ChangeContext extends WriteStamp {
 }
 
 export interface FieldWrite {
-  field: LoggedField
+  field: ChangeField
   before: LoggedValue
   after: LoggedValue
 }

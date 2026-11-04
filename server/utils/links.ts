@@ -1,13 +1,12 @@
 import { and, asc, eq, gt } from 'drizzle-orm';
 import { links } from '../db/schema';
 import type { Principal } from './principal';
+import type { LinkRole, LinkType } from '#shared/domain';
 
 export type LinkRecord = typeof links.$inferSelect;
-export type LinkRole = 'resource' | 'artifact';
-export type LinkType = 'branch' | 'file' | 'preview' | 'doc' | 'external';
 
-export const LINK_ROLES: LinkRole[] = ['resource', 'artifact'];
-export const LINK_TYPES: LinkType[] = ['branch', 'file', 'preview', 'doc', 'external'];
+export type { LinkRole, LinkType };
+export { LINK_ROLES, LINK_TYPES } from '#shared/domain';
 
 export interface LinkQuery {
   after?: number | null

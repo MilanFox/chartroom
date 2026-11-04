@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
-import type { IssueChange, IssueComment, IssueDocument, IssueKind, IssueLink, IssueRow, LinkRole, LinkType } from '~/types/api';
+import type { IssueChange, IssueComment, IssueDocument, IssueLink, IssueRow, Kind, LinkRole, LinkType } from '~/types/api';
 import type { ParentCandidate } from '~/utils/issue-fields';
+import { KINDS, PARENT_RULES } from '#shared/domain';
 
 export interface IssueFieldEdit {
   title?: string
@@ -17,7 +18,7 @@ export interface LinkDraft {
   title: string
 }
 
-const PARENT_KINDS: IssueKind[] = ['effort', 'map', 'spec'];
+const PARENT_KINDS = KINDS.filter(kind => KINDS.some(child => PARENT_RULES[child].includes(kind)));
 
 export const useIssuesStore = defineStore('issues', () => {
   const uiFetch = useUiFetch();
@@ -90,7 +91,7 @@ export const useIssuesStore = defineStore('issues', () => {
     children.value[number] = await allPages<IssueRow>('/issues', { parent: number, sort: 'number', order: 'asc' });
   };
 
-  const rowsOfKind = (kind: IssueKind) => allPages<IssueRow>('/issues', { kind });
+  const rowsOfKind = (kind: Kind) => allPages<IssueRow>('/issues', { kind });
 
   const loadParentCandidates = async () => {
     const rows = await Promise.all(PARENT_KINDS.map(rowsOfKind));

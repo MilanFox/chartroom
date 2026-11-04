@@ -1,4 +1,5 @@
-import type { Effort, IssueStatus, StatusRollup } from '~/types/api';
+import type { Effort, StatusRollup } from '~/types/api';
+import { STATUSES } from '#shared/domain';
 
 export type EffortSortKey = 'number' | 'title' | 'status' | 'open' | 'createdBy';
 export type SortDirection = 'ascending' | 'descending';
@@ -13,14 +14,12 @@ export interface EffortView {
 
 export const DEFAULT_EFFORT_VIEW: EffortView = { query: '', tags: [], showClosed: false, sortKey: 'number', sortDirection: 'descending' };
 
-const STATUS_ORDER: IssueStatus[] = ['open', 'claimed', 'blocked', 'closed'];
-
 const compareText = (a: string, b: string) => a.localeCompare(b, undefined, { sensitivity: 'base' });
 
 const SORT_VALUE_OF = {
   number: (effort: Effort) => effort.number,
   title: (effort: Effort) => effort.title,
-  status: (effort: Effort) => STATUS_ORDER.indexOf(effort.status),
+  status: (effort: Effort) => STATUSES.indexOf(effort.status),
   open: (effort: Effort) => effort.statusRollup.open,
   createdBy: (effort: Effort) => effort.createdBy,
 } satisfies Record<EffortSortKey, unknown>;

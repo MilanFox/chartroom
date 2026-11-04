@@ -119,14 +119,12 @@
 </template>
 
 <script setup lang="ts">
-import type { IssueKind } from '~/types/api';
+import { ISSUE_VIEWS, KINDS, UNASSIGNED } from '#shared/domain';
 import type { WorkbenchFilters } from '~/stores/workbench';
 
-const KINDS: IssueKind[] = ['effort', 'map', 'spec', 'ticket'];
 const STATES = ['open', 'closed', 'all'] as const;
 const SORTS = ['updatedAt', 'number', 'state', 'title'] as const;
 const ORDERS = ['desc', 'asc'] as const;
-const VIEWS = ['frontier', 'mine', 'needs-triage', 'blocked', 'closed-recent'] as const;
 
 const workbench = useWorkbenchStore();
 const labelGroupsStore = useLabelGroupsStore();
@@ -140,7 +138,7 @@ const filters = computed(() => workbench.filters);
 
 const viewEntries = computed(() => [
   { key: 'all', view: null, label: strings.value.workbench.views.all },
-  ...VIEWS.filter(view => view !== 'mine' || !session.isViewer).map(view => ({ key: view, view, label: strings.value.workbench.views[view] })),
+  ...ISSUE_VIEWS.filter(view => view !== 'mine' || !session.isViewer).map(view => ({ key: view, view, label: strings.value.workbench.views[view] })),
 ]);
 
 const holderLabel = (slug: string, displayName: string | null, revoked: boolean) => {

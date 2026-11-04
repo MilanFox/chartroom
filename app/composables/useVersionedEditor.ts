@@ -3,11 +3,9 @@ import type { VersionConflict } from '~/utils/conflict';
 
 export type VersionedTextField = 'title' | 'body' | 'name' | 'testInstructions';
 
-type VersionedIssue = IssueDocument & { name?: string | null, testInstructions?: string | null };
-
 const CLEARABLE_FIELDS: VersionedTextField[] = ['name', 'testInstructions'];
 
-export const useVersionedEditor = (issue: () => VersionedIssue, field: VersionedTextField) => {
+export const useVersionedEditor = (issue: () => IssueDocument, field: VersionedTextField) => {
   const issuesStore = useIssuesStore();
   const editing = ref(false);
   const draft = ref('');

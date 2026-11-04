@@ -1,10 +1,10 @@
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { afterEach, describe, expect, it } from 'vitest';
 import { defineComponent, h, nextTick } from 'vue';
-import type { IssueKind } from '~/types/api';
+import type { Kind } from '~/types/api';
 import { useGraphDisclosure } from './useGraphDisclosure';
 
-const mountDisclosure = async (kind: IssueKind, state: 'open' | 'closed') => {
+const mountDisclosure = async (kind: Kind, state: 'open' | 'closed') => {
   let disclosure: ReturnType<typeof useGraphDisclosure> | null = null;
   const wrapper = await mountSuspended(defineComponent(() => {
     disclosure = useGraphDisclosure(() => ({ number: 7, kind, state }));

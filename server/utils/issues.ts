@@ -7,24 +7,17 @@ import type { BlockerRef } from './blockers';
 import type { FieldWrite, LoggedValue } from './changes';
 import type { Principal } from './principal';
 import type { Store } from './store';
+import type { IssueState, IssueStatus, IssueView, Kind } from '#shared/domain';
+import { ISSUE_STATES, ISSUE_VIEWS, KINDS, PARENT_RULES, UNASSIGNED } from '#shared/domain';
 
-export type Kind = 'effort' | 'map' | 'spec' | 'ticket';
+export type { IssueState, IssueStatus, IssueView, Kind };
+export { ISSUE_STATES, ISSUE_VIEWS, KINDS, PARENT_RULES, UNASSIGNED };
+
 export type IssueRecord = typeof issues.$inferSelect;
 export type ChangeRecord = typeof changes.$inferSelect;
 
-export const KINDS: Kind[] = ['effort', 'map', 'spec', 'ticket'];
-export const ISSUE_STATES: IssueState[] = ['open', 'closed'];
 export const ISSUE_SORTS: IssueSort[] = ['number', 'createdAt', 'updatedAt', 'title', 'state'];
 export const SORT_ORDERS: SortOrder[] = ['asc', 'desc'];
-export const UNASSIGNED = 'none';
-export const ISSUE_VIEWS: IssueView[] = ['frontier', 'mine', 'needs-triage', 'blocked', 'closed-recent'];
-
-export const PARENT_RULES: Record<Kind, Kind[]> = {
-  effort: [],
-  map: ['effort'],
-  spec: ['effort'],
-  ticket: ['map', 'spec', 'effort'],
-};
 
 const PARENT_REQUIRED = new Set<Kind>(['map', 'spec']);
 const EFFORT_ONLY_FIELDS = ['name', 'testInstructions'] as const;
@@ -63,11 +56,8 @@ export interface ChangeQuery {
   limit: number
 }
 
-export type IssueState = 'open' | 'closed';
-export type IssueStatus = 'open' | 'claimed' | 'blocked' | 'closed';
 export type IssueSort = 'number' | 'createdAt' | 'updatedAt' | 'title' | 'state';
 export type SortOrder = 'asc' | 'desc';
-export type IssueView = 'frontier' | 'mine' | 'needs-triage' | 'blocked' | 'closed-recent';
 
 export interface IssueCursor {
   key: string | number | null
