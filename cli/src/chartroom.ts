@@ -102,7 +102,7 @@ const VERBS: Verb[] = [
     words: ['issue', 'list'],
     method: 'get',
     path: '/issues',
-    flags: { ...valueFlags(...ISSUE_FILTERS.filter(name => name !== 'label' && name !== 'q')), label: { type: 'string', multiple: true }, q: { type: 'string', short: 'q' } },
+    flags: { ...valueFlags(...ISSUE_FILTERS.filter(name => !['label', 'missing', 'q'].includes(name))), label: { type: 'string', multiple: true }, missing: { type: 'string', multiple: true }, q: { type: 'string', short: 'q' } },
     query: ISSUE_FILTERS,
     paged: true,
   },

@@ -161,6 +161,33 @@ describe('list filters', () => {
     expect(await listed('?effort=labels&label=nobody-uses-this')).toEqual([]);
   });
 
+  it('missing is repeatable and ANDs: only issues carrying no member of any given group', async () => {
+    const effort = await create({ kind: 'effort', title: 'Missing', name: 'missing' });
+    const bare = await create({ kind: 'ticket', title: 'Bare', parent: effort.number, labels: ['frontend'] });
+    await create({ kind: 'ticket', title: 'Triaged', parent: effort.number, labels: ['needs-triage'] });
+    await create({ kind: 'ticket', title: 'Typed', parent: effort.number, labels: ['wayfinder:task'] });
+
+    expect(await listed('?effort=missing&kind=ticket&missing=triage-state&missing=wayfinder-type')).toEqual([bare.number]);
+  });
+
+  it('every page carries per-Effort totals for the whole filtered set, an Effort counting toward itself', async () => {
+    const first = await create({ kind: 'effort', title: 'Tally first', name: 'tally-first' });
+    const second = await create({ kind: 'effort', title: 'Tally second', name: 'tally-second' });
+    const map = await create({ kind: 'map', title: 'Tally map', parent: first.number });
+    await create({ kind: 'ticket', title: 'Tally under map', parent: map.number });
+    await create({ kind: 'ticket', title: 'Tally under first', parent: first.number });
+    const closed = await create({ kind: 'ticket', title: 'Tally closed', parent: second.number });
+    await create({ kind: 'ticket', title: 'Tally floating' });
+    await alice.json('POST', `/issues/${closed.number}/close`);
+    const expected = [{ effort: null, count: 1 }, { effort: first.number, count: 4 }, { effort: second.number, count: 1 }];
+
+    const firstPage = (await alice.json('GET', '/issues?q=Tally&state=open&limit=1')).body;
+    const secondPage = (await alice.json('GET', `/issues?q=Tally&state=open&limit=1&cursor=${firstPage.nextCursor}`)).body;
+
+    expect(firstPage.effortCounts).toEqual(expected);
+    expect(secondPage.effortCounts).toEqual(expected);
+  });
+
   it('a developer filters by who holds an issue: a holder slug, or none for unclaimed', async () => {
     const effort = await create({ kind: 'effort', title: 'Assignees', name: 'assignees' });
     const mine = await create({ kind: 'ticket', title: 'Alice holds', parent: effort.number });
@@ -296,6 +323,22 @@ describe('group sort', () => {
     for (const limit of [1, 2, 3, 50]) {
       expect(await walk('?effort=sorting&kind=ticket&sort=triage-state', limit), `asc by ${limit}`).toEqual(ascending);
       expect(await walk('?effort=sorting&kind=ticket&sort=triage-state&order=desc', limit), `desc by ${limit}`).toEqual(descending);
+    }
+  });
+
+  it('the Workbench sorts by state, closed before open ascending, number breaking ties, and pages by cursor', async () => {
+    const effort = await create({ kind: 'effort', title: 'By state', name: 'by-state' });
+    const ticket = (title: string) => create({ kind: 'ticket', title, parent: effort.number });
+    const firstOpen = await ticket('First open');
+    const firstClosed = await ticket('First closed');
+    const secondOpen = await ticket('Second open');
+    const secondClosed = await ticket('Second closed');
+    await alice.json('POST', `/issues/${firstClosed.number}/close`);
+    await alice.json('POST', `/issues/${secondClosed.number}/close`);
+
+    for (const limit of [1, 3, 50]) {
+      expect(await walk('?effort=by-state&kind=ticket&sort=state', limit), `asc by ${limit}`).toEqual([firstClosed, secondClosed, firstOpen, secondOpen].map(row => row.number));
+      expect(await walk('?effort=by-state&kind=ticket&sort=state&order=desc', limit), `desc by ${limit}`).toEqual([secondOpen, firstOpen, secondClosed, firstClosed].map(row => row.number));
     }
   });
 

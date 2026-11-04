@@ -1,7 +1,7 @@
 interface UiFetchOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   body?: Record<string, unknown>
-  query?: Record<string, string | number>
+  query?: Record<string, string | number | string[]>
   headers?: Record<string, string>
 }
 

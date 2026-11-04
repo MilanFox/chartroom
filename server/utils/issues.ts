@@ -1,5 +1,6 @@
 import { and, asc, count, desc, eq, gt, gte, inArray, isNull, lt, notInArray, or, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/sqlite-core';
 import type { SQLiteColumn } from 'drizzle-orm/sqlite-core';
 import { changes, issues } from '../db/schema';
 import type { BlockerRef } from './blockers';
@@ -13,7 +14,7 @@ export type ChangeRecord = typeof changes.$inferSelect;
 
 export const KINDS: Kind[] = ['effort', 'map', 'spec', 'ticket'];
 export const ISSUE_STATES: IssueState[] = ['open', 'closed'];
-export const ISSUE_SORTS: IssueSort[] = ['number', 'createdAt', 'updatedAt', 'title'];
+export const ISSUE_SORTS: IssueSort[] = ['number', 'createdAt', 'updatedAt', 'title', 'state'];
 export const SORT_ORDERS: SortOrder[] = ['asc', 'desc'];
 export const UNASSIGNED = 'none';
 export const ISSUE_VIEWS: IssueView[] = ['frontier', 'mine', 'needs-triage', 'blocked', 'closed-recent'];
@@ -64,7 +65,7 @@ export interface ChangeQuery {
 
 export type IssueState = 'open' | 'closed';
 export type IssueStatus = 'open' | 'claimed' | 'blocked' | 'closed';
-export type IssueSort = 'number' | 'createdAt' | 'updatedAt' | 'title';
+export type IssueSort = 'number' | 'createdAt' | 'updatedAt' | 'title' | 'state';
 export type SortOrder = 'asc' | 'desc';
 export type IssueView = 'frontier' | 'mine' | 'needs-triage' | 'blocked' | 'closed-recent';
 
@@ -82,7 +83,7 @@ export interface IssueQuery {
   q?: string | null
   labels?: string[] | null
   assignee?: string | null
-  missing?: string | null
+  missing?: string[] | null
   view?: IssueView | null
   holder?: string | null
   sort: string
@@ -151,6 +152,7 @@ const SORT_COLUMNS = {
   createdAt: issues.createdAt,
   updatedAt: issues.updatedAt,
   title: issues.title,
+  state: issues.state,
 };
 
 const containsText = (needle: string) =>
@@ -201,7 +203,7 @@ const filterConditions = (query: IssueQuery) => {
   if (isSet(query.q) && query.q !== '') conditions.push(containsText(query.q));
   for (const label of query.labels ?? []) conditions.push(inArray(issues.number, issuesLabelled(label)));
   if (isSet(query.assignee)) conditions.push(query.assignee === UNASSIGNED ? isNull(issues.assignee) : eq(issues.assignee, query.assignee));
-  if (isSet(query.missing)) conditions.push(notInArray(issues.number, issuesInGroup(query.missing)));
+  for (const group of query.missing ?? []) conditions.push(notInArray(issues.number, issuesInGroup(group)));
   return conditions;
 };
 
@@ -214,6 +216,23 @@ export const listIssues = (query: IssueQuery): IssueRecord[] => {
   if (isSet(query.after)) conditions.push(beyondCursor({ ...query, after: query.after }));
   return useStore().select().from(issues).where(and(...conditions)).orderBy(...sortOrdering(query)).limit(query.limit).all();
 };
+
+const parentIssues = alias(issues, 'parent_issues');
+const grandparentIssues = alias(issues, 'grandparent_issues');
+
+// Parent rules cap the chain at ticket → map or spec → Effort, so two joins always reach the Effort.
+const effortOfIssue = sql<number | null>`case
+  when ${issues.kind} = 'effort' then ${issues.number}
+  when ${parentIssues.kind} = 'effort' then ${parentIssues.number}
+  when ${grandparentIssues.kind} = 'effort' then ${grandparentIssues.number}
+end`;
+
+export const countIssuesByEffort = (query: IssueQuery) =>
+  useStore().select({ effort: effortOfIssue, count: count() }).from(issues)
+    .leftJoin(parentIssues, eq(parentIssues.number, issues.parent))
+    .leftJoin(grandparentIssues, eq(grandparentIssues.number, parentIssues.parent))
+    .where(and(...filterConditions(query)))
+    .groupBy(effortOfIssue).orderBy(effortOfIssue).all();
 
 const assertSingleMap = (effort: number, self: number | null) => {
   const existing = useStore().select({ number: issues.number }).from(issues)

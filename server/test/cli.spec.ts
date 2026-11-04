@@ -127,10 +127,10 @@ describe('the CLI', () => {
       bulkNumbers = rowNumbers(bulk).sort((a, b) => a - b);
     });
 
-    it('prints the first page as the items and nextCursor envelope', async () => {
+    it('prints the first page as the items, nextCursor and effortCounts envelope', async () => {
       const page = await printedJson(['issue', 'list', '--label', 'bulk']);
 
-      expect(page).toEqual({ items: expect.any(Array), nextCursor: expect.any(String) });
+      expect(page).toEqual({ items: expect.any(Array), nextCursor: expect.any(String), effortCounts: [{ effort: null, count: 52 }] });
       expect(rowNumbers(page.items)).toEqual(bulkNumbers.slice(0, 50));
     });
 
@@ -177,6 +177,17 @@ describe('the CLI', () => {
     const { number } = await createTicket('Handle -dashed input');
 
     const result = await chartroom(['issue', 'list', '-q', '-dashed']);
+
+    expect(result.code).toBe(0);
+    expect(rowNumbers(JSON.parse(result.stdout).items)).toEqual([number]);
+  });
+
+  it('issue list takes --missing more than once, ANDing the groups', async () => {
+    const { number } = await createTicket('Untriaged and untyped', '--label', 'cli-missing');
+    await createTicket('Triaged', '--label', 'cli-missing', '--label', 'needs-info');
+    await createTicket('Typed', '--label', 'cli-missing', '--label', 'wayfinder:task');
+
+    const result = await chartroom(['issue', 'list', '--label', 'cli-missing', '--missing', 'triage-state', '--missing', 'wayfinder-type']);
 
     expect(result.code).toBe(0);
     expect(rowNumbers(JSON.parse(result.stdout).items)).toEqual([number]);

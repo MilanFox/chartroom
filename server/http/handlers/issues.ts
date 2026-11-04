@@ -197,12 +197,10 @@ const assigneeParam = (query: Query) => {
   return assignee;
 };
 
-const missingParam = (query: Query) => {
-  const group = queryString(query, 'missing');
-  if (group === null) return null;
+const missingParam = (query: Query) => queryStrings(query, 'missing').map((group) => {
   if (!findLabelGroup(group)) throw invalid(`label group ${group} does not exist`, 'missing');
   return group;
-};
+});
 
 const viewParam = (query: Query, principal: Principal) => {
   const view = queryOneOf(query, 'view', ISSUE_VIEWS);
@@ -258,9 +256,10 @@ const issueList = (event: H3Event, principal: Principal) => {
     limit: limit + 1,
   };
   const rows = toRows(event, listIssues(request));
-  if (request.numbers) return { items: rows, nextCursor: null };
+  const effortCounts = countIssuesByEffort(request);
+  if (request.numbers) return { items: rows, nextCursor: null, effortCounts };
   const keyOf = sortKeyOf(sort);
-  return pageOf(rows, limit, row => [sort, keyOf(row), row.number]);
+  return { ...pageOf(rows, limit, row => [sort, keyOf(row), row.number]), effortCounts };
 };
 
 const changeCursor = (query: Query) => {
@@ -363,6 +362,19 @@ export const pageSchema = (item: Record<string, unknown>) => ({
   required: ['items', 'nextCursor'],
 });
 
+const EFFORT_COUNT_SCHEMA = { type: 'object', properties: { effort: nullable('integer'), count: { type: 'integer' } }, required: ['effort', 'count'] };
+
+const ROW_PAGE_SCHEMA = pageSchema(ROW_SCHEMA);
+
+export const ISSUE_PAGE_SCHEMA = {
+  ...ROW_PAGE_SCHEMA,
+  properties: {
+    ...ROW_PAGE_SCHEMA.properties,
+    effortCounts: { type: 'array', items: EFFORT_COUNT_SCHEMA, description: 'Per Effort, how many issues match the filters across every page; an Effort counts toward itself, null collects issues outside any Effort; ordered by Effort number, null first' },
+  },
+  required: [...ROW_PAGE_SCHEMA.required, 'effortCounts'],
+};
+
 export const ISSUE_FIELDS_SCHEMA = {
   title: { type: 'string' },
   body: { type: 'string' },
@@ -392,7 +404,7 @@ export const ISSUE_LIST_PARAMS = [
   queryParam('q', { type: 'string' }, 'Case-insensitive substring over title and body'),
   queryParam('label', stringList, 'Repeatable; only issues carrying every given label, a Label group member or a free-form label'),
   queryParam('assignee', { type: 'string' }, `A holder slug, or ${UNASSIGNED} for unassigned issues`),
-  queryParam('missing', { type: 'string' }, 'A Label group id: only issues carrying none of its members'),
+  queryParam('missing', stringList, 'Repeatable Label group ids; only issues carrying no member of any given group'),
   queryParam('view', { type: 'string', enum: ISSUE_VIEWS }, 'A Saved view; explicit filters narrow within it. frontier: open, unassigned, no open blocker, Parent is a map. mine: open and held by the caller, refused without a Token holder. needs-triage: open and labelled needs-triage. blocked: open with an open blocker. closed-recent: closed in the last 7 days'),
   queryParam('sort', { type: 'string', default: 'number' }, `One of ${ISSUE_SORTS.join(', ')}, or a Label group id to order by its member order with issues carrying no member last in either order; number breaks ties`),
   queryParam('order', { type: 'string', enum: SORT_ORDERS, default: 'asc' }, 'The sort direction'),
