@@ -8,7 +8,7 @@ import { SETTINGS_PROPERTIES } from '../handlers/instance';
 import { absoluteUrl } from '../handlers/links';
 import type { MountRoute } from '../mount';
 
-const ELEVATION_REQUIRED = { description: 'Elevation required' };
+export const ELEVATION_REQUIRED = { description: 'Elevation required' };
 
 const effortNameOf = (body: JsonObject) => {
   const effortName = nestedObject(body, 'effortName');
