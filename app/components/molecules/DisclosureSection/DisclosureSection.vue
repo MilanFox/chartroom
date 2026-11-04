@@ -13,7 +13,9 @@
 
         {{ heading }}
 
-        <span v-if="meta" class="disclosure-section__meta">{{ meta }}</span>
+        <slot name="meta">
+          <span v-if="meta" class="disclosure-section__meta">{{ meta }}</span>
+        </slot>
       </button>
     </component>
 

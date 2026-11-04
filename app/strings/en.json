@@ -281,6 +281,37 @@
         "linkRemoved": "removed Link {title}",
         "commentDeleted": "deleted a comment"
       }
+    },
+    "graph": {
+      "heading": "Dependency graph",
+      "progress": "{closed} of {total} closed · {mark} {frontier} · claimed {claimed} · blocked {blocked}",
+      "marks": {
+        "map": "frontier",
+        "spec": "takeable"
+      },
+      "hideClosed": "hide closed ({count})",
+      "graphLabel": "Tickets under #{number}, left to right by blocking depth",
+      "node": "#{number} {title}",
+      "nodeNumber": "#{number}",
+      "holder": "@{slug}",
+      "loading": "Loading tickets…",
+      "loadFailed": "The tickets could not be loaded. Reload to try again.",
+      "empty": "No tickets under this issue yet.",
+      "allClosedHidden": "Every ticket is closed and hidden.",
+      "glyphs": {
+        "wayfinder:research": "🔎",
+        "wayfinder:prototype": "🧪",
+        "wayfinder:grilling": "💬",
+        "wayfinder:task": "☑"
+      },
+      "nodeStates": {
+        "open": "open",
+        "claimed": "claimed by @{slug}",
+        "blocked": "blocked",
+        "closed": "closed"
+      },
+      "nodeBlockedBy": "blocked by {numbers}",
+      "nodeSeparator": ", "
     }
   },
   "workbench": {

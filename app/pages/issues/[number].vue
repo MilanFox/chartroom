@@ -8,7 +8,7 @@
       <div class="issue-page__body">
         <IssueBody :issue="issue" />
 
-        <div v-if="issue.kind === 'map' || issue.kind === 'spec'" class="issue-page__graph" />
+        <DependencyGraph v-if="issue.kind === 'map' || issue.kind === 'spec'" :issue="issue" class="issue-page__graph" />
       </div>
 
       <IssueFields :issue="issue" class="issue-page__fields" />
@@ -92,6 +92,10 @@ useHead(() => ({ title: issue.value ? format(strings.value.issue.pageTitle, { nu
       grid-column: 2;
       grid-row: 1 / span 3;
     }
+  }
+
+  &__graph {
+    margin-top: $space-4;
   }
 
   &__thread > :first-child {
