@@ -50,8 +50,34 @@ Preview them before tagging: `node scripts/release-notes.ts HEAD`.
 
 | What | Where |
 | --- | --- |
-| npm Trusted Publisher | `chartroom-cli` package settings on npmjs.com: GitHub Actions, `MilanFox/chartroom`, workflow `release.yml`; no token is stored |
+| npm package name | `chartroom-cli`: npm rejects `chartroom` as too similar to the existing `chart-room`. The binaries stay `chartroom` and `chart`; `chartroom-cli` is a third bin so `npx -y chartroom-cli@<major>` finds one |
+| npm Trusted Publisher | `chartroom-cli` package settings on npmjs.com: GitHub Actions, `MilanFox/chartroom`, workflow `release.yml`, no environment, "Allow npm publish" on, "Allow npm dist-tag" off; no token is stored |
 | GHCR package visibility | public, linked to `MilanFox/chartroom`; the image label `org.opencontainers.image.source` links it on the first push |
+
+Turning "Allow npm publish" off makes npm accept only staged versions that a maintainer approves with 2FA; the publish step then has to use `npm stage publish`.
+
+## Check a release
+
+```sh
+gh run list --workflow release.yml --limit 1
+gh release view v<X.Y.Z>
+npm view chartroom-cli version
+tok=$(curl -s "https://ghcr.io/token?scope=repository:milanfox/chartroom:pull" | sed -E 's/.*"token":"([^"]+)".*/\1/')
+curl -s -H "Authorization: Bearer $tok" -H "Accept: application/vnd.oci.image.index.v1+json" \
+  https://ghcr.io/v2/milanfox/chartroom/manifests/<X.Y.Z> | grep -oE '"architecture": *"[^"]*"'
+```
+
+The last command pulls anonymously and lists `amd64` and `arm64`; the two `unknown` entries are build attestations.
+
+## A publish nobody cut
+
+| Signal | Where |
+| --- | --- |
+| npm publish email | every maintainer gets one per published version |
+| Provenance | the version page on npmjs.com names the repository, workflow and commit; a version without it did not come from `release.yml` |
+| Workflow run | a `Release` run in Actions for a tag nobody pushed |
+
+Response: remove the Trusted Publisher in the npm package settings, `npm deprecate chartroom-cli@<X.Y.Z> "<reason>"`, delete the tag and the GitHub Release, then find how the tag got pushed.
 
 ## Versioning
 
