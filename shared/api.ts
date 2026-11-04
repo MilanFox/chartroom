@@ -129,13 +129,17 @@ export interface RolledUpLink {
 
 export type LinkRollup = Record<LinkRole, RolledUpLink[]>;
 
+export interface ExcerptedRow extends IssueRow {
+  excerpt: string
+}
+
 export interface EffortDocument extends IssueDocument {
   name: string | null
   testInstructions: string | null
   statusRollup: StatusRollup
   linkRollup: LinkRollup
-  map: IssueRow | null
-  specs: IssueRow[]
+  map: ExcerptedRow | null
+  specs: ExcerptedRow[]
 }
 
 export interface CredentialPointer {

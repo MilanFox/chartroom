@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { insertUnderSection } from './markdown-sections';
+import { bodyExcerpt, insertUnderSection } from './markdown-sections';
 
 const body = ['# Title', '', '## Notes', 'first', '', '### Deep', 'nested', '', '## Next', 'last'].join('\n');
 
@@ -32,5 +32,28 @@ describe('insertUnderSection', () => {
 
   it('refuses a section that does not exist, naming the field', () => {
     expect(() => insertUnderSection(body, 'Missing', 'x')).toThrowError(expect.objectContaining({ code: 'invalid', field: 'section' }));
+  });
+});
+
+describe('bodyExcerpt', () => {
+  it('skips headings and takes the first paragraph', () => {
+    expect(bodyExcerpt('# Title\n\n## Goal\n\nShip the thing.\n\nLater.')).toBe('Ship the thing.');
+  });
+
+  it('skips a leading HTML comment', () => {
+    expect(bodyExcerpt('<!-- template: spec -->\n\nThe real start.')).toBe('The real start.');
+  });
+
+  it('splits paragraphs on blank lines that hold only whitespace', () => {
+    expect(bodyExcerpt('# Title\n  \t\nFirst paragraph.\n \nSecond.')).toBe('First paragraph.');
+  });
+
+  it('collapses whitespace inside the paragraph', () => {
+    expect(bodyExcerpt('  One\n  wrapped\tline   here  ')).toBe('One wrapped line here');
+  });
+
+  it('is empty for an empty body or only headings', () => {
+    expect(bodyExcerpt('')).toBe('');
+    expect(bodyExcerpt('# Title\n\n## Section')).toBe('');
   });
 });

@@ -1,8 +1,7 @@
-import type { IssueRow, IssueStatus } from '~/types/api';
+import type { ExcerptedRow, IssueStatus } from '~/types/api';
 
 export interface SpecCardProps {
-  spec: IssueRow
+  spec: ExcerptedRow
   counts: Record<IssueStatus, number>
-  body: string
   artifacts: number
 }

@@ -1,6 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { searchOf, useEndpoints } from '~/test/endpoints';
+import { requestOf, searchOf, useEndpoints } from '~/test/endpoints';
 import type { EffortDocument, IssueDocument } from '~/types/api';
 import { issueFixture } from '~/test/issue-fixture';
 import { useDashboardStore } from './dashboard';
@@ -15,8 +15,8 @@ const effortDocument = (overrides: Partial<EffortDocument> = {}): EffortDocument
   testInstructions: null,
   statusRollup: { map: { state: 'open', frontier: 1 }, specs: [{ number: 5, tickets: { open: 1, claimed: 0, blocked: 0, closed: 1 } }], triage: { 'needs-triage': 1, 'none': 0 }, open: 4 },
   linkRollup: { resource: [], artifact: [] },
-  map: row(2, { kind: 'map', parent: 1 }),
-  specs: [row(5, { kind: 'spec', parent: 1 })],
+  map: { ...row(2, { kind: 'map', parent: 1 }), excerpt: 'Map body' },
+  specs: [{ ...row(5, { kind: 'spec', parent: 1 }), excerpt: 'Spec body' }],
   ...overrides,
 });
 
@@ -25,11 +25,14 @@ describe('useDashboardStore', () => {
     setActivePinia(createPinia());
   });
 
-  it('loads the Effort document, the map and spec bodies and every issue of the subtree, following each cursor', async () => {
+  it('loads the Effort document with its map and spec excerpts and every issue of the subtree, following each cursor', async () => {
     const listRequests: string[] = [];
+    const documentRequests: string[] = [];
     endpoint('/ui/efforts/1', () => effortDocument());
-    endpoint('/ui/issues/2', () => row(2, { kind: 'map', parent: 1, body: 'Map body' }));
-    endpoint('/ui/issues/5', () => row(5, { kind: 'spec', parent: 1, body: 'Spec body' }));
+    endpoint('/ui/issues/:number', (event) => {
+      documentRequests.push(new URL(requestOf(event).url).pathname);
+      return row(2);
+    });
     endpoint('/ui/issues', (event) => {
       const search = searchOf(event);
       listRequests.push(search.toString());
@@ -47,8 +50,9 @@ describe('useDashboardStore', () => {
     ]);
     expect(dashboard.effort?.name).toBe('tracker');
     expect(dashboard.rows.map(({ number }) => number)).toEqual([2, 3, 5, 6, 7]);
-    expect(dashboard.parentBodies[2]).toBe('Map body');
-    expect(dashboard.parentBodies[5]).toBe('Spec body');
+    expect(dashboard.effort?.map?.excerpt).toBe('Map body');
+    expect(dashboard.effort?.specs.map(({ excerpt }) => excerpt)).toEqual(['Spec body']);
+    expect(documentRequests).toEqual([]);
   });
 
   it('counts the open issues under the Effort, the Effort itself excluded, for the close warning', async () => {

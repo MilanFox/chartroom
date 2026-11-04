@@ -15,7 +15,6 @@
         :key="effort.map.number"
         :map="effort.map"
         :frontier="effort.statusRollup.map?.frontier ?? 0"
-        :body="dashboard.parentBodies[effort.map.number] ?? ''"
         :rows="dashboard.rows"
         @open="openDrawer"
       />
@@ -29,7 +28,6 @@
         :key="spec.number"
         :spec="spec"
         :counts="specCountsOf(spec.number)"
-        :body="dashboard.parentBodies[spec.number] ?? ''"
         :artifacts="artifactCountOf(spec.number, effort.linkRollup, dashboard.rows)"
         @open="openDrawer"
       />

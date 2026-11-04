@@ -1,8 +1,7 @@
-import type { IssueRow } from '~/types/api';
+import type { ExcerptedRow, IssueRow } from '~/types/api';
 
 export interface MapCardProps {
-  map: IssueRow
+  map: ExcerptedRow
   frontier: number
-  body: string
   rows: IssueRow[]
 }

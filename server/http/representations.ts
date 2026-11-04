@@ -5,7 +5,7 @@ import type { BlockerRef } from '../utils/blockers';
 import type { CommentRecord } from '../utils/comments';
 import type { IssueRecord } from '../utils/issues';
 import type { LinkRecord } from '../utils/links';
-import type { CredentialPointer, EffortDocument, Environment, Holder, IssueComment, IssueDocument, IssueLink, IssueRow, Origin, RosterHolder } from '#shared/api';
+import type { CredentialPointer, EffortDocument, ExcerptedRow, Environment, Holder, IssueComment, IssueDocument, IssueLink, IssueRow, Origin, RosterHolder } from '#shared/api';
 import type { IssueState, Kind, LinkRole, LinkType } from '#shared/domain';
 import { STATUSES } from '#shared/domain';
 import type { JsonSchema } from './table';
@@ -258,6 +258,8 @@ const HOLDER_PROPERTIES = {
 export const HOLDER_SCHEMA: JsonSchema = { type: 'object', properties: HOLDER_PROPERTIES, required: ['slug', 'displayName', 'revoked'] };
 export const HOLDER_WITH_SECRET_SCHEMA: JsonSchema = { type: 'object', properties: { ...HOLDER_PROPERTIES, secret: { type: 'string' } }, required: ['slug', 'displayName', 'revoked', 'secret'] };
 
+const toExcerptedRow = (event: H3Event, issue: IssueRecord): ExcerptedRow => ({ ...toRow(event, issue), excerpt: bodyExcerpt(issue.body) });
+
 export const toEffortDocument = (event: H3Event, effort: IssueRecord): EffortDocument => {
   const children = childrenOf(effort.number);
   const map = children.find(child => child.kind === 'map');
@@ -267,8 +269,8 @@ export const toEffortDocument = (event: H3Event, effort: IssueRecord): EffortDoc
     testInstructions: effort.testInstructions,
     statusRollup: statusRollupOf(effort.number),
     linkRollup: linkRollupOf(effort.number),
-    map: map ? toRow(event, map) : null,
-    specs: children.filter(child => child.kind === 'spec').map(spec => toRow(event, spec)),
+    map: map ? toExcerptedRow(event, map) : null,
+    specs: children.filter(child => child.kind === 'spec').map(spec => toExcerptedRow(event, spec)),
   };
 };
 
@@ -292,12 +294,18 @@ const ROLLED_UP_LINK_SCHEMA = {
   required: ['url', 'title', 'type', 'sources'],
 };
 
+const EXCERPTED_ROW_SCHEMA = {
+  type: 'object',
+  properties: { ...ROW_PROPERTIES, excerpt: { type: 'string', description: 'The first body paragraph that is not a heading or an HTML comment, whitespace collapsed; empty when there is none' } },
+  required: [...ROW_SCHEMA.required, 'excerpt'],
+};
+
 const EFFORT_DOCUMENT_PROPERTIES = {
   ...DOCUMENT_SCHEMA.properties,
   statusRollup: STATUS_ROLLUP_SCHEMA,
   linkRollup: { type: 'object', description: 'Every Link in the subtree, closed tickets included, deduped by URL', properties: { resource: { type: 'array', items: ROLLED_UP_LINK_SCHEMA }, artifact: { type: 'array', items: ROLLED_UP_LINK_SCHEMA } }, required: ['resource', 'artifact'] },
-  map: { oneOf: [ROW_SCHEMA, { type: 'null' }] },
-  specs: { type: 'array', items: ROW_SCHEMA },
+  map: { oneOf: [EXCERPTED_ROW_SCHEMA, { type: 'null' }] },
+  specs: { type: 'array', items: EXCERPTED_ROW_SCHEMA },
 };
 
 export const EFFORT_DOCUMENT_SCHEMA = { type: 'object', properties: EFFORT_DOCUMENT_PROPERTIES, required: [...DOCUMENT_SCHEMA.required, 'name', 'testInstructions', 'statusRollup', 'linkRollup', 'map', 'specs'] };

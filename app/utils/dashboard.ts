@@ -117,6 +117,3 @@ export const triageSummaryOf = (triage: Record<string, number>, displayLabels: R
       .join(labels.separator),
   };
 };
-
-export const bodyExcerpt = (body: string) =>
-  body.split(/\n\s*\n/).map(paragraph => paragraph.trim()).find(paragraph => paragraph && !paragraph.startsWith('#') && !paragraph.startsWith('<!--'))?.replace(/\s+/g, ' ') ?? '';

@@ -30,3 +30,6 @@ export const insertUnderSection = (body: string, section: string, text: string) 
   }
   return [...lines.slice(0, last + 1), ...text.trimEnd().split('\n'), ...lines.slice(last + 1)].join('\n');
 };
+
+export const bodyExcerpt = (body: string) =>
+  body.split(/\n\s*\n/).map(paragraph => paragraph.trim()).find(paragraph => paragraph && !paragraph.startsWith('#') && !paragraph.startsWith('<!--'))?.replace(/\s+/g, ' ') ?? '';

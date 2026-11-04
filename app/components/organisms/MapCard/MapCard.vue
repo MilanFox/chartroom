@@ -23,7 +23,7 @@
         </button>
       </div>
 
-      <p v-if="excerpt" class="map-card__excerpt">{{ excerpt }}</p>
+      <p v-if="map.excerpt" class="map-card__excerpt">{{ map.excerpt }}</p>
 
       <p class="map-card__counts">{{ format(strings.dashboard.map.counts, { total: children.length, frontier, ...counts }) }}</p>
     </article>
@@ -61,7 +61,6 @@ const disclosure = useMapListDisclosure(props.map.number, () => props.map.state)
 
 const children = computed(() => props.rows.filter(row => row.parent === props.map.number));
 const counts = computed(() => countByStatus(children.value));
-const excerpt = computed(() => bodyExcerpt(props.body));
 const decisions = computed(() => decisionTickets(props.map.number, props.rows, filter.value));
 </script>
 
