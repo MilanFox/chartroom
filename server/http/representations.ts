@@ -5,6 +5,7 @@ import type { BlockerRef } from '../utils/blockers';
 import type { CommentRecord } from '../utils/comments';
 import type { IssueRecord } from '../utils/issues';
 import type { LinkRecord } from '../utils/links';
+import { STATUSES } from '#shared/domain';
 import type { JsonSchema } from './table';
 import { nullable, pageSchema, stringList } from './schemas';
 
@@ -127,7 +128,7 @@ const ROW_PROPERTIES = {
   kind: { type: 'string', enum: KINDS },
   title: { type: 'string' },
   state: { type: 'string', enum: ['open', 'closed'] },
-  status: { type: 'string', enum: ['open', 'claimed', 'blocked', 'closed'] },
+  status: { type: 'string', enum: STATUSES },
   assignee: nullable('string'),
   parent: nullable('integer'),
   effort: nullable('integer'),
