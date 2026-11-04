@@ -11,13 +11,8 @@ export const useAdminStore = defineStore('admin', () => {
   const firstRun = ref<boolean | null>(null);
   const snapshots = ref<Snapshot[] | null>(null);
 
-  const unlessForbidden = <T>(read: Promise<T>) => read.catch((error) => {
-    if (apiErrorCode(error) !== 'forbidden') throw error;
-    return null;
-  });
-
   const loadSnapshots = async () => {
-    snapshots.value = await unlessForbidden(uiFetch<Snapshot[]>('/snapshots'));
+    snapshots.value = await uiFetch<Snapshot[]>('/snapshots').catch(orNullOn('forbidden'));
   };
 
   const load = async () => {
@@ -39,15 +34,11 @@ export const useAdminStore = defineStore('admin', () => {
     await instanceStore.load();
   };
 
-  const takeSnapshot = async () => {
-    await uiFetch<Snapshot>('/snapshots', { method: 'POST' });
-    await loadSnapshots();
-  };
+  const writeThen = useWriteThen(loadSnapshots);
 
-  const deleteSnapshot = async (name: string) => {
-    await uiFetch(`/snapshots/${encodeURIComponent(name)}`, { method: 'DELETE' });
-    await loadSnapshots();
-  };
+  const takeSnapshot = () => writeThen('/snapshots', { method: 'POST' });
+
+  const deleteSnapshot = (name: string) => writeThen(`/snapshots/${encodeURIComponent(name)}`, { method: 'DELETE' });
 
   return {
     runtimeSettings,

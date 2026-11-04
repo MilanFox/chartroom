@@ -34,11 +34,6 @@ export const useShell = () => {
 
   const sessionLabel = computed(() => format(strings.value.shell.sessionMenu, { who: signedInAs.value }));
 
-  const logOut = async () => {
-    await session.logout();
-    await navigateTo(LOGIN_PATH);
-  };
-
   return {
     session,
     strings,
@@ -49,6 +44,6 @@ export const useShell = () => {
     elevationLabel,
     sessionLabel,
     dropElevation: session.dropElevation,
-    logOut,
+    logOut: session.logout,
   };
 };

@@ -7,20 +7,12 @@ export const useHoldersStore = defineStore('holders', () => {
   const assignable = computed(() => holders.value ?? []);
 
   const load = async () => {
-    try {
-      holders.value = await uiFetch<RosterHolder[]>('/holders');
-    }
-    catch (error) {
-      if (apiErrorCode(error) !== 'forbidden') throw error;
-      holders.value = null;
-    }
+    holders.value = await uiFetch<RosterHolder[]>('/holders').catch(orNullOn('forbidden'));
   };
 
-  const writeHolder = async <T>(path: string, body?: Record<string, unknown>) => {
-    const written = await uiFetch<T>(path, { method: 'POST', ...(body ? { body } : {}) });
-    await load();
-    return written;
-  };
+  const writeThen = useWriteThen(load);
+
+  const writeHolder = <T>(path: string, body?: Record<string, unknown>) => writeThen<T>(path, { method: 'POST', body });
 
   const createHolder = (input: { slug: string, displayName: string | null }) => writeHolder<HolderSecret>('/holders', input);
   const rotateHolder = (slug: string) => writeHolder<HolderSecret>(`/holders/${slug}/rotate`);

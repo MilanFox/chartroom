@@ -28,10 +28,9 @@ export const useLabelGroupsStore = defineStore('label-groups', () => {
 
   const reload = () => Promise.all([load(), loadFreeForm()]);
 
-  const writeLabels = async (path: string, method: 'POST' | 'PUT' | 'PATCH' | 'DELETE', body?: Record<string, unknown>) => {
-    await uiFetch(path, { method, ...(body ? { body } : {}) });
-    await reload();
-  };
+  const writeThen = useWriteThen(reload);
+
+  const writeLabels = (path: string, method: 'POST' | 'PUT' | 'PATCH' | 'DELETE', body?: Record<string, unknown>) => writeThen(path, { method, body });
 
   const groupPath = (groupId: string) => `/label-groups/${encodeURIComponent(groupId)}`;
   const memberPath = (groupId: string, memberId: string) => `${groupPath(groupId)}/labels/${encodeURIComponent(memberId)}`;

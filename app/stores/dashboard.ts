@@ -1,23 +1,16 @@
 import { defineStore } from 'pinia';
-import type { EffortDocument, IssueDocument, IssuePage, IssueRow } from '~/types/api';
-
-const PAGE_LIMIT = 200;
+import type { EffortDocument, IssueDocument, IssueRow } from '~/types/api';
 
 export const useDashboardStore = defineStore('dashboard', () => {
   const uiFetch = useUiFetch();
+  const allPages = useAllPages();
   const effort = ref<EffortDocument | null>(null);
   const rows = ref<IssueRow[]>([]);
   const parentBodies = ref<Record<number, string>>({});
   let latestLoad = 0;
 
   const subtreeOf = async (number: number) => {
-    const subtree: IssueRow[] = [];
-    let cursor: string | null = null;
-    do {
-      const page: IssuePage = await uiFetch<IssuePage>('/issues', { query: { effort: number, sort: 'number', order: 'asc', limit: PAGE_LIMIT, ...(cursor ? { cursor } : {}) } });
-      subtree.push(...page.items);
-      cursor = page.nextCursor;
-    } while (cursor);
+    const subtree = await allPages<IssueRow>('/issues', { effort: number, sort: 'number', order: 'asc' });
     return subtree.filter(issue => issue.number !== number);
   };
 

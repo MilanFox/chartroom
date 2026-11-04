@@ -9,19 +9,15 @@ export const useEnvironmentsStore = defineStore('environments', () => {
   const load = async () => {
     const [listed, allPointers] = await Promise.all([
       uiFetch<Environment[]>('/environments'),
-      uiFetch<CredentialPointer[]>('/credential-pointers').catch((error) => {
-        if (apiErrorCode(error) !== 'forbidden') throw error;
-        return null;
-      }),
+      uiFetch<CredentialPointer[]>('/credential-pointers').catch(orNullOn('forbidden')),
     ]);
     environments.value = listed;
     pointers.value = allPointers;
   };
 
-  const writeEnvironments = async (path: string, method: 'POST' | 'PATCH' | 'DELETE', body?: Partial<EnvironmentInput> | Partial<PointerInput>) => {
-    await uiFetch(path, { method, ...(body ? { body } : {}) });
-    await load();
-  };
+  const writeThen = useWriteThen(load);
+
+  const writeEnvironments = (path: string, method: 'POST' | 'PATCH' | 'DELETE', body?: Partial<EnvironmentInput> | Partial<PointerInput>) => writeThen(path, { method, body });
 
   const createEnvironment = (input: EnvironmentInput) => writeEnvironments('/environments', 'POST', input);
   const updateEnvironment = (id: number, patch: Partial<EnvironmentInput>) => writeEnvironments(`/environments/${id}`, 'PATCH', patch);

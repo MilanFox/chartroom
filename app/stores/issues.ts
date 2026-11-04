@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import type { IssueChange, IssueComment, IssueDocument, IssueKind, IssueLink, IssueRow, LinkRole, LinkType, Page } from '~/types/api';
+import type { IssueChange, IssueComment, IssueDocument, IssueKind, IssueLink, IssueRow, LinkRole, LinkType } from '~/types/api';
 import type { ParentCandidate } from '~/utils/issue-fields';
 
 export interface IssueFieldEdit {
@@ -17,11 +17,11 @@ export interface LinkDraft {
   title: string
 }
 
-const PAGE_LIMIT = 200;
 const PARENT_KINDS: IssueKind[] = ['effort', 'map', 'spec'];
 
 export const useIssuesStore = defineStore('issues', () => {
   const uiFetch = useUiFetch();
+  const allPages = useAllPages();
   const documents = ref<Record<number, IssueDocument>>({});
   const changes = ref<Record<number, IssueChange[]>>({});
   const children = ref<Record<number, IssueRow[]>>({});
@@ -74,17 +74,6 @@ export const useIssuesStore = defineStore('issues', () => {
   const editLink = (number: number, link: IssueLink['id'], fields: Omit<LinkDraft, 'url'>) => writeThenReload(number, `/links/${link}`, { method: 'PATCH', body: { ...fields } });
 
   const removeLink = (number: number, link: IssueLink['id']) => writeThenReload(number, `/links/${link}`, { method: 'DELETE' });
-
-  const allPages = async <T>(path: string, query: Record<string, string | number> = {}) => {
-    const items: T[] = [];
-    let cursor: string | null = null;
-    do {
-      const page: Page<T> = await uiFetch<Page<T>>(path, { query: { ...query, limit: PAGE_LIMIT, ...(cursor ? { cursor } : {}) } });
-      items.push(...page.items);
-      cursor = page.nextCursor;
-    } while (cursor);
-    return items;
-  };
 
   const loadChanges = async (number: number) => {
     changes.value[number] = await allPages<IssueChange>(`/issues/${number}/changes`);
