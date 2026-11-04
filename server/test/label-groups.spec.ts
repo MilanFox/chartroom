@@ -224,6 +224,7 @@ describe('admin-defined Label groups', () => {
     expect(await admin.json('POST', '/label-groups/owner-team/labels', { body: { id: 'team-core' } })).toMatchObject(invalidOn('id'));
     expect(await admin.json('POST', '/label-groups/owner-team/labels', { body: { id: 'enhancement' } })).toMatchObject(invalidOn('id'));
     expect(await admin.json('POST', '/label-groups', { body: { id: 'owner-team' } })).toMatchObject({ status: 409, body: { error: { code: 'conflict', field: 'id' } } });
+    expect(await admin.json('POST', '/label-groups', { body: { id: 'owner-team', labels: [{ id: 'team-core' }] } })).toMatchObject({ status: 409, body: { error: { code: 'conflict', field: 'id' } } });
     expect(await admin.json('POST', '/label-groups', { body: { id: 'triage-state' } })).toMatchObject({ status: 409, body: { error: { code: 'conflict', field: 'id' } } });
     expect((await groupsListed()).map(group => group.id)).not.toContain('fresh');
     expect((await groupsListed()).find(group => group.id === 'owner-team')!.labels).toEqual([{ id: 'team-core', displayLabel: 'team-core' }]);

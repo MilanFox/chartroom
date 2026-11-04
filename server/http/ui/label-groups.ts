@@ -3,6 +3,7 @@ import type { JsonObject } from '../../utils/body';
 import type { Principal } from '../../utils/principal';
 import { LABEL_GROUP_SCHEMA } from '../handlers/labels';
 import type { MountRoute } from '../mount';
+import { ELEVATION_REQUIRED } from './instance';
 
 const optionalText = (body: JsonObject, field: string) => (body[field] ?? null) === null ? null : requireText(body, field);
 
@@ -37,8 +38,8 @@ const groupParam = (event: H3Event) => getRouterParam(event, 'id', { decode: tru
 
 const groupRename = async (event: H3Event, principal: Principal) => {
   requireElevation(principal);
-  const id = groupParam(event);
-  return renameLabelGroup(id, requireText(await readJsonObject(event), 'displayName'), actorSlug(principal));
+  const groupId = groupParam(event);
+  return renameLabelGroup(groupId, requireText(await readJsonObject(event), 'displayName'), actorSlug(principal));
 };
 
 const groupReorder = async (event: H3Event, principal: Principal) => {
@@ -54,25 +55,25 @@ const groupDelete = (event: H3Event, principal: Principal) => {
 
 const memberAdd = async (event: H3Event, principal: Principal) => {
   requireElevation(principal);
-  const id = groupParam(event);
+  const groupId = groupParam(event);
   const member = memberOf(await readJsonObject(event));
   setResponseStatus(event, 201);
-  return addGroupMember(id, member, actorSlug(principal));
+  return addGroupMember(groupId, member, actorSlug(principal));
 };
 
 const memberParam = (event: H3Event) => getRouterParam(event, 'label', { decode: true }) ?? '';
 
 const memberRename = async (event: H3Event, principal: Principal) => {
   requireElevation(principal);
-  const id = groupParam(event);
-  const label = memberParam(event);
-  return renameGroupMember(id, { id: label, displayLabel: requireText(await readJsonObject(event), 'displayLabel') }, actorSlug(principal));
+  const groupId = groupParam(event);
+  const memberId = memberParam(event);
+  return renameGroupMember(groupId, { id: memberId, displayLabel: requireText(await readJsonObject(event), 'displayLabel') }, actorSlug(principal));
 };
 
 const memberReorder = async (event: H3Event, principal: Principal) => {
   requireElevation(principal);
-  const id = groupParam(event);
-  return reorderGroupMembers(id, idList(await readJsonObject(event), 'labels'), actorSlug(principal));
+  const groupId = groupParam(event);
+  return reorderGroupMembers(groupId, idList(await readJsonObject(event), 'labels'), actorSlug(principal));
 };
 
 const memberRemove = (event: H3Event, principal: Principal) => {
@@ -83,7 +84,6 @@ const memberRemove = (event: H3Event, principal: Principal) => {
 const ADMIN_LABEL_GROUP_SCHEMA = { type: 'object', properties: { ...LABEL_GROUP_SCHEMA.properties, updatedAt: { type: ['string', 'null'] }, updatedBy: { type: ['string', 'null'] } } };
 const ADMIN_LABEL_GROUP = { description: 'The admin Label group', schema: ADMIN_LABEL_GROUP_SCHEMA };
 const MEMBER_BODY = { type: 'object', properties: { id: { type: 'string' }, displayLabel: { type: 'string' } }, required: ['id'] };
-const ELEVATION_REQUIRED = { description: 'Elevation required' };
 const SEEDED_GROUP = 'A seeded group (field id)';
 const NO_SUCH_GROUP = { description: 'No such Label group' };
 const NO_SUCH_MEMBER = { description: 'No such Label group or member' };

@@ -17,8 +17,6 @@ const RESERVED_GROUP_IDS = ['number', 'title', 'state', 'updated', 'updatedAt', 
 const REORDER_ROUTE_SEGMENT = 'order';
 const CLASH_LISTING_LIMIT = 20;
 
-const stamp = (actor: string) => ({ updatedAt: nowIso(), updatedBy: actor });
-
 const requireSlug = (id: string, field: string) => {
   if (!LOWERCASE_SLUG_SHAPE.test(id)) throw invalid(`${id} must be a lowercase slug`, field);
   if (id === REORDER_ROUTE_SEGMENT) throw invalid(`${id} is reserved by the reorder route`, field);
@@ -48,7 +46,7 @@ const requirePermutation = (given: string[], current: string[], field: string) =
   if (!sameSet) throw invalid(`${field} must list exactly ${current.join(', ')} once each`, field);
 };
 
-const refuseDoubleMembers = (tx: Store, groupId: string) => {
+const refuseMemberClash = (tx: Store, groupId: string) => {
   const clashing = tx.select({ issue: issueLabels.issue }).from(issueLabels)
     .innerJoin(labelGroupMembers, eq(labelGroupMembers.id, issueLabels.label))
     .where(eq(labelGroupMembers.groupId, groupId))
@@ -76,15 +74,15 @@ const adminLabelGroup = (id: string) => {
 export const createLabelGroup = ({ id, displayName, labels }: NewLabelGroup, actor: string) => {
   requireSlug(id, 'id');
   if (RESERVED_GROUP_IDS.includes(id)) throw invalid(`${id} is a built-in sort or filter key`, 'id');
+  if (findLabelGroup(id)) throw conflict(`label group ${id} already exists`, 'id');
   for (const member of labels) requireFreeMemberId(member.id, 'labels');
   if (new Set(labels.map(member => member.id)).size < labels.length) throw invalid('labels must not repeat a member id', 'labels');
   useStore().transaction((tx) => {
-    if (findLabelGroup(id)) throw conflict(`label group ${id} already exists`, 'id');
     tx.insert(labelGroups).values({ id, displayName: displayName ?? id, position: nextGroupPosition(), ...stamp(actor) }).run();
     labels.forEach((member, position) => {
       tx.insert(labelGroupMembers).values({ id: member.id, groupId: id, displayLabel: member.displayLabel ?? member.id, position }).run();
     });
-    refuseDoubleMembers(tx, id);
+    refuseMemberClash(tx, id);
   });
   return adminLabelGroup(id);
 };
@@ -114,7 +112,7 @@ export const addGroupMember = (groupId: string, member: NewGroupMember, actor: s
   requireFreeMemberId(member.id, 'id');
   useStore().transaction((tx) => {
     tx.insert(labelGroupMembers).values({ id: member.id, groupId, displayLabel: member.displayLabel ?? member.id, position: nextMemberPosition(groupId) }).run();
-    refuseDoubleMembers(tx, groupId);
+    refuseMemberClash(tx, groupId);
     touchGroup(tx, groupId, actor);
   });
   return adminLabelGroup(groupId);

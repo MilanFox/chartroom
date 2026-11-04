@@ -45,8 +45,6 @@ const requirePointer = (id: number) => {
   return pointer;
 };
 
-const stamp = (actor: string) => ({ updatedAt: nowIso(), updatedBy: actor });
-
 export const createEnvironment = (fields: Required<EnvironmentFields>, actor: string) =>
   useStore().insert(environments).values({ ...fields, ...stamp(actor) }).returning().get();
 
