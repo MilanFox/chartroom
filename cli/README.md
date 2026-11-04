@@ -15,10 +15,10 @@ Installed globally (`npm install -g chartroom-cli@<major>`), the binary is `char
 ## Start an Instance
 
 ```sh
-npx -y chartroom-cli@<major> init chartroom
+npx -y chartroom-cli@latest init my-chartroom
 ```
 
-Writes `compose.yaml` and `.env` into `chartroom/` (default: the current directory), then prints a first-start checklist. In a terminal it walks seven steps: passwords, public URL, host port, update check, review, start now; otherwise it generates the passwords and takes every default. Needs no `CHARTROOM_URL` or `CHARTROOM_TOKEN`, and refuses with exit `1` if either file already exists.
+Writes `compose.yaml` and `.env` into `my-chartroom/` (default: the current directory), then prints a first-start checklist. In a terminal it walks seven steps: passwords, public URL, host port, update check, review, start now; otherwise it generates the passwords and takes every default. Needs no `CHARTROOM_URL` or `CHARTROOM_TOKEN`, and refuses with exit `1` if either file already exists.
 
 ## Auth
 
