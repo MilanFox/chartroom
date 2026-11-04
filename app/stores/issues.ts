@@ -6,6 +6,8 @@ export interface IssueFieldEdit {
   title?: string
   body?: string
   parent?: number | null
+  name?: string | null
+  testInstructions?: string | null
 }
 
 export interface LinkDraft {

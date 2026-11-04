@@ -1,19 +1,24 @@
 import type { IssueDocument } from '~/types/api';
 import type { VersionConflict } from '~/utils/conflict';
 
-export type VersionedTextField = 'title' | 'body';
+export type VersionedTextField = 'title' | 'body' | 'name' | 'testInstructions';
 
-export const useVersionedEditor = (issue: () => IssueDocument, field: VersionedTextField) => {
+type VersionedIssue = IssueDocument & { name?: string | null, testInstructions?: string | null };
+
+const CLEARABLE_FIELDS: VersionedTextField[] = ['name', 'testInstructions'];
+
+export const useVersionedEditor = (issue: () => VersionedIssue, field: VersionedTextField) => {
   const issuesStore = useIssuesStore();
   const editing = ref(false);
   const draft = ref('');
   const loadedVersion = ref(0);
   const saving = ref(false);
   const failed = ref(false);
+  const failure = shallowRef<unknown>(null);
   const conflict = ref<VersionConflict | null>(null);
 
   const open = () => {
-    draft.value = issue()[field];
+    draft.value = issue()[field] ?? '';
     loadedVersion.value = issue().version;
     conflict.value = null;
     failed.value = false;
@@ -26,17 +31,25 @@ export const useVersionedEditor = (issue: () => IssueDocument, field: VersionedT
     failed.value = false;
   };
 
+  const valueToSave = () => {
+    if (!CLEARABLE_FIELDS.includes(field)) return draft.value;
+    const trimmed = draft.value.trim();
+    if (!trimmed) return null;
+    return field === 'name' ? trimmed : draft.value;
+  };
+
   const save = async () => {
     if (saving.value) return;
     saving.value = true;
     failed.value = false;
     try {
-      await issuesStore.edit(issue().number, { [field]: draft.value }, loadedVersion.value);
+      await issuesStore.edit(issue().number, { [field]: valueToSave() }, loadedVersion.value);
       cancel();
     }
-    catch (failure) {
-      conflict.value = versionConflictOf(failure);
+    catch (error) {
+      conflict.value = versionConflictOf(error);
       failed.value = conflict.value === null;
+      failure.value = failed.value ? error : null;
     }
     finally {
       saving.value = false;
@@ -48,5 +61,5 @@ export const useVersionedEditor = (issue: () => IssueDocument, field: VersionedT
     cancel();
   };
 
-  return { editing, draft, saving, failed, conflict, open, cancel, save, reload };
+  return { editing, draft, saving, failed, failure, conflict, open, cancel, save, reload };
 };

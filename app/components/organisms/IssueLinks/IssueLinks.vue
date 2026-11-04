@@ -83,20 +83,12 @@ const session = useSessionStore();
 const issuesStore = useIssuesStore();
 const { strings, format } = useStrings();
 const action = reactive(useIssueAction());
+const linkError = useLinkError();
 const addForm = useTemplateRef<{ reset: () => void }>('addForm');
 const editButtons = new Map<number, HTMLButtonElement | null>();
 const editingId = ref<number | null>(null);
 const addError = ref<LinkFormProps['error']>(null);
 const editError = ref<LinkFormProps['error']>(null);
-
-const linkError = (failure: unknown): LinkFormProps['error'] => {
-  const messages = strings.value.issue.fields.links.errors;
-  const field = apiErrorField(failure);
-  if (apiErrorCode(failure) === 'conflict') return { field: 'url', message: messages.taken };
-  if (field === 'url') return { field, message: messages.url };
-  if (field === 'title') return { field, message: messages.title };
-  return { field: null, message: strings.value.issue.fields.failed };
-};
 
 const add = async (draft: LinkDraft) => {
   addError.value = null;

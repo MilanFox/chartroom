@@ -5,5 +5,6 @@ export interface TextEditorProps {
   multiline?: boolean
   saving?: boolean
   failed?: boolean
+  failedMessage?: string
   conflict?: VersionConflict | null
 }

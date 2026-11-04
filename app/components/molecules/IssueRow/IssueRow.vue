@@ -4,12 +4,12 @@
 
     <span class="issue-row__kind">{{ strings.issue.kinds[row.kind] }}</span>
 
-    <span v-if="wayfinderType" class="issue-row__type">{{ displayLabelOf(wayfinderType) }}</span>
+    <span v-if="wayfinderType" class="issue-row__type">{{ labelGroupsStore.displayLabelOf(wayfinderType) }}</span>
 
     <NuxtLink :to="row.kind === 'effort' ? effortPath(row) : issuePath(row.number)" class="issue-row__title">{{ row.title }}</NuxtLink>
 
     <span class="issue-row__meta">
-      <span v-for="label in columnLabels" :key="label" class="issue-row__label">{{ displayLabelOf(label) }}</span>
+      <span v-for="label in columnLabels" :key="label" class="issue-row__label">{{ labelGroupsStore.displayLabelOf(label) }}</span>
 
       <span v-if="row.assignee" class="issue-row__assignee">{{ format(strings.workbench.holder, { slug: row.assignee }) }}</span>
 
@@ -28,11 +28,8 @@ const props = defineProps<IssueRowProps>();
 const labelGroupsStore = useLabelGroupsStore();
 const { strings, format } = useStrings();
 
-const displayLabels = computed(() => new Map(labelGroupsStore.labelGroups.flatMap(group => group.labels.map(member => [member.id, member.displayLabel]))));
 const wayfinderType = computed(() => wayfinderTypeOf(props.row.labels));
 const columnLabels = computed(() => props.row.labels.filter(label => label !== wayfinderType.value));
-
-const displayLabelOf = (label: string) => displayLabels.value.get(label) ?? label;
 </script>
 
 <style lang="scss" scoped>
