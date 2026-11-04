@@ -78,7 +78,7 @@
             :height="layout.nodeHeight"
             :clip-id="clipId"
             :glyph="glyphOf(node.row)"
-            :mark="frontier.has(node.row.number) ? mark : null"
+            :mark="takeable.has(node.row.number) ? mark : null"
             :blockers="node.blockers"
             @mouseenter="highlighted = node.row.number"
             @mouseleave="highlighted = null"
@@ -107,9 +107,9 @@ const disclosure = useGraphDisclosure(() => props.issue);
 const { rows, failed } = await useIssueChildren(() => props.issue);
 
 const progress = computed(() => graphProgress(rows.value ?? []));
-const frontier = computed(() => new Set(progress.value.frontier));
+const takeable = computed(() => new Set(progress.value.takeable));
 const mark = computed(() => strings.value.issue.graph.marks[props.issue.kind === 'map' ? 'map' : 'spec']);
-const progressText = computed(() => format(strings.value.issue.graph.progress, { ...progress.value, frontier: progress.value.frontier.length, mark: mark.value }));
+const progressText = computed(() => format(strings.value.issue.graph.progress, { ...progress.value, takeable: progress.value.takeable.length, mark: mark.value }));
 
 const shownRows = computed(() => (rows.value ?? []).filter(row => !disclosure.hideClosed.value || row.state === 'open'));
 const openBlockers = computed(() => new Set(shownRows.value.filter(row => row.state === 'open').map(row => row.number)));

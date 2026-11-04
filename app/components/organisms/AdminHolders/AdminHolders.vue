@@ -16,7 +16,7 @@
       </div>
     </div>
 
-    <div v-if="admin.holders?.length" class="admin-holders__scroll" role="region" tabindex="0" :aria-labelledby="`${baseId}-caption`">
+    <div v-if="holdersStore.holders?.length" class="admin-holders__scroll" role="region" tabindex="0" :aria-labelledby="`${baseId}-caption`">
       <table class="admin-holders__table">
         <caption :id="`${baseId}-caption`" class="admin-holders__caption">{{ strings.admin.holders.roster }}</caption>
 
@@ -37,7 +37,7 @@
         </thead>
 
         <tbody>
-          <template v-for="holder in admin.holders" :key="holder.slug">
+          <template v-for="holder in holdersStore.holders" :key="holder.slug">
             <tr :class="{ 'admin-holders__row--revoked': holder.revoked }">
               <th scope="row" class="admin-holders__slug">{{ holder.slug }}</th>
 
@@ -60,13 +60,13 @@
 
             <tr v-if="confirming === holder.slug">
               <td colspan="6">
-                <div role="group" class="admin-holders__confirm" :aria-labelledby="`${baseId}-confirm-${holder.slug}`">
-                  <span :id="`${baseId}-confirm-${holder.slug}`">{{ format(strings.admin.holders.confirmRevoke, { slug: holder.slug }) }}</span>
-
-                  <button :id="`${baseId}-confirm-button-${holder.slug}`" type="button" class="admin-holders__revoke" @click="revoke(holder.slug)">{{ strings.admin.holders.revoke }}</button>
-
-                  <button type="button" class="admin-holders__keep" @click="keep(holder.slug)">{{ strings.admin.holders.keep }}</button>
-                </div>
+                <InlineConfirm
+                  :message="format(strings.admin.holders.confirmRevoke, { slug: holder.slug })"
+                  :confirm-label="strings.admin.holders.revoke"
+                  :keep-label="strings.admin.holders.keep"
+                  @confirm="revoke(holder.slug)"
+                  @keep="keep(holder.slug)"
+                />
               </td>
             </tr>
           </template>
@@ -74,58 +74,29 @@
       </table>
     </div>
 
-    <p v-else-if="admin.holders" class="admin-holders__muted">{{ strings.admin.holders.empty }}</p>
+    <p v-else-if="holdersStore.holders" class="admin-holders__muted">{{ strings.admin.holders.empty }}</p>
 
     <p v-else class="admin-holders__muted">{{ strings.admin.holders.hidden }}</p>
 
-    <p role="status" class="admin-holders__error">{{ error }}</p>
+    <p role="status" class="admin-holders__error">{{ action.error }}</p>
 
     <form class="admin-holders__create" novalidate @submit.prevent="create">
-      <div class="admin-holders__field">
-        <label :for="`${baseId}-slug`" class="admin-holders__label">{{ strings.admin.holders.slug }}<Icon v-if="locked" name="lock" :size="12" class="admin-holders__lock" /></label>
+      <LockedField
+        :id="`${baseId}-slug`"
+        v-model="slug"
+        name="slug"
+        :label="strings.admin.holders.slug"
+        :hint="strings.admin.holders.slugHint"
+        :error="slugError"
+        autocapitalize="off"
+        spellcheck="false"
+        @input="slugError = ''"
+      />
 
-        <input
-          :id="`${baseId}-slug`"
-          v-model="slug"
-          name="slug"
-          class="admin-holders__input"
-          autocomplete="off"
-          autocapitalize="off"
-          spellcheck="false"
-          :readonly="locked"
-          :aria-disabled="locked ? 'true' : undefined"
-          :aria-invalid="Boolean(slugError)"
-          :aria-describedby="`${baseId}-slug-hint ${baseId}-slug-error`"
-          v-on="lockedControl('slug')"
-          @input="slugError = ''"
-        />
-
-        <p :id="`${baseId}-slug-hint`" class="admin-holders__hint">{{ strings.admin.holders.slugHint }}</p>
-
-        <p :id="`${baseId}-slug-error`" role="status" class="admin-holders__error">{{ slugError }}</p>
-
-        <ElevationPrompt v-if="prompting === 'slug'" @elevated="close" @cancel="close" />
-      </div>
-
-      <div class="admin-holders__field">
-        <label :for="`${baseId}-display-name`" class="admin-holders__label">{{ strings.admin.holders.displayNameOptional }}<Icon v-if="locked" name="lock" :size="12" class="admin-holders__lock" /></label>
-
-        <input
-          :id="`${baseId}-display-name`"
-          v-model="displayName"
-          name="displayName"
-          class="admin-holders__input"
-          autocomplete="off"
-          :readonly="locked"
-          :aria-disabled="locked ? 'true' : undefined"
-          v-on="lockedControl('displayName')"
-        />
-
-        <ElevationPrompt v-if="prompting === 'displayName'" @elevated="close" @cancel="close" />
-      </div>
+      <LockedField v-model="displayName" name="displayName" :label="strings.admin.holders.displayNameOptional" />
 
       <div class="admin-holders__submit">
-        <AdminAction :label="creating ? strings.admin.holders.creating : strings.admin.holders.create" type="submit" variant="primary" />
+        <AdminAction :label="action.busy ? strings.admin.holders.creating : strings.admin.holders.create" type="submit" variant="primary" />
       </div>
     </form>
   </AdminSection>
@@ -134,22 +105,21 @@
 <script setup lang="ts">
 import type { HolderSecret, RosterHolder } from '~/types/api';
 
-const admin = useAdminStore();
+const holdersStore = useHoldersStore();
 const { strings, format } = useStrings();
 const { copy } = useClipboard({ legacy: true });
 const baseId = useId();
 const notice = useTemplateRef<HTMLElement>('notice');
 const issued = ref<HolderSecret | null>(null);
 const copyMessage = ref('');
-const error = ref('');
 const slug = ref('');
 const displayName = ref('');
 const slugError = ref('');
-const creating = ref(false);
+const action = reactive(useAction());
 
-const { locked, prompting, close, lockedControl } = useElevationGate();
+const { locked } = useElevationGate();
 
-const { confirming, confirm, keep, focusById } = useInlineConfirm({ baseId, triggerPrefix: `${baseId}-revoke-` });
+const { confirming, confirm, keep, focusById } = useInlineConfirm({ triggerPrefix: `${baseId}-revoke-` });
 
 const lastUsedOf = (holder: RosterHolder) => {
   if (holder.lastUsedAt === undefined) return strings.value.admin.holders.unknown;
@@ -178,52 +148,33 @@ const copySecret = async () => {
   }
 };
 
-const rotate = async (target: string) => {
-  error.value = '';
-  try {
-    await show(await admin.rotateHolder(target));
-  }
-  catch {
-    error.value = strings.value.admin.holders.errors.failed;
-  }
-};
+const failed = () => strings.value.admin.holders.errors.failed;
+
+const rotate = (target: string) => action.run(async () => show(await holdersStore.rotateHolder(target)), failed);
 
 const revoke = async (target: string) => {
-  error.value = '';
-  try {
-    await admin.revokeHolder(target);
-    confirming.value = null;
-    focusById(`${baseId}-slug`);
-  }
-  catch {
-    error.value = strings.value.admin.holders.errors.failed;
-  }
+  if (!await action.run(() => holdersStore.revokeHolder(target), failed)) return;
+  confirming.value = null;
+  focusById(`${baseId}-slug`);
+};
+
+const explainCreate = (failure: unknown) => {
+  const messages = strings.value.admin.holders.errors;
+  if (apiErrorField(failure) !== 'slug') return messages.failed;
+  slugError.value = slugErrorOf(failure, { taken: messages.slugTaken, shape: messages.slugShape });
+  focusById(`${baseId}-slug`);
+  return '';
 };
 
 const create = async () => {
-  if (locked.value || creating.value) return;
-  creating.value = true;
-  slugError.value = '';
-  error.value = '';
-  try {
-    const created = await admin.createHolder({ slug: slug.value.trim(), displayName: displayName.value.trim() || null });
+  if (locked.value) return;
+  await action.run(async () => {
+    slugError.value = '';
+    const created = await holdersStore.createHolder({ slug: slug.value.trim(), displayName: displayName.value.trim() || null });
     slug.value = '';
     displayName.value = '';
     await show(created);
-  }
-  catch (failure) {
-    const messages = strings.value.admin.holders.errors;
-    if (apiErrorField(failure) === 'slug') {
-      slugError.value = apiErrorCode(failure) === 'conflict' ? messages.slugTaken : messages.slugShape;
-      focusById(`${baseId}-slug`);
-    }
-    else {
-      error.value = messages.failed;
-    }
-  }
-  finally {
-    creating.value = false;
-  }
+  }, explainCreate);
 };
 </script>
 
@@ -334,27 +285,6 @@ const create = async () => {
     white-space: normal;
   }
 
-  &__confirm {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: $space-2;
-    padding: $space-2 $space-3;
-    border-radius: $radius-control;
-    background: var(--color-tint-blocked);
-    white-space: normal;
-  }
-
-  &__revoke {
-    @include button-secondary;
-    color: var(--color-state-blocked);
-  }
-
-  &__keep {
-    @include button-quiet;
-    height: $control-height;
-  }
-
   &__muted {
     margin: 0;
     color: var(--color-muted);
@@ -376,37 +306,6 @@ const create = async () => {
     @include respond(sm) {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
-  }
-
-  &__field {
-    display: flex;
-    flex-direction: column;
-  }
-
-  &__label {
-    margin-bottom: $space-1;
-    color: var(--color-muted);
-    font-size: $font-size-meta;
-  }
-
-  &__input {
-    @include text-field;
-
-    &:read-only {
-      border-color: var(--color-rule);
-      background: var(--color-surface-alt);
-      color: var(--color-muted);
-    }
-  }
-
-  &__lock {
-    margin-left: $space-1;
-  }
-
-  &__hint {
-    margin: $space-1 0 0;
-    color: var(--color-muted);
-    font-size: $font-size-meta;
   }
 
   &__submit {

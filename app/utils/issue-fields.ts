@@ -1,19 +1,13 @@
-import type { IssueKind, LabelGroup } from '~/types/api';
+import type { Kind, LabelGroup } from '~/types/api';
+import { PARENT_RULES } from '#shared/domain';
 
 export interface ParentCandidate {
   number: number
-  kind: IssueKind
+  kind: Kind
   title: string
 }
 
 const WAYFINDER_PREFIX = 'wayfinder:';
-
-const PARENT_KINDS: Record<IssueKind, IssueKind[]> = {
-  effort: [],
-  map: ['effort'],
-  spec: ['effort'],
-  ticket: ['map', 'spec', 'effort'],
-};
 
 export const labelRows = (groups: LabelGroup[], labels: string[]) => {
   const grouped = new Set(groups.flatMap(group => group.labels.map(member => member.id)));
@@ -25,8 +19,8 @@ export const labelRows = (groups: LabelGroup[], labels: string[]) => {
 
 export const wayfinderTypeOf = (labels: string[]) => labels.find(label => label.startsWith(WAYFINDER_PREFIX)) ?? null;
 
-export const parentChoices = (issue: { number: number, kind: IssueKind }, candidates: ParentCandidate[]) => {
-  const allowed = PARENT_KINDS[issue.kind];
+export const parentChoices = (issue: { number: number, kind: Kind }, candidates: ParentCandidate[]) => {
+  const allowed = PARENT_RULES[issue.kind];
   return {
     choices: allowed.flatMap(kind => candidates.filter(candidate => candidate.kind === kind && candidate.number !== issue.number)),
     allowsNone: issue.kind === 'ticket',

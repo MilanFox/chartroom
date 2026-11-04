@@ -119,5 +119,5 @@ export const layoutGraph = (tickets: GraphTicket[]) => {
 export const graphProgress = (rows: Pick<IssueRow, 'number' | 'status'>[]) => ({
   total: rows.length,
   ...countByStatus(rows),
-  frontier: rows.filter(row => row.status === 'open').map(row => row.number),
+  takeable: rows.filter(row => row.status === 'open').map(row => row.number),
 });

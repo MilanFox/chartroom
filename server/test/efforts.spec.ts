@@ -123,4 +123,18 @@ describe('efforts', () => {
     await alice.json('POST', `/issues/${map.number}/close`);
     expect((await rollup()).map).toEqual({ state: 'closed', frontier: 1 });
   });
+
+  it('gives the map and spec rows a body excerpt on the document and in the list', async () => {
+    const effort = await create('effort', 'Effort excerpt', { name: 'excerpt' });
+    await create('map', 'Map', { parent: effort.number, body: '# Map\n\n<!-- note -->\n\nThe  map\nexcerpt.\n\nMore.' });
+    await create('spec', 'Empty', { parent: effort.number });
+    await create('spec', 'Headings', { parent: effort.number, body: '# Spec\n\n## Section' });
+
+    const document = (await alice.json('GET', '/efforts/excerpt')).body;
+    expect(document.map.excerpt).toBe('The map excerpt.');
+    expect(document.specs.map((spec: { excerpt: string }) => spec.excerpt)).toEqual(['', '']);
+    const listed = (await alice.json('GET', '/efforts?sort=name')).body.items.find((item: { name: string }) => item.name === 'excerpt');
+    expect(listed.map.excerpt).toBe('The map excerpt.');
+    expect(listed.specs.map((spec: { excerpt: string }) => spec.excerpt)).toEqual(['', '']);
+  });
 });

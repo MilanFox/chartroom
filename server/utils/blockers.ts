@@ -1,6 +1,6 @@
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import { issueBlockers, issues } from '../db/schema';
-import type { Principal } from './principal';
+import type { Caller } from './caller';
 import type { Store } from './store';
 
 export interface BlockerRef {
@@ -55,27 +55,20 @@ const transitivelyBlockedBy = (issue: number, candidate: number) => {
   return false;
 };
 
-export const addBlocker = (number: number, blocker: number, principal: Principal) => {
+export const addBlocker = (number: number, blocker: number, caller: Caller) => {
   requireIssue(number);
   requireBlockers([blocker]);
   if (number === blocker) throw invalid(`issue #${number} cannot block itself`, 'blocker');
   if (useStore().select().from(issueBlockers).where(edgeOf(number, blocker)).get()) return;
   if (transitivelyBlockedBy(blocker, number)) throw invalid(`issue #${blocker} is already blocked through #${number}; that would be a cycle`, 'blocker');
-  const stamp = stampFor(principal);
-  useStore().transaction((tx) => {
+  recordIssueWrite(number, caller, (tx) => {
     insertBlockers(tx, number, [blocker]);
-    logChanges(tx, { ...stamp, issue: number }, [{ field: 'blocker', before: null, after: blocker }]);
-    touchIssue(tx, number, stamp.at);
+    return [{ field: 'blocker', before: null, after: blocker }];
   });
 };
 
-export const removeBlocker = (number: number, blocker: number, principal: Principal) => {
-  requireIssue(number);
-  const stamp = stampFor(principal);
-  useStore().transaction((tx) => {
+export const removeBlocker = (number: number, blocker: number, caller: Caller) =>
+  recordIssueWrite(number, caller, (tx) => {
     const { changes: removed } = tx.delete(issueBlockers).where(edgeOf(number, blocker)).run();
-    if (removed === 0) return;
-    logChanges(tx, { ...stamp, issue: number }, [{ field: 'blocker', before: blocker, after: null }]);
-    touchIssue(tx, number, stamp.at);
+    return removed === 0 ? null : [{ field: 'blocker', before: blocker, after: null }];
   });
-};

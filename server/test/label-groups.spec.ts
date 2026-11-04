@@ -169,9 +169,10 @@ describe('admin-defined Label groups', () => {
 
     const clash = await admin.json('POST', '/label-groups/stage/labels', { body: { id: 'stage-wip' } });
 
-    expect(clash).toMatchObject({ status: 409, body: { error: { code: 'conflict' } } });
+    expect(clash).toMatchObject({ status: 409, body: { error: { code: 'conflict', field: 'labels' } } });
     expect(clash.body.error.message).toContain(`#${three.number}`);
     expect(clash.body.error.message).not.toContain(`#${one.number}`);
+    expect(clash.body.error.details).toEqual({ group: 'stage', issues: [three.number], truncated: false });
     expect((await groupsListed()).find(group => group.id === 'stage')).toEqual(groupBefore);
     expect(await Promise.all([one, two, three].map(issue => snapshot(issue.number)))).toEqual(snapshotsBefore);
 
@@ -188,9 +189,10 @@ describe('admin-defined Label groups', () => {
 
     const clash = await admin.json('POST', '/label-groups', { body: { id: 'area', labels: [{ id: 'area-api' }, { id: 'area-ui' }] } });
 
-    expect(clash).toMatchObject({ status: 409, body: { error: { code: 'conflict' } } });
+    expect(clash).toMatchObject({ status: 409, body: { error: { code: 'conflict', field: 'labels' } } });
     expect(clash.body.error.message).toContain(`#${both.number}`);
     expect(clash.body.error.message).not.toContain(`#${single.number}`);
+    expect(clash.body.error.details).toEqual({ group: 'area', issues: [both.number], truncated: false });
     expect((await groupsListed()).map(group => group.id)).not.toContain('area');
   });
 

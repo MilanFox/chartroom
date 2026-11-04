@@ -22,14 +22,14 @@ const props = defineProps<IssueClaimProps>();
 const session = useSessionStore();
 const issuesStore = useIssuesStore();
 const { strings, format } = useStrings();
-const action = reactive(useIssueAction());
+const action = reactive(useAction());
+const claimError = useClaimError();
 
 const explain = (failure: unknown) => {
-  const claimConflict = claimConflictOf(failure);
-  if (!claimConflict) return strings.value.issue.fields.failed;
+  const message = claimError(failure);
+  if (!message) return strings.value.issue.fields.failed;
   issuesStore.load(props.issue.number);
-  const messages = strings.value.issue.fields.claim;
-  return claimConflict.holder ? format(messages.heldBy, { slug: claimConflict.holder }) : messages.heldBySomeone;
+  return message;
 };
 
 const claim = () => action.run(() => issuesStore.claim(props.issue.number), explain);

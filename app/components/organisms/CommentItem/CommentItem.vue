@@ -18,13 +18,15 @@
       </span>
     </header>
 
-    <div v-if="confirming" role="group" class="comment-item__confirm" :aria-labelledby="confirmId">
-      <span :id="confirmId">{{ strings.issue.thread.confirmDelete }}</span>
-
-      <button ref="confirmButton" type="button" class="comment-item__delete" @click="remove">{{ strings.issue.thread.delete }}</button>
-
-      <button type="button" class="comment-item__keep" @click="keep">{{ strings.issue.thread.keep }}</button>
-    </div>
+    <InlineConfirm
+      v-if="confirming"
+      class="comment-item__confirm"
+      :message="strings.issue.thread.confirmDelete"
+      :confirm-label="strings.issue.thread.delete"
+      :keep-label="strings.issue.thread.keep"
+      @confirm="remove"
+      @keep="keep"
+    />
 
     <TextEditor
       v-if="editing"
@@ -49,12 +51,10 @@ const props = defineProps<CommentItemProps>();
 const session = useSessionStore();
 const issuesStore = useIssuesStore();
 const { strings } = useStrings();
-const action = reactive(useIssueAction());
+const action = reactive(useAction());
 const authorId = useId();
-const confirmId = useId();
 const editButton = useTemplateRef<HTMLButtonElement>('editButton');
 const deleteButton = useTemplateRef<HTMLButtonElement>('deleteButton');
-const confirmButton = useTemplateRef<HTMLButtonElement>('confirmButton');
 const editing = ref(false);
 const confirming = ref(false);
 const draft = ref('');
@@ -86,12 +86,6 @@ const keep = async () => {
 };
 
 const remove = () => action.run(() => issuesStore.deleteComment(props.comment.issue, props.comment.id), failed);
-
-watch(confirming, async (open) => {
-  if (!open) return;
-  await nextTick();
-  confirmButton.value?.focus();
-});
 </script>
 
 <style lang="scss" scoped>
@@ -138,19 +132,7 @@ watch(confirming, async (open) => {
   }
 
   &__confirm {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: $space-2;
     margin-bottom: $space-2;
-  }
-
-  &__delete {
-    @include button-primary;
-  }
-
-  &__keep {
-    @include button-secondary;
   }
 }
 </style>

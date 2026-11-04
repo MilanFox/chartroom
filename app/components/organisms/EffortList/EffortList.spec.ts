@@ -35,7 +35,7 @@ describe('EffortList', () => {
 
   it('sorts by a header button, marking the column with aria-sort and toggling on a second press', async () => {
     const wrapper = await mountList();
-    const nameHeader = () => wrapper.findAll('th').find(th => th.text().startsWith('Name'))!;
+    const nameHeader = () => wrapper.findAll('th').find(th => th.text().startsWith('Title'))!;
 
     expect(wrapper.get('th[aria-sort]').text()).toContain('#');
     expect(wrapper.get('th[aria-sort]').attributes('aria-sort')).toBe('descending');

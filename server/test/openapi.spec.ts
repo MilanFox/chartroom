@@ -3,11 +3,12 @@ import { apiClient, uiClient } from './clients';
 import { TEST_PASSWORDS, useTestServer } from './harness';
 import { ERROR_CODES } from '../utils/errors';
 import { VERB_ROUTES } from '../../cli/src/chartroom';
+import { ADAPTER_FILES } from '../utils/adapter';
 
 type OpenApiDocument = {
   openapi: string
   servers: { url: string }[]
-  paths: Record<string, Record<string, { summary: string, tags?: string[], description?: string }>>
+  paths: Record<string, Record<string, { summary: string, tags?: string[], description?: string, parameters?: { name: string, in: string }[], requestBody?: { content: Record<string, { schema: { properties: Record<string, unknown> } }> } }>>
   components: { schemas: Record<string, { properties: Record<string, { enum?: string[] }> }>, securitySchemes: Record<string, unknown> }
   security: Record<string, string[]>[]
 };
@@ -84,6 +85,28 @@ describe('the OpenAPI document', () => {
     expect(documented).toEqual(VERB_ROUTES);
   });
 
+  it('matches every CLI verb route to the query names and body fields of its operation', async () => {
+    const document = await apiDocument();
+
+    const drift = VERB_ROUTES.flatMap(({ method, path, query, bodyFields }) => {
+      const operation = document.paths[path]![method]!;
+      const documentedQuery = (operation.parameters ?? []).filter(parameter => parameter.in === 'query').map(parameter => parameter.name);
+      const documentedBody = Object.keys(operation.requestBody?.content['application/json']?.schema.properties ?? {});
+      return [
+        ...[...query].sort().join() === [...documentedQuery].sort().join() ? [] : [`${method} ${path} query ${query} vs ${documentedQuery}`],
+        ...bodyFields.every(field => documentedBody.includes(field)) ? [] : [`${method} ${path} body ${bodyFields} vs ${documentedBody}`],
+      ];
+    });
+
+    expect(drift).toEqual([]);
+  });
+
+  it('maps the adapter verb to every adapter file', () => {
+    const adapterPaths = VERB_ROUTES.filter(({ command }) => command === 'adapter').map(({ path }) => path);
+
+    expect(adapterPaths).toEqual(ADAPTER_FILES.map(file => `/instance/adapter/${file}`));
+  });
+
   it('gives every api operation a written summary and a tag', async () => {
     const document = await apiDocument();
 
@@ -132,6 +155,7 @@ describe('the OpenAPI document', () => {
 
     const envelope = document.components.schemas.Error!.properties.error as { properties: Record<string, { enum?: string[] }>, required: string[] };
     expect(envelope.properties.code!.enum).toEqual(ERROR_CODES);
+    expect(envelope.properties.details).toEqual({ type: 'object' });
     expect(envelope.required).toEqual(['code', 'message']);
   });
 
@@ -146,5 +170,74 @@ describe('the OpenAPI document', () => {
 
     expect(anonymous).toMatchObject({ status: 401, body: { error: { code: 'unauthenticated' } } });
     expect(authenticated).toMatchObject({ status: 404, body: { error: { code: 'not-found' } } });
+  });
+
+  describe('response shapes', () => {
+    type Schema = { type?: string | string[], properties?: Record<string, Schema>, required?: string[], items?: Schema, additionalProperties?: Schema, oneOf?: Schema[] };
+
+    const schemaOf = (document: OpenApiDocument, [method, path]: [string, string], status: string) => {
+      const operation = document.paths[path]![method] as unknown as { responses: Record<string, { content: Record<string, { schema: Schema }> }> };
+      return operation.responses[status]!.content['application/json']!.schema;
+    };
+
+    const drift = (schema: Schema, value: unknown, at: string): string[] => {
+      if (schema.oneOf) {
+        const matching = schema.oneOf.map(option => drift(option, value, at));
+        return matching.some(found => found.length === 0) ? [] : matching.flat();
+      }
+      if (Array.isArray(value)) return value.flatMap((item, index) => schema.items ? drift(schema.items, item, `${at}[${index}]`) : []);
+      if (value === null || typeof value !== 'object') return [];
+      const record = value as Record<string, unknown>;
+      const properties = schema.properties ?? {};
+      return [
+        ...(schema.required ?? []).filter(key => !(key in record)).map(key => `${at}: required ${key} is missing`),
+        ...Object.keys(record).filter(key => !schema.additionalProperties && !(key in properties)).map(key => `${at}: ${key} is not in properties`),
+        ...Object.entries(record).flatMap(([key, nested]) => properties[key] ? drift(properties[key], nested, `${at}.${key}`) : []),
+      ];
+    };
+
+    it('match what the handlers return', async () => {
+      const admin = uiClient(server);
+      await admin.login(TEST_PASSWORDS.CHARTROOM_VIEWER_PASSWORD);
+      await admin.elevate(TEST_PASSWORDS.CHARTROOM_ADMIN_PASSWORD);
+      const { body: holder } = await admin.createHolder('shape-user', 'Shape User');
+      const api = apiClient(server, holder.secret);
+      const create = async (body: Record<string, unknown>) => (await api.json('POST', '/issues', { body })).body;
+      const effort = await create({ kind: 'effort', title: 'Shapes', name: 'shapes' });
+      const ticket = await create({ kind: 'ticket', title: 'Shaped', parent: effort.number, labels: ['needs-triage'] });
+      const blocker = await create({ kind: 'ticket', title: 'Blocker', parent: effort.number });
+      await api.json('PUT', `/issues/${ticket.number}/blockers/${blocker.number}`);
+      await api.json('POST', `/issues/${ticket.number}/links`, { body: { role: 'artifact', type: 'branch', url: 'https://git.example/shape', title: 'Shape' } });
+      await api.json('POST', `/issues/${ticket.number}/comments`, { body: { body: 'A comment' } });
+      await api.json('POST', `/issues/${ticket.number}/claim`);
+      await api.json('POST', `/issues/${ticket.number}/close`, { body: { comment: 'Resolved' } });
+
+      const member = uiClient(server);
+      await member.login(holder.secret);
+
+      const documents = { api: await apiDocument(), ui: await uiDocument() };
+      const clients = { api: (method: string, path: string) => api.json(method, path), ui: (method: string, path: string) => member.json(method, path) };
+      const checks = [
+        { path: '/me', url: '/me' },
+        { path: '/holders', url: '/holders' },
+        { path: '/issues', url: '/issues' },
+        { path: '/issues/{number}', url: `/issues/${ticket.number}` },
+        { path: '/efforts/{handle}', url: '/efforts/shapes' },
+        { path: '/issues/{number}/comments', url: `/issues/${ticket.number}/comments` },
+        { path: '/issues/{number}/links', url: `/issues/${ticket.number}/links` },
+        { path: '/issues/{number}/changes', url: `/issues/${ticket.number}/changes` },
+      ];
+
+      for (const origin of ['api', 'ui'] as const) {
+        for (const { path, url } of checks) {
+          const { body } = await clients[origin]('GET', url);
+          expect(drift(schemaOf(documents[origin], ['get', path], '200'), body, `${origin} get ${path}`)).toEqual([]);
+        }
+      }
+      expect(drift(schemaOf(documents.ui, ['post', '/holders'], '201'), holder, 'ui post /holders')).toEqual([]);
+      const login = await uiClient(server).login(TEST_PASSWORDS.CHARTROOM_VIEWER_PASSWORD);
+      expect(drift(schemaOf(documents.ui, ['post', '/login'], '200'), login.body, 'ui post /login')).toEqual([]);
+      expect(drift(schemaOf(documents.ui, ['post', '/elevate'], '200'), (await admin.elevate(TEST_PASSWORDS.CHARTROOM_ADMIN_PASSWORD)).body, 'ui post /elevate')).toEqual([]);
+    });
   });
 });

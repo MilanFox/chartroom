@@ -1,13 +1,11 @@
-import { registerEndpoint } from '@nuxt/test-utils/runtime';
 import { createPinia, setActivePinia } from 'pinia';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { requestOf, searchOf, useEndpoints } from '~/test/endpoints';
 import type { EffortDocument, IssueDocument } from '~/types/api';
 import { issueFixture } from '~/test/issue-fixture';
 import { useDashboardStore } from './dashboard';
 
-const unregister: (() => void)[] = [];
-const endpoint = (...args: Parameters<typeof registerEndpoint>) => unregister.push(registerEndpoint(...args));
-const searchOf = (event: unknown) => new URL((event as { web: { request: Request } }).web.request.url).searchParams;
+const endpoint = useEndpoints();
 
 const row = (number: number, overrides: Partial<IssueDocument> = {}) => issueFixture({ number, title: `Issue ${number}`, effort: 1, ...overrides });
 
@@ -17,8 +15,8 @@ const effortDocument = (overrides: Partial<EffortDocument> = {}): EffortDocument
   testInstructions: null,
   statusRollup: { map: { state: 'open', frontier: 1 }, specs: [{ number: 5, tickets: { open: 1, claimed: 0, blocked: 0, closed: 1 } }], triage: { 'needs-triage': 1, 'none': 0 }, open: 4 },
   linkRollup: { resource: [], artifact: [] },
-  map: row(2, { kind: 'map', parent: 1 }),
-  specs: [row(5, { kind: 'spec', parent: 1 })],
+  map: { ...row(2, { kind: 'map', parent: 1 }), excerpt: 'Map body' },
+  specs: [{ ...row(5, { kind: 'spec', parent: 1 }), excerpt: 'Spec body' }],
   ...overrides,
 });
 
@@ -27,15 +25,14 @@ describe('useDashboardStore', () => {
     setActivePinia(createPinia());
   });
 
-  afterEach(() => {
-    unregister.splice(0).forEach(remove => remove());
-  });
-
-  it('loads the Effort document, the map and spec bodies and every issue of the subtree, following each cursor', async () => {
+  it('loads the Effort document with its map and spec excerpts and every issue of the subtree, following each cursor', async () => {
     const listRequests: string[] = [];
+    const documentRequests: string[] = [];
     endpoint('/ui/efforts/1', () => effortDocument());
-    endpoint('/ui/issues/2', () => row(2, { kind: 'map', parent: 1, body: 'Map body' }));
-    endpoint('/ui/issues/5', () => row(5, { kind: 'spec', parent: 1, body: 'Spec body' }));
+    endpoint('/ui/issues/:number', (event) => {
+      documentRequests.push(new URL(requestOf(event).url).pathname);
+      return row(2);
+    });
     endpoint('/ui/issues', (event) => {
       const search = searchOf(event);
       listRequests.push(search.toString());
@@ -53,8 +50,9 @@ describe('useDashboardStore', () => {
     ]);
     expect(dashboard.effort?.name).toBe('tracker');
     expect(dashboard.rows.map(({ number }) => number)).toEqual([2, 3, 5, 6, 7]);
-    expect(dashboard.parentBodies[2]).toBe('Map body');
-    expect(dashboard.parentBodies[5]).toBe('Spec body');
+    expect(dashboard.effort?.map?.excerpt).toBe('Map body');
+    expect(dashboard.effort?.specs.map(({ excerpt }) => excerpt)).toEqual(['Spec body']);
+    expect(documentRequests).toEqual([]);
   });
 
   it('counts the open issues under the Effort, the Effort itself excluded, for the close warning', async () => {
@@ -79,16 +77,5 @@ describe('useDashboardStore', () => {
     await dashboard.load(1);
 
     expect(await dashboard.artifactsMarkdown()).toBe('- [ADR 0001](https://example.test/adr)\n- [research/cursor](https://example.test/branch)\n');
-  });
-
-  it('lists the Environments and leaves the Credential pointers out when the session may not see them', async () => {
-    endpoint('/ui/environments', () => [{ id: 1, name: 'Staging', url: 'https://staging.example.test', notes: null }]);
-    endpoint('/ui/credential-pointers', () => new Response(JSON.stringify({ error: { code: 'forbidden', message: 'no' } }), { status: 403, headers: { 'content-type': 'application/json' } }));
-    const dashboard = useDashboardStore();
-
-    await dashboard.loadEnvironments();
-
-    expect(dashboard.environments.map(({ name }) => name)).toEqual(['Staging']);
-    expect(dashboard.pointers).toBeNull();
   });
 });

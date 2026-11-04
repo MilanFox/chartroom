@@ -29,9 +29,18 @@ export const useSessionStore = defineStore('session', () => {
     loaded.value = true;
   };
 
+  const expire = () => {
+    me.value = null;
+  };
+
+  const endSession = async () => {
+    expire();
+    await navigateTo(LOGIN_PATH);
+  };
+
   const logout = async () => {
     await uiFetch('/logout', { method: 'POST' });
-    me.value = null;
+    await endSession();
   };
 
   const elevate = async (password: string) => {
@@ -42,5 +51,5 @@ export const useSessionStore = defineStore('session', () => {
     me.value = await uiFetch<Me>('/elevate', { method: 'DELETE' });
   };
 
-  return { me, loaded, isViewer, adminUntil, load, login, logout, elevate, dropElevation };
+  return { me, loaded, isViewer, adminUntil, load, login, logout, expire, endSession, elevate, dropElevation };
 });

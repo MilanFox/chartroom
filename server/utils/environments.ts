@@ -1,5 +1,6 @@
 import { asc, eq } from 'drizzle-orm';
 import { credentialPointers, environments } from '../db/schema';
+import { invalid } from './errors';
 
 export type EnvironmentRecord = typeof environments.$inferSelect;
 export type PointerRecord = typeof credentialPointers.$inferSelect;

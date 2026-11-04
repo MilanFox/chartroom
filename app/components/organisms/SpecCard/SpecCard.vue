@@ -22,7 +22,7 @@
       </button>
     </div>
 
-    <p v-if="excerpt" class="spec-card__excerpt">{{ excerpt }}</p>
+    <p v-if="spec.excerpt" class="spec-card__excerpt">{{ spec.excerpt }}</p>
 
     <p class="spec-card__counts">{{ format(strings.dashboard.specs.counts, { ...counts, artifacts }) }}</p>
   </article>
@@ -31,13 +31,12 @@
 <script setup lang="ts">
 import type { SpecCardProps } from './SpecCard.types';
 
-const props = defineProps<SpecCardProps>();
+defineProps<SpecCardProps>();
 
 const emit = defineEmits<{ open: [number: number] }>();
 
 const { strings, format } = useStrings();
 const titleId = useId();
-const excerpt = computed(() => bodyExcerpt(props.body));
 </script>
 
 <style lang="scss" scoped>

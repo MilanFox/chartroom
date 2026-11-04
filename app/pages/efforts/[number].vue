@@ -15,7 +15,6 @@
         :key="effort.map.number"
         :map="effort.map"
         :frontier="effort.statusRollup.map?.frontier ?? 0"
-        :body="dashboard.parentBodies[effort.map.number] ?? ''"
         :rows="dashboard.rows"
         @open="openDrawer"
       />
@@ -29,7 +28,6 @@
         :key="spec.number"
         :spec="spec"
         :counts="specCountsOf(spec.number)"
-        :body="dashboard.parentBodies[spec.number] ?? ''"
         :artifacts="artifactCountOf(spec.number, effort.linkRollup, dashboard.rows)"
         @open="openDrawer"
       />
@@ -56,8 +54,8 @@
 <script setup lang="ts">
 const route = useRoute();
 const dashboard = useDashboardStore();
+const environmentsStore = useEnvironmentsStore();
 const issuesStore = useIssuesStore();
-const labelGroupsStore = useLabelGroupsStore();
 const { strings, format } = useStrings();
 const number = computed(() => Number(route.params.number));
 const mapHeadingId = useId();
@@ -70,20 +68,17 @@ const [{ error }] = await Promise.all([
     return true;
   }),
   useAsyncData('dashboard-environments', async () => {
-    await dashboard.loadEnvironments();
+    await environmentsStore.load();
     return true;
   }),
-  useAsyncData('label-groups', async () => {
-    await labelGroupsStore.load();
-    return true;
-  }),
+  useLabelGroupsLoaded(),
 ]);
 
 const effort = computed(() => (dashboard.effort?.number === number.value ? dashboard.effort : null));
 
 if (apiErrorCode(error.value) === 'invalid' && Number.isInteger(number.value)) await navigateTo(issuePath(number.value), { replace: true });
 
-const missingMessage = computed(() => (apiErrorCode(error.value) === 'not-found' || !Number.isInteger(number.value) ? strings.value.dashboard.notFound : strings.value.dashboard.loadFailed));
+const missingMessage = computed(() => missingMessageOf(error.value, number.value, strings.value.dashboard));
 
 const crumbs = computed(() => (effort.value ? crumbsFor({ page: 'dashboard', effort: effort.value }, strings.value.breadcrumb) : []));
 
@@ -91,10 +86,7 @@ const specCountsOf = (spec: number) => ({ ...EMPTY_STATUS_COUNTS, ...effort.valu
 
 const openDrawer = (issue: number) => drawerNumber.value = issue;
 
-issuesStore.$onAction(({ name, args, after }) => {
-  if (name === 'loadParentCandidates' || name === 'loadChanges' || (name === 'load' && args[0] !== number.value)) return;
-  after(() => dashboard.refresh());
-});
+watch(() => issuesStore.revision, () => dashboard.refresh());
 
 useHead(() => ({ title: effort.value ? format(strings.value.issue.pageTitle, { number: effort.value.number, title: effort.value.title }) : undefined }));
 </script>

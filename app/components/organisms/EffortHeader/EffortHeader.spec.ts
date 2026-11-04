@@ -1,13 +1,13 @@
-import { mountSuspended, registerEndpoint } from '@nuxt/test-utils/runtime';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { mountSuspended } from '@nuxt/test-utils/runtime';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { apiFailure, requestOf, useEndpoints } from '~/test/endpoints';
 import type { EffortDocument } from '~/types/api';
 import { useSessionStore } from '~/stores/session';
-import { apiFailure, holderSession, issueFixture, viewerSession } from '~/test/issue-fixture';
+import { issueFixture } from '~/test/issue-fixture';
+import { holderSession, viewerSession } from '~/test/sessions';
 import EffortHeader from './EffortHeader.vue';
 
-const unregister: (() => void)[] = [];
-const endpoint = (...args: Parameters<typeof registerEndpoint>) => unregister.push(registerEndpoint(...args));
-const requestOf = (event: unknown) => (event as { web: { request: Request } }).web.request;
+const endpoint = useEndpoints();
 
 const effort = (overrides: Partial<EffortDocument> = {}): EffortDocument => ({
   ...issueFixture({ number: 1, kind: 'effort', title: 'Agent tracker', parent: null, effort: 1, labels: ['core'], version: 4 }),
@@ -26,10 +26,6 @@ const mountHeader = (overrides: Partial<EffortDocument> = {}, openChildren = 3) 
 describe('EffortHeader', () => {
   beforeEach(() => {
     useSessionStore().me = holderSession;
-  });
-
-  afterEach(() => {
-    unregister.splice(0).forEach(remove => remove());
   });
 
   it('saves the slug with the loaded version in If-Match, trimmed', async () => {
@@ -52,7 +48,7 @@ describe('EffortHeader', () => {
   });
 
   it('keeps the typed title on a stale save and names who changed it', async () => {
-    endpoint('/ui/issues/1', { method: 'PATCH', handler: apiFailure(409, { code: 'conflict', message: 'issue #1 is at version 5, last written by claude-a at 2026-11-04T09:12:00.000Z', field: 'version' }) });
+    endpoint('/ui/issues/1', { method: 'PATCH', handler: apiFailure(409, { code: 'conflict', message: 'issue #1 is at version 5, last written by claude-a at 2026-11-04T09:12:00.000Z', field: 'version', details: { version: 5, lastWrittenBy: 'claude-a', lastWrittenAt: '2026-11-04T09:12:00.000Z' } }) });
     const wrapper = await mountHeader();
 
     await wrapper.get('button[aria-label="Edit title"]').trigger('click');

@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, gt } from 'drizzle-orm';
-import { comments, issues } from '../db/schema';
-import type { Principal } from './principal';
+import { comments } from '../db/schema';
+import type { Caller } from './caller';
 import type { Store } from './store';
 
 export type CommentRecord = typeof comments.$inferSelect;
@@ -35,20 +35,20 @@ export interface CommentRef {
   id: number
 }
 
-export const insertComment = (tx: Store, { issue, body, at, resolution = false }: NewComment, principal: Principal) => {
-  const { id } = tx.insert(comments).values({ issue, author: actorSlug(principal), body, origin: principal.origin, resolution, createdAt: at, updatedAt: at })
+export const insertComment = (tx: Store, { issue, body, at, resolution = false }: NewComment, caller: Caller) => {
+  const { id } = tx.insert(comments).values({ issue, author: actorSlug(caller), body, origin: caller.origin, resolution, createdAt: at, updatedAt: at })
     .returning({ id: comments.id }).get();
   return tx.select().from(comments).where(eq(comments.id, id)).get()!;
 };
 
-export const createComment = (issue: number, body: string, principal: Principal) =>
-  useStore().transaction((tx) => {
-    requireIssue(issue);
-    const at = nowIso();
-    const comment = insertComment(tx, { issue, body, at }, principal);
-    tx.update(issues).set({ updatedAt: at }).where(eq(issues.number, issue)).run();
-    return comment;
+export const createComment = (issue: number, body: string, caller: Caller) => {
+  let comment: CommentRecord;
+  recordIssueWrite(issue, caller, (tx, { at }) => {
+    comment = insertComment(tx, { issue, body, at }, caller);
+    return [];
   });
+  return comment!;
+};
 
 const requireComment = ({ issue, id }: CommentRef) => {
   requireIssue(issue);
@@ -57,28 +57,25 @@ const requireComment = ({ issue, id }: CommentRef) => {
   return comment;
 };
 
-const requireAuthor = (comment: CommentRecord, principal: Principal) => {
-  if (comment.author !== actorSlug(principal)) throw forbidden(`only ${comment.author} may change this comment`);
+const requireAuthor = (comment: CommentRecord, caller: Caller) => {
+  if (comment.author !== actorSlug(caller)) throw forbidden(`only ${comment.author} may change this comment`);
 };
 
-export const patchComment = ({ issue, id }: CommentRef, body: string, principal: Principal) => {
+export const patchComment = ({ issue, id }: CommentRef, body: string, caller: Caller) => {
   const comment = requireComment({ issue, id });
-  requireAuthor(comment, principal);
-  const at = nowIso();
-  return useStore().transaction((tx) => {
+  requireAuthor(comment, caller);
+  recordIssueWrite(issue, caller, (tx, { at }) => {
     tx.update(comments).set({ body, updatedAt: at }).where(eq(comments.id, id)).run();
-    tx.update(issues).set({ updatedAt: at }).where(eq(issues.number, issue)).run();
-    return tx.select().from(comments).where(eq(comments.id, id)).get()!;
+    return [];
   });
+  return useStore().select().from(comments).where(eq(comments.id, id)).get()!;
 };
 
-export const deleteComment = ({ issue, id }: CommentRef, principal: Principal) => {
+export const deleteComment = ({ issue, id }: CommentRef, caller: Caller) => {
   const comment = requireComment({ issue, id });
-  requireAuthor(comment, principal);
-  const stamp = stampFor(principal);
-  useStore().transaction((tx) => {
+  requireAuthor(comment, caller);
+  recordIssueWrite(issue, caller, (tx) => {
     tx.delete(comments).where(eq(comments.id, id)).run();
-    logChanges(tx, { ...stamp, issue }, [{ field: 'comment', before: id, after: null }]);
-    tx.update(issues).set({ updatedAt: stamp.at }).where(eq(issues.number, issue)).run();
+    return [{ field: 'comment', before: id, after: null }];
   });
 };

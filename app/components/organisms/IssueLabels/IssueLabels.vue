@@ -4,7 +4,7 @@
       <template v-if="session.isViewer">
         <span class="issue-labels__group-name">{{ row.group.displayName }}</span>
 
-        <span v-if="row.selected" class="issue-labels__chip">{{ displayLabelOf(row.group, row.selected) }}</span>
+        <span v-if="row.selected" class="issue-labels__chip">{{ labelGroupsStore.displayLabelOf(row.selected) }}</span>
 
         <span v-else class="issue-labels__none">{{ strings.issue.fields.none }}</span>
       </template>
@@ -63,7 +63,6 @@
 </template>
 
 <script setup lang="ts">
-import type { LabelGroup } from '~/types/api';
 import type { IssueLabelsProps } from './IssueLabels.types';
 
 const props = defineProps<IssueLabelsProps>();
@@ -72,20 +71,15 @@ const session = useSessionStore();
 const issuesStore = useIssuesStore();
 const labelGroupsStore = useLabelGroupsStore();
 const { strings, format } = useStrings();
-const action = reactive(useIssueAction());
+const action = reactive(useAction());
 const groupIdPrefix = useId();
 const newLabelId = useId();
 const errorId = useId();
 const newLabel = ref('');
 
-await useAsyncData('label-groups', async () => {
-  await labelGroupsStore.load();
-  return true;
-});
+await useLabelGroupsLoaded();
 
 const rows = computed(() => labelRows(labelGroupsStore.labelGroups, props.issue.labels));
-
-const displayLabelOf = (group: LabelGroup, member: string) => group.labels.find(({ id }) => id === member)?.displayLabel ?? member;
 
 const failed = () => strings.value.issue.fields.failed;
 

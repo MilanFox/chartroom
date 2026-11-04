@@ -2,7 +2,8 @@ import { mountSuspended, registerEndpoint } from '@nuxt/test-utils/runtime';
 import { describe, expect, it, vi } from 'vitest';
 import { useInstanceStore } from '~/stores/instance';
 import { useSessionStore } from '~/stores/session';
-import { apiFailure, viewerSession } from '~/test/issue-fixture';
+import { viewerSession } from '~/test/sessions';
+import { apiFailure } from '~/test/endpoints';
 import AdminSettings from './AdminSettings.vue';
 
 const fresh = { projectName: 'Chartroom', effortName: { singular: 'Effort', plural: 'Efforts' }, triageLabels: {}, version: '0.1.0', updateAvailable: null, openIssues: 0 };
@@ -29,7 +30,7 @@ describe('AdminSettings', () => {
     remove();
   });
 
-  it('describes the Effort word field with where the word comes from', async () => {
+  it('describes the Effort Display label field with where the word comes from', async () => {
     useSessionStore().me = viewerSession;
     useInstanceStore().instance = fresh;
     const wrapper = await mountSuspended(AdminSettings);

@@ -38,7 +38,7 @@ const props = defineProps<IssueParentProps>();
 const session = useSessionStore();
 const issuesStore = useIssuesStore();
 const { strings, format } = useStrings();
-const action = reactive(useIssueAction());
+const action = reactive(useAction());
 const selectId = useId();
 const conflict = ref<VersionConflict | null>(null);
 

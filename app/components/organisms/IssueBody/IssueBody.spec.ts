@@ -1,13 +1,14 @@
-import { mountSuspended, registerEndpoint } from '@nuxt/test-utils/runtime';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { mountSuspended } from '@nuxt/test-utils/runtime';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h } from 'vue';
+import { apiFailure, requestOf, useEndpoints } from '~/test/endpoints';
 import { useIssuesStore } from '~/stores/issues';
 import { useSessionStore } from '~/stores/session';
-import { apiFailure, holderSession, issueFixture, viewerSession } from '~/test/issue-fixture';
+import { issueFixture } from '~/test/issue-fixture';
+import { holderSession, viewerSession } from '~/test/sessions';
 import IssueBody from './IssueBody.vue';
 
-const unregister: (() => void)[] = [];
-const endpoint = (...args: Parameters<typeof registerEndpoint>) => unregister.push(registerEndpoint(...args));
+const endpoint = useEndpoints();
 
 const IssueBodyOfStore = defineComponent(() => {
   const issues = useIssuesStore();
@@ -24,10 +25,6 @@ describe('IssueBody', () => {
     useSessionStore().me = holderSession;
   });
 
-  afterEach(() => {
-    unregister.splice(0).forEach(remove => remove());
-  });
-
   it('renders the body as markdown with a script tag inert', async () => {
     const wrapper = await mountBody('## Question\n\n<script>window.pwned = true</script>Plain');
 
@@ -38,7 +35,7 @@ describe('IssueBody', () => {
 
   it('keeps the typed text on a stale save and names who changed it, then reload shows their body', async () => {
     let stored = 'First draft';
-    endpoint('/ui/issues/12', { method: 'PATCH', handler: apiFailure(409, { code: 'conflict', message: 'issue #12 is at version 4, last written by claude-a at 2026-11-04T09:12:00.000Z', field: 'version' }) });
+    endpoint('/ui/issues/12', { method: 'PATCH', handler: apiFailure(409, { code: 'conflict', message: 'issue #12 is at version 4, last written by claude-a at 2026-11-04T09:12:00.000Z', field: 'version', details: { version: 4, lastWrittenBy: 'claude-a', lastWrittenAt: '2026-11-04T09:12:00.000Z' } }) });
     endpoint('/ui/issues/12', { method: 'GET', handler: () => issueFixture({ body: stored, version: 4 }) });
     const wrapper = await mountBody();
 
@@ -76,7 +73,7 @@ describe('IssueBody', () => {
     endpoint('/ui/issues/12', {
       method: 'PATCH',
       handler: (event) => {
-        ifMatch.push((event as { web: { request: Request } }).web.request.headers.get('if-match'));
+        ifMatch.push(requestOf(event).headers.get('if-match'));
         return issueFixture({ body: 'Second draft', version: 4 });
       },
     });

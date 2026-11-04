@@ -348,16 +348,18 @@ describe('the CLI', () => {
     expect(JSON.parse((await chartroom(['issue', 'view', String(blocker.number)])).stderr)).toMatchObject({ error: { code: 'not-found' } });
   });
 
-  it('the package ships chart and chartroom as one ESM file at the instance version with zero runtime dependencies', () => {
+  it('the package ships chart and chartroom as one ESM entry at the instance version with zero runtime dependencies', () => {
     const manifest = JSON.parse(readFileSync(join(CLI_ROOT, 'package.json'), 'utf8'));
     const rootManifest = JSON.parse(readFileSync(join(CLI_ROOT, '..', 'package.json'), 'utf8'));
     const compiled = readFileSync(join(CLI_ROOT, manifest.bin.chartroom), 'utf8');
 
     expect(manifest).toMatchObject({ name: 'chartroom-cli', version: rootManifest.version, type: 'module', bin: { 'chartroom-cli': 'dist/chartroom.js', 'chartroom': 'dist/chartroom.js', 'chart': 'dist/chartroom.js' }, files: ['dist'] });
     expect(manifest.dependencies).toBeUndefined();
-    expect(readdirSync(join(CLI_ROOT, 'dist'))).toEqual(['chartroom.js']);
+    const shipped = readdirSync(join(CLI_ROOT, 'dist')).sort();
+    expect(shipped).toEqual(readdirSync(join(CLI_ROOT, 'src')).map(source => source.replace(/\.ts$/, '.js')).sort());
     expect(compiled.startsWith('#!/usr/bin/env node\n')).toBe(true);
-    expect([...compiled.matchAll(/from '([^']+)'/g)].every(([, specifier]) => specifier!.startsWith('node:'))).toBe(true);
+    const specifiers = shipped.flatMap(file => [...readFileSync(join(CLI_ROOT, 'dist', file), 'utf8').matchAll(/(?:from|import) '([^']+)'/g)].map(([, specifier]) => specifier!));
+    expect(specifiers.filter(specifier => !/^node:|^\.\/[\w-]+\.js$/.test(specifier))).toEqual([]);
   });
 
   it('the built bin runs a command when executed directly', async () => {

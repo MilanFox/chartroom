@@ -37,7 +37,8 @@ const route = useRoute();
 const router = useRouter();
 const session = useSessionStore();
 const admin = useAdminStore();
-const { strings, format } = useStrings();
+const { strings } = useStrings();
+const { elevationLabel } = useShell();
 const topPrompt = ref(false);
 
 await useAsyncData('admin', async () => {
@@ -48,8 +49,6 @@ await useAsyncData('admin', async () => {
 const showChecklist = ref(admin.firstRun === true);
 
 const sections = computed(() => ADMIN_SECTION_IDS.map(id => ({ id, label: strings.value.shell.adminSections[id] })));
-
-const elevationLabel = computed(() => (session.adminUntil ? format(strings.value.shell.adminUntil, { time: clockTime(session.adminUntil) }) : null));
 
 watch(() => session.adminUntil?.getTime() ?? null, () => admin.load());
 

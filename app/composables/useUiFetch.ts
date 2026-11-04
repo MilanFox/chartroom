@@ -1,3 +1,5 @@
+import type { Page } from '~/types/api';
+
 interface UiFetchOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   body?: Record<string, unknown>
@@ -7,11 +9,11 @@ interface UiFetchOptions {
 
 const PASSWORD_PATHS = ['/login', '/elevate'];
 
-const endSession = async () => {
+const PAGE_LIMIT = 200;
+
+const endSessionIfSignedIn = async () => {
   const session = useSessionStore();
-  if (!session.me) return;
-  session.me = null;
-  await navigateTo(LOGIN_PATH);
+  if (session.me) await session.endSession();
 };
 
 export const useUiFetch = () => {
@@ -22,8 +24,31 @@ export const useUiFetch = () => {
       return await requestFetch(`/ui${path}`, options as Parameters<typeof requestFetch>[1]) as T;
     }
     catch (error) {
-      if (!PASSWORD_PATHS.includes(path) && apiErrorCode(error) === 'unauthenticated') await nuxtApp.runWithContext(endSession);
+      if (!PASSWORD_PATHS.includes(path) && apiErrorCode(error) === 'unauthenticated') await nuxtApp.runWithContext(endSessionIfSignedIn);
       throw error;
     }
+  };
+};
+
+export const useAllPages = () => {
+  const uiFetch = useUiFetch();
+  return async <T>(path: string, query: Record<string, string | number> = {}) => {
+    const items: T[] = [];
+    let cursor: string | null = null;
+    do {
+      const page: Page<T> = await uiFetch<Page<T>>(path, { query: { ...query, limit: PAGE_LIMIT, ...(cursor ? { cursor } : {}) } });
+      items.push(...page.items);
+      cursor = page.nextCursor;
+    } while (cursor);
+    return items;
+  };
+};
+
+export const useWriteThen = (reload: () => Promise<unknown>) => {
+  const uiFetch = useUiFetch();
+  return async <T = void>(path: string, options: UiFetchOptions) => {
+    const written = await uiFetch<T>(path, options);
+    await reload();
+    return written;
   };
 };

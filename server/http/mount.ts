@@ -1,5 +1,5 @@
 import type { H3Event } from 'h3';
-import type { Principal } from '../utils/principal';
+import type { Caller } from '../utils/caller';
 import { buildOpenApiDocument, MOUNT_PREFIXES } from './openapi';
 import { routeTable } from './table';
 import type { Handler, OperationMeta, RouteMethod, TableRoute } from './table';
@@ -16,14 +16,15 @@ export interface PublicRoute extends DescribedRoute {
 }
 
 export interface ExtraRoute extends DescribedRoute {
+  elevated?: true
   handler: TableRoute['handler']
 }
 
 export type MountRoute = ExtraRoute | PublicRoute;
 
 interface MountOptions {
-  origin: Principal['origin']
-  resolvePrincipal: Handler<[H3Event], Principal>
+  origin: Caller['origin']
+  resolveCaller: Handler<[H3Event], Caller>
   extraRoutes?: MountRoute[]
 }
 
@@ -50,12 +51,13 @@ const renderError = (event: H3Event, error: unknown) => {
 
 const routeHandler = (route: MountRoute, viewerWall: boolean) => defineEventHandler((event) => {
   if ('public' in route) return route.handler(event);
-  const principal = event.context.principal as Principal;
-  if (viewerWall && principal.viewer && route.method !== 'get') throw forbidden('viewer sessions are read-only');
-  return route.handler(event, principal);
+  const caller = event.context.caller as Caller;
+  if (viewerWall && caller.viewer && route.method !== 'get') throw forbidden('viewer sessions are read-only');
+  if (route.elevated && !isElevated(caller)) throw forbidden('admin writes require elevation');
+  return route.handler(event, caller);
 });
 
-const withOpenApiRoute = (origin: Principal['origin'], extraRoutes: MountRoute[]) => {
+const withOpenApiRoute = (origin: Caller['origin'], extraRoutes: MountRoute[]) => {
   const mountRoutes: MountRoute[] = [...extraRoutes];
   mountRoutes.push({
     method: 'get',
@@ -67,7 +69,7 @@ const withOpenApiRoute = (origin: Principal['origin'], extraRoutes: MountRoute[]
   return mountRoutes;
 };
 
-export const createMount = ({ origin, resolvePrincipal, extraRoutes = [] }: MountOptions) => {
+export const createMount = ({ origin, resolveCaller, extraRoutes = [] }: MountOptions) => {
   const prefix = MOUNT_PREFIXES[origin];
   const mountRoutes = withOpenApiRoute(origin, extraRoutes);
   const publicPaths = new Set(mountRoutes.filter(route => 'public' in route).map(route => `${route.method.toUpperCase()} ${prefix}${route.path}`));
@@ -78,7 +80,7 @@ export const createMount = ({ origin, resolvePrincipal, extraRoutes = [] }: Moun
   return defineEventHandler(async (event) => {
     try {
       assertJsonBody(event);
-      if (!publicPaths.has(`${event.method} ${getRequestURL(event).pathname}`)) event.context.principal = resolvePrincipal(event);
+      if (!publicPaths.has(`${event.method} ${getRequestURL(event).pathname}`)) event.context.caller = resolveCaller(event);
       if (origin === 'ui' && !isRead(event)) assertSameOrigin(event);
       return await dispatch(event);
     }

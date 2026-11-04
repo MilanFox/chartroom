@@ -19,7 +19,6 @@ const EMPTY_FILTERS: WorkbenchFilters = {
 // Member ids are slugs or seeded `prefix:name` ids, so this can never collide with one.
 export const NO_MEMBER = ':none';
 const PAGE_SIZE = 100;
-export const UNASSIGNED = 'none';
 export const DEFAULT_SORT = 'updatedAt';
 export const DEFAULT_ORDER = 'desc';
 const API_SCALAR_KEYS = ['view', 'kind', 'parent', 'effort', 'assignee', 'q'] as const;

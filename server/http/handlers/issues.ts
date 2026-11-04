@@ -1,62 +1,12 @@
 import type { H3Event } from 'h3';
 import type { JsonObject } from '../../utils/body';
 import type { Query } from '../../utils/paging';
-import type { IssueCursor, IssueFields, IssueQuery, IssueRecord } from '../../utils/issues';
-import type { BlockerRef } from '../../utils/blockers';
-import type { Principal } from '../../utils/principal';
-import { COMMENT_SCHEMA, toComment } from './comments';
-import { LINK_SCHEMA, toLink } from './links';
+import type { IssueCursor, IssueFields, IssueQuery } from '../../utils/issues';
+import type { Caller } from '../../utils/caller';
+import { toDocument, toRows } from '../representations';
+import type { toRow } from '../representations';
+import { nullable, stringList } from '../schemas';
 import { blockerNumberParam, issueNumberParam, labelParam } from './params';
-
-interface RowRelations {
-  labels: string[]
-  blockers: BlockerRef[]
-}
-
-export const toRow = (event: H3Event, issue: IssueRecord, relations?: RowRelations) => {
-  const { labels, blockers } = relations ?? { labels: labelsOf(issue.number), blockers: blockersOf(issue.number) };
-  return {
-    number: issue.number,
-    kind: issue.kind,
-    title: issue.title,
-    state: issue.state,
-    status: statusOf(issue, blockers),
-    assignee: issue.assignee,
-    parent: issue.parent,
-    effort: effortNumberOf(issue),
-    labels,
-    blockedBy: blockers.map(({ number, open }) => ({ number, open })),
-    createdAt: issue.createdAt,
-    updatedAt: issue.updatedAt,
-    url: `${baseUrl(event)}/issues/${issue.number}`,
-  };
-};
-
-export const toDocument = (event: H3Event, issue: IssueRecord) => {
-  const resolution = resolutionOf(issue.number);
-  return {
-    ...toRow(event, issue),
-    body: issue.body,
-    createdBy: issue.createdBy,
-    origin: issue.origin,
-    closedAt: issue.closedAt,
-    version: issue.version,
-    blockedBy: blockersOf(issue.number),
-    blocks: blocksOf(issue.number),
-    children: childNumbers(issue.number),
-    links: linksOf(issue.number).map(toLink),
-    comments: commentsOf(issue.number).map(comment => toComment(event, comment)),
-    resolution: resolution === null ? null : toComment(event, resolution),
-    ...(issue.kind === 'effort' ? { name: issue.name, testInstructions: issue.testInstructions } : {}),
-  };
-};
-
-const toRows = (event: H3Event, records: IssueRecord[]) => {
-  const numbers = records.map(issue => issue.number);
-  const labels = labelsByIssue(numbers);
-  const blockers = blockersByIssue(numbers);
-  return records.map(issue => toRow(event, issue, { labels: labels.get(issue.number) ?? [], blockers: blockers.get(issue.number) ?? [] }));
-};
 
 const parentField = (body: JsonObject) => {
   const value = body.parent;
@@ -65,18 +15,7 @@ const parentField = (body: JsonObject) => {
   throw invalid('parent must be an issue number or null', 'parent');
 };
 
-const textField = (body: JsonObject, field: string) => {
-  const value = body[field];
-  if (typeof value !== 'string') throw invalid(`${field} must be a string`, field);
-  return value;
-};
-
-const labelsField = (body: JsonObject) => {
-  const value = body.labels;
-  if (value === undefined) return undefined;
-  if (!Array.isArray(value) || !value.every(label => typeof label === 'string' && label.trim() !== '')) throw invalid('labels must be an array of non-blank strings', 'labels');
-  return value.map(label => label.trim());
-};
+const labelsField = (body: JsonObject) => body.labels === undefined ? undefined : stringArray(body, 'labels', { nonBlank: true }).map(label => label.trim());
 
 const blockedByField = (body: JsonObject) => {
   const value = body.blockedBy;
@@ -88,7 +27,7 @@ const blockedByField = (body: JsonObject) => {
 const fieldsFrom = (body: JsonObject): IssueFields => {
   const fields: IssueFields = {};
   if ('title' in body) fields.title = requireString(body, 'title');
-  if ('body' in body) fields.body = textField(body, 'body');
+  if ('body' in body) fields.body = anyString(body, 'body');
   if ('parent' in body) fields.parent = parentField(body);
   if ('name' in body) fields.name = optionalString(body, 'name');
   if ('testInstructions' in body) fields.testInstructions = optionalString(body, 'testInstructions');
@@ -103,67 +42,67 @@ const expectedVersionFrom = (event: H3Event) => {
   return version;
 };
 
-const issueCreate = async (event: H3Event, principal: Principal) => {
+const issueCreate = async (event: H3Event, caller: Caller) => {
   const body = await readJsonObject(event);
   const kind = requireString(body, 'kind');
   if (!isKind(kind)) throw invalid(`kind must be one of ${KINDS.join(', ')}`, 'kind');
   const fields = fieldsFrom(body);
-  const issue = createIssue({ ...fields, kind, title: requireString(body, 'title'), labels: labelsField(body), blockedBy: blockedByField(body) }, principal);
+  const issue = createIssue({ ...fields, kind, title: requireString(body, 'title'), labels: labelsField(body), blockedBy: blockedByField(body) }, caller);
   setResponseStatus(event, 201);
   return toDocument(event, issue);
 };
 
 const issueRead = (event: H3Event) => toDocument(event, requireIssue(issueNumberParam(event)));
 
-const issueEdit = async (event: H3Event, principal: Principal) => {
+const issueEdit = async (event: H3Event, caller: Caller) => {
   const number = issueNumberParam(event);
   const expectedVersion = expectedVersionFrom(event);
   const fields = fieldsFrom(await readJsonObject(event));
-  return toDocument(event, patchIssue(number, { fields, expectedVersion }, principal));
+  return toDocument(event, patchIssue(number, { fields, expectedVersion }, caller));
 };
 
-const issueRemove = (event: H3Event, principal: Principal) => {
-  deleteIssue(issueNumberParam(event), principal);
+const issueRemove = (event: H3Event, caller: Caller) => {
+  deleteIssue(issueNumberParam(event), caller);
   return sendNoContent(event);
 };
 
-const issueAppend = async (event: H3Event, principal: Principal) => {
+const issueAppend = async (event: H3Event, caller: Caller) => {
   const number = issueNumberParam(event);
   const body = await readJsonObject(event);
   const request = { section: requireString(body, 'section'), text: requireString(body, 'text') };
-  return toDocument(event, appendToIssue(number, request, principal));
+  return toDocument(event, appendToIssue(number, request, caller));
 };
 
-const issueClaim = (event: H3Event, principal: Principal) => toDocument(event, claimIssue(issueNumberParam(event), principal));
+const issueClaim = (event: H3Event, caller: Caller) => toDocument(event, claimIssue(issueNumberParam(event), caller));
 
-const issueUnassign = (event: H3Event, principal: Principal) => toDocument(event, unassignIssue(issueNumberParam(event), principal));
+const issueUnassign = (event: H3Event, caller: Caller) => toDocument(event, unassignIssue(issueNumberParam(event), caller));
 
-const issueClose = async (event: H3Event, principal: Principal) => {
+const issueClose = async (event: H3Event, caller: Caller) => {
   const number = issueNumberParam(event);
   const body = await readJsonObject(event);
   const comment = body.comment === undefined ? null : requireText(body, 'comment');
-  return toDocument(event, closeIssue(number, comment, principal));
+  return toDocument(event, closeIssue(number, comment, caller));
 };
 
-const issueReopen = (event: H3Event, principal: Principal) => toDocument(event, reopenIssue(issueNumberParam(event), principal));
+const issueReopen = (event: H3Event, caller: Caller) => toDocument(event, reopenIssue(issueNumberParam(event), caller));
 
-const labelAdd = (event: H3Event, principal: Principal) => {
-  addLabel(issueNumberParam(event), labelParam(event), principal);
+const labelAdd = (event: H3Event, caller: Caller) => {
+  addLabel(issueNumberParam(event), labelParam(event), caller);
   return sendNoContent(event);
 };
 
-const labelRemove = (event: H3Event, principal: Principal) => {
-  removeLabel(issueNumberParam(event), labelParam(event), principal);
+const labelRemove = (event: H3Event, caller: Caller) => {
+  removeLabel(issueNumberParam(event), labelParam(event), caller);
   return sendNoContent(event);
 };
 
-const blockerAdd = (event: H3Event, principal: Principal) => {
-  addBlocker(issueNumberParam(event), blockerNumberParam(event), principal);
+const blockerAdd = (event: H3Event, caller: Caller) => {
+  addBlocker(issueNumberParam(event), blockerNumberParam(event), caller);
   return sendNoContent(event);
 };
 
-const blockerRemove = (event: H3Event, principal: Principal) => {
-  removeBlocker(issueNumberParam(event), blockerNumberParam(event), principal);
+const blockerRemove = (event: H3Event, caller: Caller) => {
+  removeBlocker(issueNumberParam(event), blockerNumberParam(event), caller);
   return sendNoContent(event);
 };
 
@@ -202,9 +141,9 @@ const missingParam = (query: Query) => queryStrings(query, 'missing').map((group
   return group;
 });
 
-const viewParam = (query: Query, principal: Principal) => {
+const viewParam = (query: Query, caller: Caller) => {
   const view = queryOneOf(query, 'view', ISSUE_VIEWS);
-  if (view === 'mine' && principal.slug === null) throw invalid('view mine needs a Token holder', 'view');
+  if (view === 'mine' && caller.slug === null) throw invalid('view mine needs a Token holder', 'view');
   return view;
 };
 
@@ -220,20 +159,12 @@ const isCursorKeyFor = (sort: string, key: unknown) => {
   return key === null || typeof key === 'number';
 };
 
-const issueCursor = (query: Query, sort: string): IssueCursor | null => {
-  const key = decodeCursor(query);
-  if (key === null) return null;
-  const [cursorSort, sortKey, number] = key;
-  if (cursorSort !== sort || !isCursorKeyFor(sort, sortKey) || typeof number !== 'number') throw invalid('cursor is not valid', 'cursor');
-  return { key: sortKey as IssueCursor['key'], number };
-};
-
 const sortKeyOf = (sort: string) => {
   if (isIssueSort(sort)) return (row: ReturnType<typeof toRow>) => row[sort];
   return (row: ReturnType<typeof toRow>) => soleMemberPositionAmong(sort, row.labels);
 };
 
-const issueList = (event: H3Event, principal: Principal) => {
+const issueList = (event: H3Event, caller: Caller) => {
   const query = getQuery(event);
   const limit = pageLimit(query);
   const sort = sortParam(query);
@@ -248,11 +179,11 @@ const issueList = (event: H3Event, principal: Principal) => {
     labels: labelsParam(query),
     assignee: assigneeParam(query),
     missing: missingParam(query),
-    view: viewParam(query, principal),
-    holder: principal.slug,
+    view: viewParam(query, caller),
+    holder: caller.slug,
     sort,
     order: queryOneOf(query, 'order', SORT_ORDERS) ?? 'asc',
-    after: issueCursor(query, sort),
+    after: sortCursor<IssueCursor['key']>(query, sort, key => isCursorKeyFor(sort, key)),
     limit: limit + 1,
   };
   const rows = toRows(event, listIssues(request));
@@ -262,19 +193,12 @@ const issueList = (event: H3Event, principal: Principal) => {
   return { ...pageOf(rows, limit, row => [sort, keyOf(row), row.number]), effortCounts };
 };
 
-const changeCursor = (query: Query) => {
-  const key = decodeCursor(query);
-  if (key === null) return null;
-  const [at, id] = key;
-  if (typeof at !== 'string' || typeof id !== 'number') throw invalid('cursor is not valid', 'cursor');
-  return { at, id };
-};
-
 const issueChanges = (event: H3Event) => {
   const number = issueNumberParam(event);
   const query = getQuery(event);
   const limit = pageLimit(query);
-  const rows = listChanges(number, { field: queryString(query, 'field'), after: changeCursor(query), limit: limit + 1 });
+  const cursor = tupleCursor<[string, number]>(query, [value => typeof value === 'string', value => typeof value === 'number']);
+  const rows = listChanges(number, { field: queryString(query, 'field'), after: cursor && { at: cursor[0], id: cursor[1] }, limit: limit + 1 });
   return pageOf(rows, limit, change => [change.at, change.id]);
 };
 
@@ -296,84 +220,7 @@ export const issueHandlers = {
   blockerRemove,
 };
 
-const nullable = (type: string) => ({ type: [type, 'null'] });
-const stringList = { type: 'array', items: { type: 'string' } };
 const numberList = { type: 'array', items: { type: 'integer' } };
-const issueRef = (properties: Record<string, unknown>) => ({ type: 'object', properties: { number: { type: 'integer' }, ...properties }, required: ['number', ...Object.keys(properties)] });
-const BLOCKER_LIST = { type: 'array', items: issueRef({ open: { type: 'boolean' } }), description: 'Blockers by number; open means the blocker still blocks' };
-
-const ROW_PROPERTIES = {
-  number: { type: 'integer' },
-  kind: { type: 'string', enum: KINDS },
-  title: { type: 'string' },
-  state: { type: 'string', enum: ['open', 'closed'] },
-  status: { type: 'string', enum: ['open', 'claimed', 'blocked', 'closed'] },
-  assignee: nullable('string'),
-  parent: nullable('integer'),
-  effort: nullable('integer'),
-  labels: stringList,
-  blockedBy: BLOCKER_LIST,
-  createdAt: { type: 'string', format: 'date-time' },
-  updatedAt: { type: 'string', format: 'date-time' },
-  url: { type: 'string', format: 'uri' },
-};
-
-export const ROW_SCHEMA = { type: 'object', properties: ROW_PROPERTIES, required: Object.keys(ROW_PROPERTIES) };
-
-const DOCUMENT_PROPERTIES = {
-  ...ROW_PROPERTIES,
-  body: { type: 'string' },
-  createdBy: { type: 'string' },
-  origin: { type: 'string', enum: ['ui', 'api'] },
-  closedAt: nullable('string'),
-  version: { type: 'integer' },
-  blockedBy: { ...BLOCKER_LIST, items: issueRef({ title: { type: 'string' }, open: { type: 'boolean' } }) },
-  blocks: { type: 'array', items: issueRef({ title: { type: 'string' } }), description: 'The issues this one blocks' },
-  children: { type: 'array', items: { type: 'integer' } },
-  links: { type: 'array', items: LINK_SCHEMA },
-  comments: { type: 'array', items: COMMENT_SCHEMA },
-  resolution: { oneOf: [COMMENT_SCHEMA, { type: 'null' }] },
-  name: { ...nullable('string'), description: 'Effort only' },
-  testInstructions: { ...nullable('string'), description: 'Effort only' },
-};
-
-export const DOCUMENT_SCHEMA = {
-  type: 'object',
-  properties: DOCUMENT_PROPERTIES,
-  required: Object.keys(DOCUMENT_PROPERTIES).filter(key => key !== 'name' && key !== 'testInstructions'),
-};
-
-const CHANGE_PROPERTIES = {
-  id: { type: 'integer' },
-  issue: { type: 'integer' },
-  actor: { type: 'string' },
-  origin: { type: 'string', enum: ['ui', 'api'] },
-  at: { type: 'string', format: 'date-time' },
-  field: { type: 'string' },
-  before: nullable('string'),
-  after: nullable('string'),
-};
-
-export const CHANGE_SCHEMA = { type: 'object', properties: CHANGE_PROPERTIES, required: Object.keys(CHANGE_PROPERTIES) };
-
-export const pageSchema = (item: Record<string, unknown>) => ({
-  type: 'object',
-  properties: { items: { type: 'array', items: item }, nextCursor: nullable('string') },
-  required: ['items', 'nextCursor'],
-});
-
-const EFFORT_COUNT_SCHEMA = { type: 'object', properties: { effort: nullable('integer'), count: { type: 'integer' } }, required: ['effort', 'count'] };
-
-const ROW_PAGE_SCHEMA = pageSchema(ROW_SCHEMA);
-
-export const ISSUE_PAGE_SCHEMA = {
-  ...ROW_PAGE_SCHEMA,
-  properties: {
-    ...ROW_PAGE_SCHEMA.properties,
-    effortCounts: { type: 'array', items: EFFORT_COUNT_SCHEMA, description: 'Per Effort, how many issues match the filters across every page; an Effort counts toward itself, null collects issues outside any Effort; ordered by Effort number, null first' },
-  },
-  required: [...ROW_PAGE_SCHEMA.required, 'effortCounts'],
-};
 
 export const ISSUE_FIELDS_SCHEMA = {
   title: { type: 'string' },
@@ -388,10 +235,6 @@ export const ISSUE_CREATE_SCHEMA = {
   labels: { ...stringList, description: 'Applied in order; a label group member removes its siblings' },
   blockedBy: { ...numberList, description: 'Blocker issue numbers; every one must exist' },
 };
-
-export const ISSUE_NUMBER_PARAM = { name: 'number', in: 'path' as const, required: true, schema: { type: 'integer' } };
-export const BLOCKER_NUMBER_PARAM = { name: 'blocker', in: 'path' as const, required: true, schema: { type: 'integer' } };
-export const LABEL_PARAM = { name: 'label', in: 'path' as const, required: true, schema: { type: 'string' }, description: 'URL-encoded, trimmed, non-blank' };
 
 const queryParam = (name: string, schema: Record<string, unknown>, description: string) => ({ name, in: 'query' as const, schema, description });
 
@@ -408,9 +251,4 @@ export const ISSUE_LIST_PARAMS = [
   queryParam('view', { type: 'string', enum: ISSUE_VIEWS }, 'A Saved view; explicit filters narrow within it. frontier: open, unassigned, no open blocker, Parent is a map. mine: open and held by the caller, refused without a Token holder. needs-triage: open and labelled needs-triage. blocked: open with an open blocker. closed-recent: closed in the last 7 days'),
   queryParam('sort', { type: 'string', default: 'number' }, `One of ${ISSUE_SORTS.join(', ')}, or a Label group id to order by its member order with issues carrying no member last in either order; number breaks ties`),
   queryParam('order', { type: 'string', enum: SORT_ORDERS, default: 'asc' }, 'The sort direction'),
-];
-
-export const PAGING_PARAMS = [
-  { name: 'limit', in: 'query' as const, schema: { type: 'integer', minimum: 1, maximum: 200, default: 50 } },
-  { name: 'cursor', in: 'query' as const, schema: { type: 'string' }, description: 'The nextCursor of the previous page' },
 ];

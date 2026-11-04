@@ -1,4 +1,4 @@
-import type { IssueKind } from '~/types/api';
+import type { Kind } from '~/types/api';
 import { effortPath, HOME_PATH, issuePath, ISSUES_PATH } from './paths';
 import type { EffortRef } from './paths';
 import { formatString } from './strings';
@@ -18,9 +18,9 @@ export interface CrumbLabels {
 
 interface IssueCrumbTarget {
   page: 'issue'
-  issue: { number: number, kind: IssueKind }
+  issue: { number: number, kind: Kind }
   effort: EffortRef | null
-  parent: { number: number, kind: IssueKind, title: string } | null
+  parent: { number: number, kind: Kind, title: string } | null
 }
 
 export type CrumbTarget = { page: 'efforts' } | { page: 'dashboard', effort: EffortRef } | IssueCrumbTarget;

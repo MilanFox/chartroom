@@ -70,7 +70,7 @@
     "caption": "{efforts}, sortable by the column header buttons",
     "columns": {
       "number": "#",
-      "name": "Name",
+      "name": "Title",
       "state": "State",
       "tags": "Tags",
       "rollup": "Roll-up",
@@ -287,7 +287,7 @@
     },
     "graph": {
       "heading": "Dependency graph",
-      "progress": "{closed} of {total} closed · {mark} {frontier} · claimed {claimed} · blocked {blocked}",
+      "progress": "{closed} of {total} closed · {mark} {takeable} · claimed {claimed} · blocked {blocked}",
       "marks": {
         "map": "frontier",
         "spec": "takeable"
@@ -513,7 +513,7 @@
       "pointer": "{label}: {account}",
       "anyEnvironment": "Any Environment",
       "hidden": "Credential pointers are visible to Token holders and elevated sessions.",
-      "noPointers": "No credential pointers."
+      "noPointers": "No Credential pointers."
     },
     "drawer": {
       "label": "#{number} {title}",
@@ -552,7 +552,7 @@
       "optional": "Optional: {projectLink}, {effortLink} and {environmentsLink} — change them any time.",
       "optionalLinks": {
         "projectLink": "project name",
-        "effortLink": "Effort word",
+        "effortLink": "Effort Display label",
         "environmentsLink": "Environments"
       },
       "done": "done",
@@ -561,11 +561,11 @@
     "settings": {
       "intro": "What this instance calls things. Ids stay fixed for the API and CLI.",
       "projectName": "Project name",
-      "effortSingular": "Effort word, singular",
+      "effortSingular": "Effort Display label, singular",
       "effortPlural": "Plural",
       "pluralHint": "Blank: the singular plus s",
       "effortHint": "An Effort is what Matt Pocock's skills call one unit of work (a map, its specs and their tickets); we kept his name, but you can change it to whatever your team says.",
-      "triageHeading": "Triage display labels",
+      "triageHeading": "Triage Display labels",
       "save": "Save settings",
       "saving": "Saving…",
       "saved": "Settings saved.",
@@ -576,16 +576,16 @@
       "empty": "No Environments yet.",
       "anyEnvironment": "Any Environment",
       "pointersHidden": "Credential pointers need a Token holder session or admin elevation.",
-      "noPointers": "No credential pointers.",
+      "noPointers": "No Credential pointers.",
       "pointers": "Credential pointers of {name}",
       "pointerEnvironment": "Environment of {label}",
       "edit": "Edit",
       "delete": "Delete",
       "keep": "Keep",
-      "confirmDelete": "Delete {name}? Its credential pointers become unbound and move to Any Environment.",
+      "confirmDelete": "Delete {name}? Its Credential pointers become unbound and move to Any Environment.",
       "confirmDeletePointer": "Delete the pointer {label}?",
       "add": "Add Environment",
-      "addPointer": "Add credential pointer",
+      "addPointer": "Add Credential pointer",
       "name": "Name",
       "url": "URL",
       "notes": "Notes (optional)",
@@ -638,14 +638,14 @@
       }
     },
     "labels": {
-      "intro": "Label groups are exclusive: an issue carries at most one member of each. Ids are fixed; display names are yours.",
+      "intro": "Label groups are exclusive: an issue carries at most one member of each. Ids are fixed; Display labels are yours.",
       "seededHeading": "Seeded groups",
       "seeded": "seeded",
-      "seededHint": "Built in and locked. The triage display labels are edited under Settings.",
+      "seededHint": "Built in and locked. The triage Display labels are edited under Settings.",
       "adminHeading": "Your groups",
       "noGroups": "No groups of your own yet.",
       "members": "Members of {group}",
-      "groupName": "Display name",
+      "groupName": "Display label",
       "memberLabel": "Display label of",
       "moveUp": "Move {label} up",
       "moveDown": "Move {label} down",
@@ -668,7 +668,7 @@
       "newGroup": "New group",
       "groupId": "Group id",
       "idHint": "Lowercase letters, digits and hyphens; fixed once created.",
-      "displayNameOptional": "Display name (optional)",
+      "displayNameOptional": "Display label (optional)",
       "firstMember": "First member id (optional)",
       "create": "Create group",
       "creating": "Creating…",
@@ -689,8 +689,8 @@
       "hidden": "Snapshots need admin elevation.",
       "empty": "No Snapshots yet.",
       "caption": "Snapshots",
-      "kind": "Type",
-      "kinds": {
+      "trigger": "Trigger",
+      "triggers": {
         "manual": "Manual",
         "pre-migrate": "Before upgrade"
       },

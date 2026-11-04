@@ -52,13 +52,12 @@
 <script setup lang="ts">
 import type { LinkDraft } from '~/stores/issues';
 import type { LinkFormProps } from './LinkForm.types';
+import { LINK_ROLES, LINK_TYPES } from '#shared/domain';
 
 const props = withDefaults(defineProps<LinkFormProps>(), { initial: undefined, withUrl: true, cancellable: false, error: null });
 
 const emit = defineEmits<{ submit: [draft: LinkDraft], cancel: [] }>();
 
-const LINK_ROLES = ['resource', 'artifact'] as const;
-const LINK_TYPES = ['branch', 'file', 'preview', 'doc', 'external'] as const;
 const BLANK_LINK: LinkDraft = { role: 'resource', type: 'branch', url: '', title: '' };
 
 const { strings } = useStrings();

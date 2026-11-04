@@ -54,17 +54,11 @@
 
     <p class="effort-header__error" aria-live="polite">{{ action.error }}</p>
 
-    <TextEditor
+    <VersionedTextEditor
       v-if="titleEditor.editing"
-      v-model="titleEditor.draft"
+      :editor="titleEditor"
       class="effort-header__editor"
       :label="strings.dashboard.header.titleLabel"
-      :saving="titleEditor.saving"
-      :failed="titleEditor.failed"
-      :conflict="titleEditor.conflict"
-      @save="titleEditor.save"
-      @cancel="titleEditor.cancel"
-      @reload="titleEditor.reload"
     />
 
     <div class="effort-header__meta">
@@ -86,18 +80,12 @@
       <span class="effort-header__created">{{ format(strings.dashboard.header.createdBy, { holder: effort.createdBy }) }}</span>
     </div>
 
-    <TextEditor
+    <VersionedTextEditor
       v-if="slugEditor.editing"
-      v-model="slugEditor.draft"
+      :editor="slugEditor"
       class="effort-header__editor effort-header__editor--slug"
       :label="strings.dashboard.header.slugLabel"
-      :saving="slugEditor.saving"
-      :failed="slugEditor.failed"
       :failed-message="slugFailure"
-      :conflict="slugEditor.conflict"
-      @save="slugEditor.save"
-      @cancel="slugEditor.cancel"
-      @reload="slugEditor.reload"
     />
   </header>
 </template>
@@ -110,11 +98,11 @@ const props = defineProps<EffortHeaderProps>();
 const session = useSessionStore();
 const issuesStore = useIssuesStore();
 const { strings, format } = useStrings();
-const titleEditor = reactive(useVersionedEditor(() => props.effort, 'title'));
-const slugEditor = reactive(useVersionedEditor(() => props.effort, 'name'));
-const action = reactive(useIssueAction());
 const titleButton = useTemplateRef<HTMLButtonElement>('titleButton');
 const slugButton = useTemplateRef<HTMLButtonElement>('slugButton');
+const titleEditor = reactive(useVersionedEditor(() => props.effort, 'title', titleButton));
+const slugEditor = reactive(useVersionedEditor(() => props.effort, 'name', slugButton));
+const action = reactive(useAction());
 const closeButton = useTemplateRef<HTMLButtonElement>('closeButton');
 const closeAnywayButton = useTemplateRef<HTMLButtonElement>('closeAnywayButton');
 const warning = ref(false);
@@ -123,17 +111,8 @@ const slugFailure = computed(() => {
   const messages = strings.value.efforts.new.errors;
   const { failure } = slugEditor;
   if (apiErrorField(failure) !== 'name') return undefined;
-  return apiErrorCode(failure) === 'conflict' ? messages.slugTaken : messages.slugShape;
+  return slugErrorOf(failure, { taken: messages.slugTaken, shape: messages.slugShape });
 });
-
-const refocusAfter = (editing: () => boolean, button: () => HTMLButtonElement | null) => watch(editing, async (isEditing) => {
-  if (isEditing) return;
-  await nextTick();
-  button()?.focus();
-});
-
-refocusAfter(() => titleEditor.editing, () => titleButton.value);
-refocusAfter(() => slugEditor.editing, () => slugButton.value);
 
 const failed = () => strings.value.issue.fields.failed;
 

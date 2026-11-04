@@ -160,10 +160,10 @@ describe('issue core', () => {
     const staleAgain = await api.json('PATCH', `/issues/${bug.number}`, { body: { title: 'Four' }, headers: { 'if-match': '2' } });
     const lastWriteWins = await api.json('PATCH', `/issues/${bug.number}`, { body: { title: 'Four' } });
 
-    expect(stale).toMatchObject({ status: 409, body: { error: { code: 'conflict', field: 'version', message: `issue #${bug.number} is at version 1, last written by agent at ${bug.createdAt}` } } });
+    expect(stale).toMatchObject({ status: 409, body: { error: { code: 'conflict', field: 'version', message: `issue #${bug.number} is at version 1, last written by agent at ${bug.createdAt}`, details: { version: 1, lastWrittenBy: 'agent', lastWrittenAt: bug.createdAt } } } });
     expect(fresh.body).toMatchObject({ title: 'Two', version: 2 });
     expect(byHuman.body).toMatchObject({ title: 'Three', version: 3 });
-    expect(staleAgain).toMatchObject({ status: 409, body: { error: { code: 'conflict', field: 'version', message: expect.stringMatching(/^issue #\d+ is at version 3, last written by human at \d{4}-/) } } });
+    expect(staleAgain).toMatchObject({ status: 409, body: { error: { code: 'conflict', field: 'version', message: expect.stringMatching(/^issue #\d+ is at version 3, last written by human at \d{4}-/), details: { version: 3, lastWrittenBy: 'human' } } } });
     expect(lastWriteWins.body).toMatchObject({ title: 'Four', version: 4 });
     expect(await api.json('PATCH', `/issues/${bug.number}`, { body: { title: 'Five' }, headers: { 'if-match': 'abc' } })).toMatchObject(invalidOn('version'));
     const weak = await api.request('PATCH', `/issues/${bug.number}`, { body: { title: 'Five' }, headers: { 'if-match': 'W/"4"' } });

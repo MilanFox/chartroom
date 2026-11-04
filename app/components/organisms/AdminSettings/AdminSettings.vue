@@ -3,60 +3,34 @@
     <form class="admin-settings" novalidate @submit.prevent="save">
       <div class="admin-settings__grid">
         <div class="admin-settings__names">
-          <div v-for="field in nameFields" :key="field.key" class="admin-settings__field">
-            <label :for="`${formId}-${field.key}`" class="admin-settings__label">{{ field.label }}<Icon v-if="locked" name="lock" :size="12" class="admin-settings__lock" /></label>
-
-            <input
-              :id="`${formId}-${field.key}`"
-              v-model="draft[field.key]"
-              :name="field.key"
-              class="admin-settings__input"
-              autocomplete="off"
-              :readonly="locked"
-              :aria-disabled="locked ? 'true' : undefined"
-              :aria-invalid="Boolean(errors[field.error])"
-              :aria-describedby="`${field.hint ? `${formId}-${field.key}-hint ` : ''}${formId}-${field.key}-error`"
-              v-on="lockedControl(field.key)"
-              @input="errors[field.error] = ''"
-            />
-
-            <p v-if="field.hint" :id="`${formId}-${field.key}-hint`" class="admin-settings__hint">{{ field.hint }}</p>
-
-            <p :id="`${formId}-${field.key}-error`" role="status" class="admin-settings__error">{{ errors[field.error] }}</p>
-
-            <ElevationPrompt v-if="prompting === field.key" @elevated="close" @cancel="close" />
-          </div>
+          <LockedField
+            v-for="field in nameFields"
+            :key="field.key"
+            v-model="draft[field.key]"
+            :name="field.key"
+            :label="field.label"
+            :hint="field.hint"
+            :error="errors[field.error]"
+            @input="errors[field.error] = ''"
+          />
         </div>
 
         <FieldRow :heading="strings.admin.settings.triageHeading" class="admin-settings__triage">
-          <div v-for="id in triageIds" :key="id" class="admin-settings__triage-row">
-            <label :for="`${formId}-triage-${id}`" class="admin-settings__triage-id">{{ id }}<Icon v-if="locked" name="lock" :size="12" class="admin-settings__lock" /></label>
-
-            <div class="admin-settings__field">
-              <input
-                :id="`${formId}-triage-${id}`"
-                v-model="draft.triageLabels[id]"
-                :name="`triage-${id}`"
-                class="admin-settings__input"
-                autocomplete="off"
-                :readonly="locked"
-                :aria-disabled="locked ? 'true' : undefined"
-                :aria-invalid="Boolean(errors[`triageLabels.${id}`])"
-                :aria-describedby="`${formId}-triage-${id}-error`"
-                v-on="lockedControl(`triage-${id}`)"
-                @input="errors[`triageLabels.${id}`] = ''"
-              />
-
-              <p :id="`${formId}-triage-${id}-error`" role="status" class="admin-settings__error">{{ errors[`triageLabels.${id}`] }}</p>
-
-              <ElevationPrompt v-if="prompting === `triage-${id}`" @elevated="close" @cancel="close" />
-            </div>
-          </div>
+          <LockedField
+            v-for="id in triageIds"
+            :key="id"
+            v-model="draft.triageLabels[id]"
+            :name="`triage-${id}`"
+            :label="id"
+            :error="errors[`triageLabels.${id}`]"
+            inline
+            @input="errors[`triageLabels.${id}`] = ''"
+          />
         </FieldRow>
       </div>
 
       <div class="admin-settings__actions">
-        <AdminAction :label="saving ? strings.admin.settings.saving : strings.admin.settings.save" type="submit" variant="primary" />
+        <AdminAction :label="action.busy ? strings.admin.settings.saving : strings.admin.settings.save" type="submit" variant="primary" />
 
         <p role="status" class="admin-settings__status" :class="{ 'admin-settings__status--failed': failed }">{{ status }}</p>
       </div>
@@ -68,14 +42,13 @@
 const instanceStore = useInstanceStore();
 const admin = useAdminStore();
 const { strings } = useStrings();
-const formId = useId();
 const draft = reactive({ projectName: '', singular: '', plural: '', triageLabels: {} as Record<string, string> });
 const errors = ref<Record<string, string>>({});
 const status = ref('');
 const failed = ref(false);
-const saving = ref(false);
+const action = reactive(useAction());
 
-const { locked, prompting, close, lockedControl } = useElevationGate();
+const { locked } = useElevationGate();
 
 const triageIds = computed(() => Object.keys(instanceStore.instance?.triageLabels ?? {}));
 
@@ -97,32 +70,24 @@ watch(() => instanceStore.instance, (instance) => {
 }, { immediate: true });
 
 const showFailure = (failure: unknown) => {
-  const field = apiErrorField(failure);
+  const fieldError = apiErrorCode(failure) === 'invalid' ? fieldErrorOf(failure, [...nameFields.value.map(field => field.error), ...triageIds.value.map(id => `triageLabels.${id}`)]) : null;
   failed.value = true;
-  if (apiErrorCode(failure) === 'invalid' && field) errors.value = { [field]: apiErrorMessage(failure) };
+  if (fieldError) errors.value = { [fieldError.field]: fieldError.message };
   else status.value = strings.value.admin.settings.failed;
+  return '';
 };
 
 const save = async () => {
-  if (locked.value || saving.value) return;
-  saving.value = true;
+  if (locked.value || action.busy) return;
   errors.value = {};
   status.value = '';
   failed.value = false;
-  try {
-    await admin.saveSettings({
-      projectName: draft.projectName.trim(),
-      effortName: { singular: draft.singular.trim(), plural: draft.plural.trim() || null },
-      triageLabels: Object.fromEntries(Object.entries(draft.triageLabels).map(([id, label]) => [id, label.trim()])),
-    });
-    status.value = strings.value.admin.settings.saved;
-  }
-  catch (failure) {
-    showFailure(failure);
-  }
-  finally {
-    saving.value = false;
-  }
+  const saved = await action.run(() => admin.saveSettings({
+    projectName: draft.projectName.trim(),
+    effortName: { singular: draft.singular.trim(), plural: draft.plural.trim() || null },
+    triageLabels: Object.fromEntries(Object.entries(draft.triageLabels).map(([id, label]) => [id, label.trim()])),
+  }), showFailure);
+  if (saved) status.value = strings.value.admin.settings.saved;
 };
 </script>
 
@@ -138,68 +103,16 @@ const save = async () => {
     }
   }
 
-  &__field {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-  }
-
-  &__names &__field + &__field {
+  &__names > * + * {
     margin-top: $space-2;
   }
 
-  &__label {
-    margin-bottom: $space-1;
-    color: var(--color-muted);
-    font-size: $font-size-meta;
-  }
-
-  &__input {
-    @include text-field;
-
-    &:read-only {
-      border-color: var(--color-rule);
-      background: var(--color-surface-alt);
-      color: var(--color-muted);
-    }
-  }
-
-  &__lock {
-    margin-left: $space-1;
-  }
-
-  &__hint {
-    margin: $space-1 0 0;
-    color: var(--color-muted);
-    font-size: $font-size-meta;
-  }
-
-  &__error {
-    @include error-line;
-    margin: $space-1 0 0;
-    font-size: $font-size-meta;
+  &__triage :deep(.locked-field + .locked-field) {
+    margin-top: $space-1;
   }
 
   &__triage {
     padding-top: 0;
-  }
-
-  &__triage-row {
-    display: grid;
-    grid-template-columns: minmax(0, 9rem) minmax(0, 1fr);
-    align-items: baseline;
-    gap: $space-3;
-
-    & + & {
-      margin-top: $space-1;
-    }
-  }
-
-  &__triage-id {
-    color: var(--color-muted);
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: $font-size-meta;
-    overflow-wrap: anywhere;
   }
 
   &__actions {

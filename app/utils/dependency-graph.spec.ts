@@ -114,6 +114,6 @@ describe('graphProgress', () => {
   it('counts closed, claimed and blocked children and marks open unclaimed unblocked ones as the Frontier', () => {
     const progress = graphProgress([row(1, 'closed'), row(2, 'closed'), row(3, 'claimed', 'milan'), row(4, 'blocked'), row(5, 'open'), row(6, 'open')]);
 
-    expect(progress).toEqual({ total: 6, closed: 2, claimed: 1, blocked: 1, open: 2, frontier: [5, 6] });
+    expect(progress).toEqual({ total: 6, closed: 2, claimed: 1, blocked: 1, open: 2, takeable: [5, 6] });
   });
 });

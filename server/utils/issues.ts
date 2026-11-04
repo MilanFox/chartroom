@@ -5,32 +5,25 @@ import type { SQLiteColumn } from 'drizzle-orm/sqlite-core';
 import { changes, issues } from '../db/schema';
 import type { BlockerRef } from './blockers';
 import type { FieldWrite, LoggedValue } from './changes';
-import type { Principal } from './principal';
+import { conflict, invalid, notFound } from './errors';
+import { blockedCondition, mapFrontierCondition } from './frontier';
+import type { Caller } from './caller';
 import type { Store } from './store';
+import type { IssueState, IssueStatus, IssueView, Kind } from '#shared/domain';
+import { EFFORT_ONLY_FIELDS, ISSUE_STATES, ISSUE_VIEWS, KINDS, LOGGED_FIELDS, PARENT_RULES, UNASSIGNED } from '#shared/domain';
 
-export type Kind = 'effort' | 'map' | 'spec' | 'ticket';
+export type { IssueState, IssueStatus, IssueView, Kind };
+export { ISSUE_STATES, ISSUE_VIEWS, KINDS, PARENT_RULES, UNASSIGNED };
+
 export type IssueRecord = typeof issues.$inferSelect;
 export type ChangeRecord = typeof changes.$inferSelect;
 
-export const KINDS: Kind[] = ['effort', 'map', 'spec', 'ticket'];
-export const ISSUE_STATES: IssueState[] = ['open', 'closed'];
 export const ISSUE_SORTS: IssueSort[] = ['number', 'createdAt', 'updatedAt', 'title', 'state'];
 export const SORT_ORDERS: SortOrder[] = ['asc', 'desc'];
-export const UNASSIGNED = 'none';
-export const ISSUE_VIEWS: IssueView[] = ['frontier', 'mine', 'needs-triage', 'blocked', 'closed-recent'];
-
-export const PARENT_RULES: Record<Kind, Kind[]> = {
-  effort: [],
-  map: ['effort'],
-  spec: ['effort'],
-  ticket: ['map', 'spec', 'effort'],
-};
 
 const PARENT_REQUIRED = new Set<Kind>(['map', 'spec']);
-const EFFORT_ONLY_FIELDS = ['name', 'testInstructions'] as const;
 export const LOWERCASE_SLUG_SHAPE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const RECENTLY_CLOSED_SECONDS = 7 * 24 * 60 * 60;
-const LOGGED_FIELDS = ['title', 'body', 'parent', 'name', 'testInstructions'] as const;
 
 export interface IssueFields {
   title?: string
@@ -63,11 +56,8 @@ export interface ChangeQuery {
   limit: number
 }
 
-export type IssueState = 'open' | 'closed';
-export type IssueStatus = 'open' | 'claimed' | 'blocked' | 'closed';
 export type IssueSort = 'number' | 'createdAt' | 'updatedAt' | 'title' | 'state';
 export type SortOrder = 'asc' | 'desc';
-export type IssueView = 'frontier' | 'mine' | 'needs-triage' | 'blocked' | 'closed-recent';
 
 export interface IssueCursor {
   key: string | number | null
@@ -122,11 +112,7 @@ export const childrenOf = (parent: number): IssueRecord[] =>
 
 export const childNumbers = (number: number) => childrenOf(number).map(child => child.number);
 
-export const effortNumberOf = (issue: IssueRecord): number | null => {
-  let ancestor = issue.parent === null ? null : findIssue(issue.parent);
-  while (ancestor && ancestor.kind !== 'effort') ancestor = ancestor.parent === null ? null : findIssue(ancestor.parent);
-  return ancestor?.number ?? null;
-};
+export const effortNumberOf = (issue: IssueRecord): number | null => effortsByIssue([issue.number]).get(issue.number) ?? null;
 
 export const subtreeNumbers = (root: number) => {
   const numbers = [root];
@@ -138,12 +124,12 @@ export const subtreeNumbers = (root: number) => {
   return numbers;
 };
 
-export const findByHandle = (handle: string): IssueRecord | null =>
-  /^\d+$/.test(handle) ? findIssue(Number(handle)) : useStore().select().from(issues).where(eq(issues.name, handle)).get() ?? null;
+export const findBySlugOrNumber = (slugOrNumber: string): IssueRecord | null =>
+  /^\d+$/.test(slugOrNumber) ? findIssue(Number(slugOrNumber)) : useStore().select().from(issues).where(eq(issues.name, slugOrNumber)).get() ?? null;
 
-export const requireEffort = (reference: string): IssueRecord => {
-  const effort = findByHandle(reference);
-  if (!effort || effort.kind !== 'effort') throw invalid(`effort ${reference} does not exist`, 'effort');
+export const requireEffort = (slugOrNumber: string): IssueRecord => {
+  const effort = findBySlugOrNumber(slugOrNumber);
+  if (!effort || effort.kind !== 'effort') throw invalid(`effort ${slugOrNumber} does not exist`, 'effort');
   return effort;
 };
 
@@ -221,11 +207,18 @@ const parentIssues = alias(issues, 'parent_issues');
 const grandparentIssues = alias(issues, 'grandparent_issues');
 
 // Parent rules cap the chain at ticket → map or spec → Effort, so two joins always reach the Effort.
-const effortOfIssue = sql<number | null>`case
-  when ${issues.kind} = 'effort' then ${issues.number}
+const effortAboveIssue = sql<number | null>`case
   when ${parentIssues.kind} = 'effort' then ${parentIssues.number}
   when ${grandparentIssues.kind} = 'effort' then ${grandparentIssues.number}
 end`;
+
+const effortOfIssue = sql<number | null>`case when ${issues.kind} = 'effort' then ${issues.number} else ${effortAboveIssue} end`;
+
+export const effortsByIssue = (numbers: number[]) =>
+  new Map(useStore().select({ number: issues.number, effort: effortAboveIssue }).from(issues)
+    .leftJoin(parentIssues, eq(parentIssues.number, issues.parent))
+    .leftJoin(grandparentIssues, eq(grandparentIssues.number, parentIssues.parent))
+    .where(inArray(issues.number, numbers)).all().map(row => [row.number, row.effort]));
 
 export const countIssuesByEffort = (query: IssueQuery) =>
   useStore().select({ effort: effortOfIssue, count: count() }).from(issues)
@@ -240,7 +233,7 @@ const assertSingleMap = (effort: number, self: number | null) => {
   if (existing && existing.number !== self) throw conflict(`Effort #${effort} already has map #${existing.number}`, 'parent');
 };
 
-const assertParentAllowed = (kind: Kind, parent: number | null, self: number | null) => {
+export const assertParentAllowed = (kind: Kind, parent: number | null, self: number | null) => {
   if (kind === 'effort' && parent !== null) throw invalid('an Effort takes no parent', 'parent');
   if (parent === null) {
     if (PARENT_REQUIRED.has(kind)) throw invalid(`a ${kind} needs an Effort as parent`, 'parent');
@@ -267,16 +260,16 @@ const assertNameFree = (name: string | null | undefined, self: number | null) =>
 
 const describeLastWrite = (issue: IssueRecord) => {
   const last = useStore().select().from(changes).where(eq(changes.issue, issue.number)).orderBy(desc(changes.id)).get();
-  return last ? `${last.actor} at ${last.at}` : `${issue.createdBy} at ${issue.createdAt}`;
+  return last ? { lastWrittenBy: last.actor, lastWrittenAt: last.at } : { lastWrittenBy: issue.createdBy, lastWrittenAt: issue.createdAt };
 };
 
-export const createIssue = (input: NewIssue, principal: Principal) => {
+export const createIssue = (input: NewIssue, caller: Caller) => {
   const parent = input.parent ?? null;
   assertEffortOnlyFields(input.kind, input);
   assertParentAllowed(input.kind, parent, null);
   assertNameFree(input.name, null);
   requireBlockers(input.blockedBy ?? []);
-  const { actor, origin, at } = stampFor(principal);
+  const { actor, origin, at } = stampFor(caller);
   const number = useStore().transaction((tx) => {
     const created = tx.insert(issues).values({
       kind: input.kind,
@@ -302,10 +295,11 @@ const pendingWrites = (issue: IssueRecord, fields: IssueFields): FieldWrite[] =>
     .filter(field => fields[field] !== undefined && fields[field] !== issue[field])
     .map(field => ({ field, before: issue[field], after: fields[field] as LoggedValue }));
 
-export const patchIssue = (number: number, { fields, expectedVersion }: PatchRequest, principal: Principal) => {
+export const patchIssue = (number: number, { fields, expectedVersion }: PatchRequest, caller: Caller) => {
   const issue = requireIssue(number);
   if (isSet(expectedVersion) && expectedVersion !== issue.version) {
-    throw conflict(`issue #${number} is at version ${issue.version}, last written by ${describeLastWrite(issue)}`, 'version');
+    const { lastWrittenBy, lastWrittenAt } = describeLastWrite(issue);
+    throw conflict(`issue #${number} is at version ${issue.version}, last written by ${lastWrittenBy} at ${lastWrittenAt}`, 'version', { version: issue.version, lastWrittenBy, lastWrittenAt });
   }
   const kind = issue.kind as Kind;
   assertEffortOnlyFields(kind, fields);
@@ -313,7 +307,7 @@ export const patchIssue = (number: number, { fields, expectedVersion }: PatchReq
   if (fields.name !== undefined) assertNameFree(fields.name, number);
   const writes = pendingWrites(issue, fields);
   if (writes.length === 0) return issue;
-  const stamp = stampFor(principal);
+  const stamp = stampFor(caller);
   useStore().transaction((tx) => {
     const values = Object.fromEntries(writes.map(write => [write.field, write.after]));
     tx.update(issues).set({ ...values, updatedAt: stamp.at, version: issue.version + 1 }).where(eq(issues.number, number)).run();
@@ -322,99 +316,65 @@ export const patchIssue = (number: number, { fields, expectedVersion }: PatchReq
   return requireIssue(number);
 };
 
-const writeField = (number: number, write: FieldWrite, principal: Principal) => {
-  const stamp = stampFor(principal);
-  useStore().transaction((tx) => {
-    tx.update(issues).set({ [write.field]: write.after, updatedAt: stamp.at }).where(eq(issues.number, number)).run();
-    logChanges(tx, { ...stamp, issue: number }, [write]);
+const writeField = (number: number, write: FieldWrite, caller: Caller) => {
+  recordIssueWrite(number, caller, (tx) => {
+    tx.update(issues).set({ [write.field]: write.after }).where(eq(issues.number, number)).run();
+    return [write];
   });
   return requireIssue(number);
 };
 
-export const claimIssue = (number: number, principal: Principal) => {
+export const claimIssue = (number: number, caller: Caller) => {
   const issue = requireIssue(number);
-  const actor = actorSlug(principal);
+  const actor = actorSlug(caller);
   if (issue.state === 'closed') throw invalid(`issue #${number} is closed`, 'state');
   if (issue.assignee === actor) return issue;
-  if (issue.assignee !== null) throw conflict(`issue #${number} is held by ${issue.assignee}`, 'assignee');
-  return writeField(number, { field: 'assignee', before: null, after: actor }, principal);
+  if (issue.assignee !== null) throw conflict(`issue #${number} is held by ${issue.assignee}`, 'assignee', { assignee: issue.assignee });
+  return writeField(number, { field: 'assignee', before: null, after: actor }, caller);
 };
 
-export const unassignIssue = (number: number, principal: Principal) => {
+export const unassignIssue = (number: number, caller: Caller) => {
   const issue = requireIssue(number);
   if (issue.assignee === null) return issue;
-  return writeField(number, { field: 'assignee', before: issue.assignee, after: null }, principal);
+  return writeField(number, { field: 'assignee', before: issue.assignee, after: null }, caller);
 };
 
-export const closeIssue = (number: number, comment: string | null, principal: Principal) =>
-  useStore().transaction((tx) => {
-    const issue = requireIssue(number);
-    if (issue.state === 'closed') throw invalid(`issue #${number} is already closed`, 'state');
-    const stamp = stampFor(principal);
-    if (comment !== null) insertComment(tx, { issue: number, body: comment, at: stamp.at, resolution: true }, principal);
-    tx.update(issues).set({ state: 'closed', closedAt: stamp.at, updatedAt: stamp.at }).where(eq(issues.number, number)).run();
-    logChanges(tx, { ...stamp, issue: number }, [{ field: 'state', before: 'open', after: 'closed' }]);
-    return requireIssue(number);
+export const closeIssue = (number: number, comment: string | null, caller: Caller) => {
+  if (requireIssue(number).state === 'closed') throw invalid(`issue #${number} is already closed`, 'state');
+  recordIssueWrite(number, caller, (tx, stamp) => {
+    if (comment !== null) insertComment(tx, { issue: number, body: comment, at: stamp.at, resolution: true }, caller);
+    tx.update(issues).set({ state: 'closed', closedAt: stamp.at }).where(eq(issues.number, number)).run();
+    return [{ field: 'state', before: 'open', after: 'closed' }];
   });
+  return requireIssue(number);
+};
 
-export const reopenIssue = (number: number, principal: Principal) => {
+export const reopenIssue = (number: number, caller: Caller) => {
   const issue = requireIssue(number);
   if (issue.state === 'open') return issue;
-  return writeField(number, { field: 'state', before: 'closed', after: 'open' }, principal);
+  return writeField(number, { field: 'state', before: 'closed', after: 'open' }, caller);
 };
 
-const HEADING = /^(#{1,6})\s+(.*)$/;
-
-const headingOf = (line: string) => {
-  const match = HEADING.exec(line);
-  return match ? { level: match[1]!.length, text: match[2]!.trim() } : null;
-};
-
-export const insertUnderSection = (body: string, section: string, text: string) => {
-  const lines = body.split('\n');
-  const wanted = section.trim();
-  const start = lines.findIndex(line => headingOf(line)?.text === wanted);
-  if (start === -1) throw invalid(`section ${section} does not exist`, 'section');
-  const { level } = headingOf(lines[start]!)!;
-  let end = lines.length;
-  for (let index = start + 1; index < lines.length; index += 1) {
-    const heading = headingOf(lines[index]!);
-    if (heading && heading.level <= level) {
-      end = index;
-      break;
-    }
-  }
-  let last = start;
-  for (let index = end - 1; index > start; index -= 1) {
-    if (lines[index]!.trim() !== '') {
-      last = index;
-      break;
-    }
-  }
-  return [...lines.slice(0, last + 1), ...text.trimEnd().split('\n'), ...lines.slice(last + 1)].join('\n');
-};
-
-export const appendToIssue = (number: number, { section, text }: AppendRequest, principal: Principal) =>
-  useStore().transaction((tx) => {
-    const issue = requireIssue(number);
-    const body = insertUnderSection(issue.body, section, text);
-    const stamp = stampFor(principal);
-    tx.update(issues).set({ body, updatedAt: stamp.at, version: issue.version + 1 }).where(eq(issues.number, number)).run();
-    logChanges(tx, { ...stamp, issue: number }, [{ field: 'body', before: issue.body, after: body }]);
-    return requireIssue(number);
+export const appendToIssue = (number: number, { section, text }: AppendRequest, caller: Caller) => {
+  const issue = requireIssue(number);
+  const body = insertUnderSection(issue.body, section, text);
+  recordIssueWrite(number, caller, (tx) => {
+    tx.update(issues).set({ body, version: issue.version + 1 }).where(eq(issues.number, number)).run();
+    return [{ field: 'body', before: issue.body, after: body }];
   });
+  return requireIssue(number);
+};
 
-export const deleteIssue = (number: number, principal: Principal) => {
+export const deleteIssue = (number: number, caller: Caller) => {
   const issue = requireIssue(number);
   const { children } = useStore().select({ children: count() }).from(issues).where(eq(issues.parent, number)).get()!;
   if (children > 0) throw conflict(`issue #${number} still has ${children} ${children === 1 ? 'child' : 'children'}`);
-  const stamp = stampFor(principal);
+  const stamp = stampFor(caller);
   useStore().transaction((tx) => {
     const blocked = blocksOf(number);
     tx.delete(issues).where(eq(issues.number, number)).run();
     for (const target of blocked) {
-      logChanges(tx, { ...stamp, issue: target.number }, [{ field: 'blocker', before: `#${number} ${issue.title}`, after: null }]);
-      touchIssue(tx, target.number, stamp.at);
+      recordWrites(tx, { ...stamp, issue: target.number }, [{ field: 'blocker', before: `#${number} ${issue.title}`, after: null }]);
     }
   });
 };

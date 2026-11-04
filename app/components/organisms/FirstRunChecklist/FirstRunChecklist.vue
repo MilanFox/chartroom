@@ -42,16 +42,15 @@ import type catalog from '~/strings/en.json';
 
 const OPTIONAL_SECTIONS: Record<keyof typeof catalog.admin.firstRun.optionalLinks, AdminSectionId> = { projectLink: 'settings', effortLink: 'settings', environmentsLink: 'environments' };
 
-const session = useSessionStore();
-const admin = useAdminStore();
+const holdersStore = useHoldersStore();
 const { strings } = useStrings();
 const headingId = useId();
 const opener = useTemplateRef<HTMLButtonElement>('opener');
 const prompting = ref(false);
 
-const locked = computed(() => !session.adminUntil);
+const { locked } = useElevationGate();
 
-const steps = computed(() => firstRunChecklist({ holders: admin.holders?.length ?? 0 }));
+const steps = computed(() => firstRunChecklist({ holders: holdersStore.holders?.length ?? 0 }));
 
 const optionalParts = computed(() => {
   const { optional, optionalLinks } = strings.value.admin.firstRun;

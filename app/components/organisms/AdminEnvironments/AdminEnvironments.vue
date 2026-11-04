@@ -16,13 +16,14 @@
 
         <p v-if="group.notes" class="admin-environments__notes">{{ group.notes }}</p>
 
-        <div v-if="group.environment && confirming === group.key" role="group" class="admin-environments__confirm" :aria-labelledby="`${baseId}-confirm-${group.key}`">
-          <span :id="`${baseId}-confirm-${group.key}`">{{ format(strings.admin.environments.confirmDelete, { name: group.name }) }}</span>
-
-          <button :id="`${baseId}-confirm-button-${group.key}`" type="button" class="admin-environments__delete" @click="removeEnvironment(group.environment.id)">{{ strings.admin.environments.delete }}</button>
-
-          <button type="button" class="admin-environments__keep" @click="keep(group.key)">{{ strings.admin.environments.keep }}</button>
-        </div>
+        <InlineConfirm
+          v-if="group.environment && confirming === group.key"
+          :message="format(strings.admin.environments.confirmDelete, { name: group.name })"
+          :confirm-label="strings.admin.environments.delete"
+          :keep-label="strings.admin.environments.keep"
+          @confirm="removeEnvironment(group.environment.id)"
+          @keep="keep(group.key)"
+        />
 
         <EnvironmentForm v-if="group.environment && editing === group.environment.id" :environment="group.environment" @saved="editing = null" @cancel="stopEditing(group.environment.id)" />
 
@@ -35,46 +36,39 @@
 
             <span class="admin-environments__where">{{ pointer.whereToFind }}</span>
 
-            <span class="admin-environments__environment">
-              <select
-                :value="pointer.environment ?? ''"
-                class="admin-environments__select"
-                :aria-label="format(strings.admin.environments.pointerEnvironment, { label: pointer.label })"
-                :aria-disabled="locked ? 'true' : undefined"
-                v-on="lockedControl(`pointer-${pointer.id}`)"
-                @change="rebind(pointer, $event.target as HTMLSelectElement)"
-              >
-                <option value="">{{ strings.admin.environments.anyEnvironment }}</option>
+            <LockedSelect
+              :value="String(pointer.environment ?? '')"
+              :label="format(strings.admin.environments.pointerEnvironment, { label: pointer.label })"
+              @change="rebind(pointer, $event)"
+            >
+              <option value="">{{ strings.admin.environments.anyEnvironment }}</option>
 
-                <option v-for="option in admin.environments" :key="option.id" :value="option.id">{{ option.name }}</option>
-              </select>
-
-              <Icon v-if="locked" name="lock" :size="12" />
-            </span>
+              <option v-for="option in environmentsStore.environments" :key="option.id" :value="option.id">{{ option.name }}</option>
+            </LockedSelect>
 
             <AdminAction :id="`${baseId}-delete-pointer-${pointer.id}`" :label="strings.admin.environments.delete" variant="danger" @run="confirm(`pointer-${pointer.id}`)" />
 
-            <ElevationPrompt v-if="prompting === `pointer-${pointer.id}`" @elevated="close" @cancel="close" />
-
-            <div v-if="confirming === `pointer-${pointer.id}`" role="group" class="admin-environments__confirm" :aria-labelledby="`${baseId}-confirm-pointer-${pointer.id}`">
-              <span :id="`${baseId}-confirm-pointer-${pointer.id}`">{{ format(strings.admin.environments.confirmDeletePointer, { label: pointer.label }) }}</span>
-
-              <button :id="`${baseId}-confirm-button-pointer-${pointer.id}`" type="button" class="admin-environments__delete" @click="removePointer(pointer.id)">{{ strings.admin.environments.delete }}</button>
-
-              <button type="button" class="admin-environments__keep" @click="keep(`pointer-${pointer.id}`)">{{ strings.admin.environments.keep }}</button>
-            </div>
+            <InlineConfirm
+              v-if="confirming === `pointer-${pointer.id}`"
+              class="admin-environments__confirm"
+              :message="format(strings.admin.environments.confirmDeletePointer, { label: pointer.label })"
+              :confirm-label="strings.admin.environments.delete"
+              :keep-label="strings.admin.environments.keep"
+              @confirm="removePointer(pointer.id)"
+              @keep="keep(`pointer-${pointer.id}`)"
+            />
           </li>
         </ul>
 
-        <p v-else-if="admin.pointers" class="admin-environments__muted">{{ strings.admin.environments.noPointers }}</p>
+        <p v-else-if="environmentsStore.pointers" class="admin-environments__muted">{{ strings.admin.environments.noPointers }}</p>
       </li>
     </ul>
 
     <p v-else class="admin-environments__muted">{{ strings.admin.environments.empty }}</p>
 
-    <p v-if="!admin.pointers" class="admin-environments__muted">{{ strings.admin.environments.pointersHidden }}</p>
+    <p v-if="!environmentsStore.pointers" class="admin-environments__muted">{{ strings.admin.environments.pointersHidden }}</p>
 
-    <p role="status" class="admin-environments__error">{{ error }}</p>
+    <p role="status" class="admin-environments__error">{{ action.error }}</p>
 
     <EnvironmentForm v-if="adding === 'environment'" @saved="adding = null" @cancel="stopAdding('environment')" />
 
@@ -91,31 +85,16 @@
 <script setup lang="ts">
 import type { CredentialPointer } from '~/types/api';
 
-const admin = useAdminStore();
+const environmentsStore = useEnvironmentsStore();
 const { strings, format } = useStrings();
 const baseId = useId();
 const editing = ref<number | null>(null);
 const adding = ref<'environment' | 'pointer' | null>(null);
-const error = ref('');
+const action = reactive(useAction());
 
-const { locked, prompting, close, lockedControl } = useElevationGate();
+const { confirming, confirm, keep, focusById } = useInlineConfirm({ triggerPrefix: `${baseId}-delete-` });
 
-const { confirming, confirm, keep, focusById } = useInlineConfirm({ baseId, triggerPrefix: `${baseId}-delete-` });
-
-const groups = computed(() => {
-  const pointers = admin.pointers ?? [];
-  const environments = admin.environments.map(environment => ({
-    key: `environment-${environment.id}`,
-    environment,
-    name: environment.name,
-    url: environment.url,
-    notes: environment.notes,
-    pointers: pointers.filter(pointer => pointer.environment === environment.id),
-  }));
-  const unbound = pointers.filter(pointer => pointer.environment === null);
-  if (!unbound.length) return environments;
-  return [...environments, { key: 'any', environment: null, name: strings.value.admin.environments.anyEnvironment, url: null, notes: null, pointers: unbound }];
-});
+const groups = computed(() => environmentGroups(environmentsStore.environments, environmentsStore.pointers ?? [], strings.value.admin.environments.anyEnvironment));
 
 const stopEditing = (id: number) => {
   editing.value = null;
@@ -127,36 +106,22 @@ const stopAdding = (kind: 'environment' | 'pointer') => {
   focusById(`${baseId}-add-${kind}`);
 };
 
-const run = async (write: () => Promise<void>, message: string) => {
-  error.value = '';
-  try {
-    await write();
-    return true;
-  }
-  catch {
-    error.value = message;
-    return false;
-  }
-};
+const deleteFailed = () => strings.value.admin.environments.errors.deleteFailed;
 
 const removeEnvironment = async (id: number) => {
-  if (!await run(() => admin.deleteEnvironment(id), strings.value.admin.environments.errors.deleteFailed)) return;
+  if (!await action.run(() => environmentsStore.deleteEnvironment(id), deleteFailed)) return;
   confirming.value = null;
   focusById(`${baseId}-add-environment`);
 };
 
 const removePointer = async (id: number) => {
-  if (!await run(() => admin.deletePointer(id), strings.value.admin.environments.errors.deleteFailed)) return;
+  if (!await action.run(() => environmentsStore.deletePointer(id), deleteFailed)) return;
   confirming.value = null;
   focusById(`${baseId}-add-pointer`);
 };
 
-const rebind = (pointer: CredentialPointer, select: HTMLSelectElement) => {
-  if (locked.value) {
-    select.value = String(pointer.environment ?? '');
-    return;
-  }
-  run(() => admin.updatePointer(pointer.id, { environment: select.value ? Number(select.value) : null }), strings.value.admin.environments.errors.failed);
+const rebind = (pointer: CredentialPointer, environment: string) => {
+  action.run(() => environmentsStore.updatePointer(pointer.id, { environment: environment ? Number(environment) : null }), () => strings.value.admin.environments.errors.failed);
 };
 </script>
 
@@ -218,6 +183,7 @@ const rebind = (pointer: CredentialPointer, select: HTMLSelectElement) => {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     align-items: center;
+    grid-auto-flow: row dense;
     gap: $space-1 $space-3;
     padding: $space-2 0;
     border-top: 1px dashed var(--color-rule);
@@ -249,45 +215,8 @@ const rebind = (pointer: CredentialPointer, select: HTMLSelectElement) => {
     margin: $space-2 0 0;
   }
 
-  &__environment {
-    display: flex;
-    align-items: center;
-    gap: $space-1;
-    min-width: 0;
-    color: var(--color-muted);
-  }
-
-  &__select {
-    @include text-field;
-    flex: 1 1 auto;
-    min-width: 0;
-
-    &[aria-disabled='true'] {
-      border-color: var(--color-rule);
-      background: var(--color-surface-alt);
-      color: var(--color-muted);
-    }
-  }
-
   &__confirm {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: $space-2;
     grid-column: 1 / -1;
-    padding: $space-2 $space-3;
-    border-radius: $radius-control;
-    background: var(--color-tint-blocked);
-  }
-
-  &__delete {
-    @include button-secondary;
-    color: var(--color-state-blocked);
-  }
-
-  &__keep {
-    @include button-quiet;
-    height: $control-height;
   }
 
   &__error {

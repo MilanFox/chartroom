@@ -1,6 +1,6 @@
-import { registerEndpoint } from '@nuxt/test-utils/runtime';
 import { createPinia, setActivePinia } from 'pinia';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { apiFailure, requestOf, searchOf, useEndpoints } from '~/test/endpoints';
 import type { IssueDocument } from '~/types/api';
 import { issueFixture } from '~/test/issue-fixture';
 import { versionConflictOf } from '~/utils/conflict';
@@ -8,18 +8,11 @@ import { useIssuesStore } from './issues';
 
 const issue = (overrides: Partial<IssueDocument> = {}) => issueFixture({ origin: 'ui', ...overrides });
 
-type TestEvent = { web: { request: Request } };
-const requestOf = (event: unknown) => (event as TestEvent).web.request;
-const unregister: (() => void)[] = [];
-const endpoint = (...args: Parameters<typeof registerEndpoint>) => unregister.push(registerEndpoint(...args));
+const endpoint = useEndpoints();
 
 describe('useIssuesStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
-  });
-
-  afterEach(() => {
-    unregister.splice(0).forEach(remove => remove());
   });
 
   it('saves a field with If-Match carrying the version the editor loaded', async () => {
@@ -44,10 +37,7 @@ describe('useIssuesStore', () => {
     endpoint('/ui/issues/12', () => issue());
     endpoint('/ui/issues/12', {
       method: 'PATCH',
-      handler: () => new Response(
-        JSON.stringify({ error: { code: 'conflict', message: 'issue #12 is at version 4, last written by claude-a at 2026-11-04T09:12:00.000Z', field: 'version' } }),
-        { status: 409, headers: { 'content-type': 'application/json' } },
-      ),
+      handler: apiFailure(409, { code: 'conflict', message: 'issue #12 is at version 4, last written by claude-a at 2026-11-04T09:12:00.000Z', field: 'version', details: { version: 4, lastWrittenBy: 'claude-a', lastWrittenAt: '2026-11-04T09:12:00.000Z' } }),
     });
     const issues = useIssuesStore();
     await issues.load(12);
@@ -96,7 +86,7 @@ describe('useIssuesStore', () => {
 
   it('collects every map, spec and Effort as a parent candidate, following each cursor', async () => {
     endpoint('/ui/issues', (event) => {
-      const query = new URL(requestOf(event).url).searchParams;
+      const query = searchOf(event);
       const rows = {
         effort: [{ number: 1, kind: 'effort', title: 'Tracker' }],
         map: [{ number: 2, kind: 'map', title: 'Agent Tracker v1' }],
@@ -110,5 +100,25 @@ describe('useIssuesStore', () => {
     await issues.loadParentCandidates();
 
     expect(issues.parentCandidates.map(({ number }) => number)).toEqual([1, 2, 19, 25]);
+  });
+
+  it('bumps its revision on writes and not on reads', async () => {
+    endpoint('/ui/issues/12', () => issue());
+    endpoint('/ui/issues/12/claim', { method: 'POST', handler: () => issue() });
+    endpoint('/ui/issues/12/labels/bug', { method: 'PUT', handler: () => ({}) });
+    endpoint('/ui/issues/12/changes', () => ({ items: [], nextCursor: null }));
+    endpoint('/ui/issues', () => ({ items: [], nextCursor: null }));
+    const issues = useIssuesStore();
+
+    await issues.load(12);
+    await issues.loadChanges(12);
+    await issues.loadChildren(12);
+    await issues.loadParentCandidates();
+    expect(issues.revision).toBe(0);
+
+    await issues.claim(12);
+    expect(issues.revision).toBe(1);
+    await issues.addLabel(12, 'bug');
+    expect(issues.revision).toBe(2);
   });
 });

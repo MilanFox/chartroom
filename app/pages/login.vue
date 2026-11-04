@@ -16,13 +16,13 @@
         name="secret"
         autocomplete="current-password"
         class="login__field"
-        :aria-invalid="Boolean(error)"
+        :aria-invalid="Boolean(action.error)"
         :aria-describedby="`${hintId} ${errorId}`"
       />
 
-      <p :id="errorId" class="login__error" aria-live="assertive">{{ error }}</p>
+      <p :id="errorId" class="login__error" aria-live="assertive">{{ action.error }}</p>
 
-      <button type="submit" class="login__submit">{{ submitting ? strings.login.submitting : strings.login.submit }}</button>
+      <button type="submit" class="login__submit">{{ action.busy ? strings.login.submitting : strings.login.submit }}</button>
     </form>
   </main>
 </template>
@@ -36,8 +36,7 @@ const fieldId = useId();
 const hintId = useId();
 const errorId = useId();
 const secret = ref('');
-const error = ref('');
-const submitting = ref(false);
+const action = reactive(useAction());
 
 useHead(() => ({ title: strings.value.login.heading }));
 
@@ -47,23 +46,14 @@ const errorFor = (code: string | null) => {
 };
 
 const submit = async () => {
-  if (submitting.value) return;
   if (!secret.value.trim()) {
-    error.value = strings.value.login.errors.empty;
+    action.error = strings.value.login.errors.empty;
     return;
   }
-  submitting.value = true;
-  error.value = '';
-  try {
+  await action.run(async () => {
     await session.login(secret.value);
     await navigateTo(HOME_PATH);
-  }
-  catch (failure) {
-    error.value = errorFor(apiErrorCode(failure));
-  }
-  finally {
-    submitting.value = false;
-  }
+  }, failure => errorFor(apiErrorCode(failure)));
 };
 </script>
 

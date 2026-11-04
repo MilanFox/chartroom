@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, inArray, ne } from 'drizzle-orm';
-import { issues, labelGroupMembers, links } from '../db/schema';
+import { issues, links } from '../db/schema';
 import type { IssueCursor, IssueRecord, IssueState, IssueStatus, SortOrder } from './issues';
 import type { LinkRecord, LinkRole, LinkType } from './links';
 
@@ -32,9 +32,9 @@ export interface StatusRollup {
 
 const SORT_COLUMNS = { updatedAt: issues.updatedAt, name: issues.name };
 
-export const resolveEffort = (handle: string): IssueRecord => {
-  const issue = findByHandle(handle);
-  if (!issue) throw notFound(`effort ${handle} does not exist`);
+export const resolveEffort = (slugOrNumber: string): IssueRecord => {
+  const issue = findBySlugOrNumber(slugOrNumber);
+  if (!issue) throw notFound(`effort ${slugOrNumber} does not exist`);
   if (issue.kind !== 'effort') throw invalid(`issue #${issue.number} is a ${issue.kind}, not an Effort`, 'handle');
   return issue;
 };
@@ -70,11 +70,11 @@ const countByStatus = (children: IssueRecord[]) => {
 };
 
 const triageBuckets = (tickets: IssueRecord[]) => {
-  const members = useStore().select({ id: labelGroupMembers.id }).from(labelGroupMembers)
-    .where(eq(labelGroupMembers.groupId, 'triage-state')).orderBy(asc(labelGroupMembers.position)).all().map(row => row.id);
+  const members = triageMemberIds();
+  const labels = labelsByIssue(tickets.map(ticket => ticket.number));
   const buckets: Record<string, number> = Object.fromEntries([...members, 'none'].map(id => [id, 0]));
   for (const ticket of tickets) {
-    const state = labelsOf(ticket.number).find(label => members.includes(label)) ?? 'none';
+    const state = (labels.get(ticket.number) ?? []).find(label => members.includes(label)) ?? 'none';
     buckets[state] = (buckets[state] ?? 0) + 1;
   }
   return buckets;

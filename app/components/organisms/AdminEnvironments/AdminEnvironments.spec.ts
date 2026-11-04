@@ -1,12 +1,13 @@
-import { mountSuspended, registerEndpoint } from '@nuxt/test-utils/runtime';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { mountSuspended } from '@nuxt/test-utils/runtime';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { nextTick } from 'vue';
-import { useAdminStore } from '~/stores/admin';
+import { requestOf, useEndpoints } from '~/test/endpoints';
+import { useEnvironmentsStore } from '~/stores/environments';
 import { useSessionStore } from '~/stores/session';
-import { viewerSession } from '~/test/issue-fixture';
+import { viewerSession } from '~/test/sessions';
 import AdminEnvironments from './AdminEnvironments.vue';
 
-const unregister: (() => void)[] = [];
+const endpoint = useEndpoints();
 const staging = { id: 1, name: 'Staging', url: 'https://staging.example.test', notes: null };
 const elevated = { ...viewerSession, admin: { until: new Date(Date.now() + 3_600_000).toISOString() } };
 
@@ -26,23 +27,19 @@ describe('AdminEnvironments', () => {
   beforeEach(() => {
     sent.length = 0;
     let environment: number | null = null;
-    unregister.push(registerEndpoint('/ui/environments', { method: 'GET', handler: () => [staging] }));
-    unregister.push(registerEndpoint('/ui/credential-pointers', { method: 'GET', handler: () => [{ id: 4, label: 'QA', accountName: 'qa', whereToFind: 'Vault', environment }] }));
-    unregister.push(registerEndpoint('/ui/credential-pointers/4', {
+    endpoint('/ui/environments', { method: 'GET', handler: () => [staging] });
+    endpoint('/ui/credential-pointers', { method: 'GET', handler: () => [{ id: 4, label: 'QA', accountName: 'qa', whereToFind: 'Vault', environment }] });
+    endpoint('/ui/credential-pointers/4', {
       method: 'PATCH', handler: async (event) => {
-        const body = await (event as unknown as { web: { request: Request } }).web.request.json();
+        const body = await requestOf(event).json();
         sent.push(body);
         ({ environment } = body);
         return {};
       },
-    }));
-    const admin = useAdminStore();
+    });
+    const admin = useEnvironmentsStore();
     admin.environments = [staging];
     admin.pointers = [{ id: 4, label: 'QA', accountName: 'qa', whereToFind: 'Vault', environment: null }];
-  });
-
-  afterEach(() => {
-    unregister.splice(0).forEach(remove => remove());
   });
 
   it('lets an elevated session rebind a pointer through its Environment select', async () => {

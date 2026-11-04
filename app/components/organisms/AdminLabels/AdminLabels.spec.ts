@@ -1,14 +1,14 @@
-import { mountSuspended, registerEndpoint } from '@nuxt/test-utils/runtime';
+import { mountSuspended } from '@nuxt/test-utils/runtime';
 import type { VueWrapper } from '@vue/test-utils';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { nextTick } from 'vue';
+import { apiFailure, useEndpoints } from '~/test/endpoints';
 import { useLabelGroupsStore } from '~/stores/label-groups';
 import { useSessionStore } from '~/stores/session';
-import { apiFailure, viewerSession } from '~/test/issue-fixture';
+import { viewerSession } from '~/test/sessions';
 import AdminLabels from './AdminLabels.vue';
 
-const unregister: (() => void)[] = [];
-const endpoint = (...args: Parameters<typeof registerEndpoint>) => unregister.push(registerEndpoint(...args));
+const endpoint = useEndpoints();
 const seeded = { id: 'triage-category', displayName: 'Category', seeded: true, exclusive: true as const, labels: [{ id: 'bug', displayLabel: 'Bug' }] };
 const priority = { id: 'priority', displayName: 'Priority', seeded: false, exclusive: true as const, labels: [{ id: 'high', displayLabel: 'High' }, { id: 'low', displayLabel: 'Low' }] };
 const buttonsNamed = (wrapper: VueWrapper, name: string) => wrapper.findAll('button').filter(button => (button.attributes('aria-label') ?? button.text()) === name);
@@ -19,10 +19,6 @@ describe('AdminLabels', () => {
     const labelGroups = useLabelGroupsStore();
     labelGroups.labelGroups = [seeded, priority];
     labelGroups.freeFormLabels = [{ label: 'urgent', count: 3 }];
-  });
-
-  afterEach(() => {
-    unregister.splice(0).forEach(remove => remove());
   });
 
   it('shows a seeded group read-only with a seeded tag, and names each admin member\'s reorder buttons after the member', async () => {
@@ -50,12 +46,12 @@ describe('AdminLabels', () => {
   });
 
   it('lists the issues of a promotion conflict as links to them', async () => {
-    endpoint('/ui/label-groups/priority/labels', { method: 'POST', handler: apiFailure(409, { code: 'conflict', message: '#3, #12 would carry two members of priority' }) });
+    endpoint('/ui/label-groups/priority/labels', { method: 'POST', handler: apiFailure(409, { code: 'conflict', message: '#3, #12 would carry two members of priority', field: 'labels', details: { group: 'priority', issues: [3, 12], truncated: false } }) });
     const wrapper = await mountSuspended(AdminLabels);
 
     const card = wrapper.get('[data-group="priority"]');
     await card.get('input[name="memberId"]').setValue('urgent');
-    await card.get('form.admin-labels__add').trigger('submit');
+    await card.get('form.label-group-card__add').trigger('submit');
 
     await vi.waitFor(() => expect(card.findAll('[role="status"] a').map(link => link.attributes('href'))).toEqual(['/issues/3', '/issues/12']));
   });
@@ -66,7 +62,7 @@ describe('AdminLabels', () => {
 
     const groupId = wrapper.get('input[name="groupId"]');
     await groupId.setValue('number');
-    await wrapper.get('form.admin-labels__create').trigger('submit');
+    await wrapper.get('form.new-label-group-form').trigger('submit');
 
     await vi.waitFor(() => expect(groupId.attributes('aria-invalid')).toBe('true'));
     const message = wrapper.get(`[id="${groupId.attributes('aria-describedby')!.split(' ').at(-1)}"]`);
@@ -124,7 +120,7 @@ describe('AdminLabels', () => {
     await card.get('input[name="displayName"]').setValue('Urgency');
     const highLabel = card.get('input[name="displayLabel-high"]');
     await highLabel.setValue('  ');
-    await card.get('form.admin-labels__names').trigger('submit');
+    await card.get('form.label-group-card__names').trigger('submit');
     await useLabelGroupsStore().load();
 
     await vi.waitFor(() => expect(highLabel.attributes('aria-invalid')).toBe('true'));
@@ -145,7 +141,7 @@ describe('AdminLabels', () => {
     await priorityCard.get('input[name="displayLabel-high"]').setValue('Highest draft');
     const sizeCard = wrapper.get('[data-group="effort-size"]');
     await sizeCard.get('input[name="memberId"]').setValue('large');
-    await sizeCard.get('form.admin-labels__add').trigger('submit');
+    await sizeCard.get('form.label-group-card__add').trigger('submit');
 
     await vi.waitFor(() => expect(sizeCard.find('input[name="displayLabel-large"]').exists()).toBe(true));
     expect((sizeCard.get('input[name="displayLabel-large"]').element as HTMLInputElement).value).toBe('Large');
@@ -166,5 +162,22 @@ describe('AdminLabels', () => {
       expect(button?.attributes('aria-disabled')).toBe('true');
       expect(button?.attributes('disabled')).toBeUndefined();
     }
+  });
+
+  it('keeps hyphenated group and member ids apart: one rejected rename marks only its own input, and every id is unique', async () => {
+    const hyphenated = { id: 'a-b', displayName: 'AB', seeded: false, exclusive: true as const, labels: [{ id: 'c', displayLabel: 'C' }] };
+    const plain = { id: 'a', displayName: 'A', seeded: false, exclusive: true as const, labels: [{ id: 'b-c', displayLabel: 'BC' }] };
+    useLabelGroupsStore().labelGroups = [seeded, hyphenated, plain];
+    endpoint('/ui/label-groups/a/labels/b-c', { method: 'PATCH', handler: apiFailure(400, { code: 'invalid', message: 'displayLabel must be a non-empty string', field: 'displayLabel' }) });
+    const wrapper = await mountSuspended(AdminLabels);
+
+    const rejected = wrapper.get('[data-group="a"] input[name="displayLabel-b-c"]');
+    await rejected.setValue('  ');
+    await wrapper.get('[data-group="a"] form.label-group-card__names').trigger('submit');
+
+    await vi.waitFor(() => expect(rejected.attributes('aria-invalid')).toBe('true'));
+    expect(wrapper.get('[data-group="a-b"] input[name="displayLabel-c"]').attributes('aria-invalid')).toBe('false');
+    const ids = wrapper.findAll('[id]').map(element => element.attributes('id'));
+    expect(new Set(ids).size).toBe(ids.length);
   });
 });

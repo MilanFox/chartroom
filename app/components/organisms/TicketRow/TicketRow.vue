@@ -75,7 +75,7 @@ const session = useSessionStore();
 const issuesStore = useIssuesStore();
 const labelGroupsStore = useLabelGroupsStore();
 const { strings, format } = useStrings();
-const action = reactive(useIssueAction());
+const action = reactive(useAction());
 
 const shownLabels = computed(() => {
   if (!props.decision) return props.row.labels;
@@ -83,12 +83,9 @@ const shownLabels = computed(() => {
   return type ? [type] : [];
 });
 
-const explain = (failure: unknown) => {
-  const claimConflict = claimConflictOf(failure);
-  const messages = strings.value.issue.fields.claim;
-  if (claimConflict) return claimConflict.holder ? format(messages.heldBy, { slug: claimConflict.holder }) : messages.heldBySomeone;
-  return format(strings.value.dashboard.tickets.failed, { number: props.row.number });
-};
+const claimError = useClaimError();
+
+const explain = (failure: unknown) => claimError(failure) ?? format(strings.value.dashboard.tickets.failed, { number: props.row.number });
 
 const run = (write: () => Promise<unknown>) => action.run(write, explain);
 </script>

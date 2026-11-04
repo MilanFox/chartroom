@@ -19,11 +19,11 @@
     </div>
 
     <div class="environment-form__actions">
-      <button type="submit" class="environment-form__save">{{ submitting ? strings.admin.environments.saving : strings.admin.environments.save }}</button>
+      <AdminAction :label="action.busy ? strings.admin.environments.saving : strings.admin.environments.save" type="submit" variant="primary" />
 
       <button type="button" class="environment-form__cancel" @click="emit('cancel')">{{ strings.admin.environments.cancel }}</button>
 
-      <p role="status" class="environment-form__error">{{ formError }}</p>
+      <p role="status" class="environment-form__error">{{ action.error }}</p>
     </div>
   </form>
 </template>
@@ -36,13 +36,12 @@ const emit = defineEmits<{ saved: [], cancel: [] }>();
 
 type FieldKey = 'name' | 'url' | 'notes';
 
-const admin = useAdminStore();
+const environmentsStore = useEnvironmentsStore();
 const { strings } = useStrings();
 const formId = useId();
 const draft = reactive<Record<FieldKey, string>>({ name: props.environment?.name ?? '', url: props.environment?.url ?? '', notes: props.environment?.notes ?? '' });
 const errors = ref<Partial<Record<FieldKey, string>>>({});
-const formError = ref('');
-const submitting = ref(false);
+const action = reactive(useAction());
 
 const fields = computed(() => {
   const labels = strings.value.admin.environments;
@@ -55,30 +54,21 @@ const fields = computed(() => {
 
 onMounted(() => document.getElementById(`${formId}-name`)?.focus());
 
+const explain = (failure: unknown) => {
+  const fieldError = fieldErrorOf(failure, Object.keys(draft));
+  if (!fieldError) return strings.value.admin.environments.errors.failed;
+  errors.value = { [fieldError.field]: fieldError.message };
+  document.getElementById(`${formId}-${fieldError.field}`)?.focus();
+  return '';
+};
+
 const submit = async () => {
-  if (submitting.value) return;
-  submitting.value = true;
-  errors.value = {};
-  formError.value = '';
-  const input = { name: draft.name.trim(), url: draft.url.trim(), notes: draft.notes.trim() || null };
-  try {
-    if (props.environment) await admin.updateEnvironment(props.environment.id, input);
-    else await admin.createEnvironment(input);
-    emit('saved');
-  }
-  catch (failure) {
-    const field = apiErrorField(failure) as FieldKey | null;
-    if (field && field in draft) {
-      errors.value = { [field]: apiErrorMessage(failure) };
-      document.getElementById(`${formId}-${field}`)?.focus();
-    }
-    else {
-      formError.value = strings.value.admin.environments.errors.failed;
-    }
-  }
-  finally {
-    submitting.value = false;
-  }
+  const saved = await action.run(() => {
+    errors.value = {};
+    const input = { name: draft.name.trim(), url: draft.url.trim(), notes: draft.notes.trim() || null };
+    return props.environment ? environmentsStore.updateEnvironment(props.environment.id, input) : environmentsStore.createEnvironment(input);
+  }, explain);
+  if (saved) emit('saved');
 };
 </script>
 
@@ -122,10 +112,6 @@ const submit = async () => {
     align-items: center;
     gap: $space-2;
     grid-column: 1 / -1;
-  }
-
-  &__save {
-    @include button-primary;
   }
 
   &__cancel {

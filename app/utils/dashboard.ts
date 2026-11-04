@@ -1,4 +1,5 @@
-import type { IssueRow, IssueStatus, LinkRole, LinkRollup } from '~/types/api';
+import type { IssueRow, IssueStatus, LinkRollup } from '~/types/api';
+import { LINK_ROLES, STATUSES } from '#shared/domain';
 import { formatString } from './strings';
 
 export type TicketSort = 'number' | 'state' | 'title';
@@ -26,7 +27,7 @@ interface EffortTree {
 // Holder slugs never contain a colon, so this can never collide with one.
 export const NO_ASSIGNEE = ':none';
 
-export const STATUSES: IssueStatus[] = ['open', 'claimed', 'blocked', 'closed'];
+export { STATUSES };
 
 export const DEFAULT_TICKET_FILTER: TicketFilter = { query: '', states: [], label: null, assignee: null, sort: 'number' };
 
@@ -88,8 +89,6 @@ export const countByStatus = (rows: Pick<IssueRow, 'status'>[]) => {
   return counts;
 };
 
-const LINK_ROLES: LinkRole[] = ['resource', 'artifact'];
-
 export const rollupSections = (rollup: LinkRollup, effort: Pick<IssueRow, 'number' | 'state'>, rows: IssueRow[]) => {
   const stateOf = new Map([effort, ...rows].map(issue => [issue.number, issue.state]));
   return LINK_ROLES.map(role => ({
@@ -118,6 +117,3 @@ export const triageSummaryOf = (triage: Record<string, number>, displayLabels: R
       .join(labels.separator),
   };
 };
-
-export const bodyExcerpt = (body: string) =>
-  body.split(/\n\s*\n/).map(paragraph => paragraph.trim()).find(paragraph => paragraph && !paragraph.startsWith('#') && !paragraph.startsWith('<!--'))?.replace(/\s+/g, ' ') ?? '';

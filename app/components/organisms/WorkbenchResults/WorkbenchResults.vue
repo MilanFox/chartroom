@@ -1,5 +1,5 @@
 <template>
-  <div class="workbench-results" :aria-busy="loading || loadingMore">
+  <div class="workbench-results" :aria-busy="loading || action.busy">
     <p v-if="filters.numbers.length" class="workbench-results__picked">
       {{ format(strings.workbench.picked, { count: filters.numbers.length }) }}
 
@@ -41,11 +41,11 @@
     <p v-else-if="!loading" class="workbench-results__empty">{{ strings.workbench.empty }}</p>
 
     <div v-if="workbench.hasMore && !failed" class="workbench-results__more">
-      <button type="button" class="workbench-results__load-more" :disabled="loadingMore" @click="loadMore">
-        {{ loadingMore ? strings.workbench.loading : strings.workbench.loadMore }}
+      <button type="button" class="workbench-results__load-more" :disabled="action.busy" @click="loadMore">
+        {{ action.busy ? strings.workbench.loading : strings.workbench.loadMore }}
       </button>
 
-      <p v-if="loadMoreFailed" role="alert" class="workbench-results__error">{{ strings.workbench.loadMoreFailed }}</p>
+      <p v-if="action.error" role="alert" class="workbench-results__error">{{ action.error }}</p>
     </div>
   </div>
 </template>
@@ -59,8 +59,7 @@ const workbench = useWorkbenchStore();
 const effortsStore = useEffortsStore();
 const { strings, format } = useStrings();
 const idPrefix = useId();
-const loadingMore = ref(false);
-const loadMoreFailed = ref(false);
+const action = reactive(useAction());
 
 const filters = computed(() => workbench.filters);
 
@@ -88,19 +87,7 @@ const summary = computed(() => {
   return format(template, { count: workbench.rows.length });
 });
 
-const loadMore = async () => {
-  loadingMore.value = true;
-  loadMoreFailed.value = false;
-  try {
-    await workbench.loadMore();
-  }
-  catch {
-    loadMoreFailed.value = true;
-  }
-  finally {
-    loadingMore.value = false;
-  }
-};
+const loadMore = () => action.run(() => workbench.loadMore(), () => strings.value.workbench.loadMoreFailed);
 </script>
 
 <style lang="scss" scoped>

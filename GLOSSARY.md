@@ -37,8 +37,12 @@ A consistent copy of the Instance's store taken while it runs, kept beside it so
 _Avoid_: Backup file, dump, export
 
 **Effort**:
-The unit of work a dashboard shows: a typed issue grouping at most one map, any number of specs, and their tickets. Can be empty. Named by a short slug-shaped handle, the same one the skills use for folders and branches. The only kind an instance may show under a different display name.
-_Avoid_: Feature, project, epic, initiative, container, dashboard
+The unit of work a dashboard shows: a typed issue grouping at most one map, any number of specs, and their tickets. Can be empty. Addressed by its Slug. The only kind an instance may show under a different Display label.
+_Avoid_: Feature, project, epic, initiative, container
+
+**Slug**:
+The short, unique, slug-shaped handle that addresses an Effort wherever its number would do; the skills use it for folders and branches. The published names stay: the API field `name`, the path parameter `{handle}`, the error field `handle` and `Instance.effortName`. A Token holder's own slug is the same kind of handle for a person, not a second term.
+_Avoid_: Handle, reference, name
 
 **Parent**:
 The single containment link from a map or spec to its Effort, or from a ticket to its map, spec, or straight to an Effort. Every issue except an Effort has at most one.
@@ -51,6 +55,22 @@ _Avoid_: Type, issue type, category
 **Label group**:
 A named set of labels of which an issue carries at most one, such as the triage state. Adding one member removes the others. Besides the seeded groups the skills rely on, an Admin may define more, such as a priority.
 _Avoid_: Label category, exclusive labels, status field
+
+**Member**:
+One label of a Label group, with its own Display label. Adding it to an issue removes the issue's other Members of that group.
+_Avoid_: Option, value, entry
+
+**Free-form label**:
+A label an issue carries that belongs to no Label group; any number can sit on one issue. An Admin can Promote one into a Label group.
+_Avoid_: Ad-hoc label, plain label, loose tag
+
+**Promote**:
+To turn a Free-form label into a Member of a Label group, so issues already carrying it join the group without being retagged by hand.
+_Avoid_: Convert, migrate, upgrade
+
+**Tag**:
+An Effort's labels as the Effort list and dashboard show them, for filtering and sorting Efforts. The same labels as on any issue, not a separate kind of label.
+_Avoid_: Category, keyword
 
 **Claim**:
 Assigning an issue to a Token holder, which signals to other sessions that it is being worked. An issue claimed by someone else cannot be claimed.
@@ -67,6 +87,18 @@ _Avoid_: Guest, anonymous, public user
 **Admin**:
 A Viewer or Token holder session that has entered the admin password and, for a limited time, may manage Token holders, Environments, Credential pointers and instance settings. Changes are recorded as the elevated Token holder, or as `admin` when a Viewer elevated.
 _Avoid_: Owner, superuser, root, admin account, admin login
+
+**State**:
+The stored lifecycle value of an issue, `open` or `closed`. Written by people and agents.
+_Avoid_: Status (which is computed), phase
+
+**Status**:
+What an issue is right now, computed from its State, Claim and blockers, never stored: `open`, `claimed`, `blocked` or `closed`.
+_Avoid_: State (which is stored), stage, progress
+
+**Decision ticket**:
+A ticket under a map carrying a `wayfinder:<type>` label, asking for one decision that a session answers with a Resolution.
+_Avoid_: Question, research ticket, wayfinder issue
 
 **Resolution**:
 The comment that answers a ticket, posted in the same act as closing it.
@@ -86,8 +118,28 @@ _Avoid_: Ready tickets, next up, available, unblocked list
 
 **Saved view**:
 One of a fixed set of named filters over the instance-wide issue list, such as the Frontier or My stuff. Picking one replaces every other filter.
-_Avoid_: Smart list, preset, dashboard
+_Avoid_: Smart list, preset
+
+**Dashboard**:
+The page showing one Effort: its map, specs and tickets in workflow order, with its Status and Artifacts roll-ups. Neither the Effort nor a Saved view is the Dashboard.
+_Avoid_: Overview, board, home
+
+**Workbench**:
+The search-first page over every issue of the Instance, open ones grouped by Effort, with Saved views and filters.
+_Avoid_: Issue list, inbox, search page
+
+**Shell**:
+The frame around every page: the navigation, the Effort picker, the session menu and the notice of elevation or of an available update.
+_Avoid_: Layout, chrome, header
+
+**Roll-up**:
+A figure computed over an Effort's subtree and never stored: the Status counts of its map, specs and tickets, or the deduped Links of every issue below it, grouped by role.
+_Avoid_: Summary, aggregate, total
+
+**Elevation**:
+The hour for which an Admin session holds the admin password's powers, ended early by dropping it. A session in that time is Elevated.
+_Avoid_: Admin login, sudo, unlock
 
 **Display label**:
-The instance-configured word shown in place of a fixed id: the name an Effort goes by, or what a triage role is called. Changes how humans and the adapter doc say it, never what the API and CLI call it.
-_Avoid_: Alias, custom name, label text, rename
+The instance-configured word shown in place of a fixed id: the name an Effort goes by, what a triage role is called, or what a Label group or one of its Members is called. Changes how humans and the adapter doc say it, never what the API and CLI call it. A Token holder's display name is a person's name, not a Display label.
+_Avoid_: Alias, custom name, label text, rename, display name (for a Label group)

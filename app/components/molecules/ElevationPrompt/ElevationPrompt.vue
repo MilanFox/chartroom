@@ -15,17 +15,17 @@
         name="admin-password"
         autocomplete="current-password"
         class="elevation-prompt__field"
-        :aria-invalid="Boolean(error)"
+        :aria-invalid="Boolean(action.error)"
         :aria-describedby="`${hintId} ${errorId}`"
         @keydown.enter.prevent="submit"
       />
 
-      <button type="button" class="elevation-prompt__elevate" @click="submit">{{ submitting ? strings.admin.prompt.elevating : strings.admin.prompt.elevate }}</button>
+      <button type="button" class="elevation-prompt__elevate" @click="submit">{{ action.busy ? strings.admin.prompt.elevating : strings.admin.prompt.elevate }}</button>
 
       <button type="button" class="elevation-prompt__cancel" @click="emit('cancel')">{{ strings.admin.prompt.cancel }}</button>
     </div>
 
-    <p :id="errorId" role="status" class="elevation-prompt__error">{{ error }}</p>
+    <p :id="errorId" role="status" class="elevation-prompt__error">{{ action.error }}</p>
   </div>
 </template>
 
@@ -40,8 +40,7 @@ const hintId = useId();
 const errorId = useId();
 const field = useTemplateRef<HTMLInputElement>('field');
 const password = ref('');
-const error = ref('');
-const submitting = ref(false);
+const action = reactive(useAction());
 
 onMounted(() => field.value?.focus());
 
@@ -52,22 +51,14 @@ const messageFor = (failure: unknown) => {
   return code === 'rate-limited' ? messages.rateLimited : messages.failed;
 };
 
+const explain = (failure: unknown) => {
+  password.value = '';
+  field.value?.focus();
+  return messageFor(failure);
+};
+
 const submit = async () => {
-  if (submitting.value) return;
-  submitting.value = true;
-  error.value = '';
-  try {
-    await session.elevate(password.value);
-    emit('elevated');
-  }
-  catch (failure) {
-    error.value = messageFor(failure);
-    password.value = '';
-    field.value?.focus();
-  }
-  finally {
-    submitting.value = false;
-  }
+  if (await action.run(() => session.elevate(password.value), explain)) emit('elevated');
 };
 </script>
 

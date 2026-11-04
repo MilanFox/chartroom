@@ -98,7 +98,7 @@
       <select :id="`${idPrefix}-effort`" class="workbench-filters__select" :value="selectedEffort" @change="narrow({ effort: targetValue($event) || null })">
         <option value="">{{ strings.workbench.anyEffort }}</option>
 
-        <option v-for="effort in effortOptions" :key="effort.handle" :value="effort.handle">{{ effort.title }}</option>
+        <option v-for="effort in effortOptions" :key="effort.slug" :value="effort.slug">{{ effort.title }}</option>
       </select>
 
       <label :for="`${idPrefix}-sort`" class="workbench-filters__label">{{ strings.workbench.sort }}</label>
@@ -119,14 +119,12 @@
 </template>
 
 <script setup lang="ts">
-import type { IssueKind } from '~/types/api';
+import { ISSUE_VIEWS, KINDS, UNASSIGNED } from '#shared/domain';
 import type { WorkbenchFilters } from '~/stores/workbench';
 
-const KINDS: IssueKind[] = ['effort', 'map', 'spec', 'ticket'];
 const STATES = ['open', 'closed', 'all'] as const;
 const SORTS = ['updatedAt', 'number', 'state', 'title'] as const;
 const ORDERS = ['desc', 'asc'] as const;
-const VIEWS = ['frontier', 'mine', 'needs-triage', 'blocked', 'closed-recent'] as const;
 
 const workbench = useWorkbenchStore();
 const labelGroupsStore = useLabelGroupsStore();
@@ -140,7 +138,7 @@ const filters = computed(() => workbench.filters);
 
 const viewEntries = computed(() => [
   { key: 'all', view: null, label: strings.value.workbench.views.all },
-  ...VIEWS.filter(view => view !== 'mine' || !session.isViewer).map(view => ({ key: view, view, label: strings.value.workbench.views[view] })),
+  ...ISSUE_VIEWS.filter(view => view !== 'mine' || !session.isViewer).map(view => ({ key: view, view, label: strings.value.workbench.views[view] })),
 ]);
 
 const holderLabel = (slug: string, displayName: string | null, revoked: boolean) => {
@@ -150,17 +148,17 @@ const holderLabel = (slug: string, displayName: string | null, revoked: boolean)
 };
 
 const assigneeOptions = computed(() => {
-  const options = holdersStore.holders.map(({ slug, displayName, revoked }) => ({ slug, label: holderLabel(slug, displayName, revoked) }));
+  const options = holdersStore.assignable.map(({ slug, displayName, revoked }) => ({ slug, label: holderLabel(slug, displayName, revoked) }));
   const { assignee } = filters.value;
   if (assignee && assignee !== UNASSIGNED && !options.some(option => option.slug === assignee)) options.push({ slug: assignee, label: holderLabel(assignee, null, false) });
   return options;
 });
 
-const effortOptions = computed(() => effortsStore.efforts.map(effort => ({ handle: effort.name ?? String(effort.number), number: effort.number, title: effort.title })));
+const effortOptions = computed(() => effortsStore.efforts.map(effort => ({ slug: effort.name ?? String(effort.number), number: effort.number, title: effort.title })));
 
 const selectedEffort = computed(() => {
   const { effort } = filters.value;
-  return effortOptions.value.find(option => option.handle === effort || String(option.number) === effort)?.handle ?? '';
+  return effortOptions.value.find(option => option.slug === effort || String(option.number) === effort)?.slug ?? '';
 });
 
 const targetValue = (event: Event) => (event.target as HTMLSelectElement | HTMLInputElement).value;

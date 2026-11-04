@@ -1,7 +1,7 @@
 <template>
   <AdminSection id="snapshots" :heading="strings.shell.adminSections.snapshots" :intro="strings.admin.snapshots.intro">
     <div class="admin-snapshots__take">
-      <AdminAction :id="`${baseId}-take`" :label="taking ? strings.admin.snapshots.taking : strings.admin.snapshots.take" variant="primary" @run="take" />
+      <AdminAction :id="`${baseId}-take`" :label="takeAction.busy ? strings.admin.snapshots.taking : strings.admin.snapshots.take" variant="primary" @run="take" />
 
       <p role="status" class="admin-snapshots__status" :class="{ 'admin-snapshots__status--failed': takeFailed }">{{ takeStatus }}</p>
     </div>
@@ -12,7 +12,7 @@
 
         <thead>
           <tr>
-            <th scope="col">{{ strings.admin.snapshots.kind }}</th>
+            <th scope="col">{{ strings.admin.snapshots.trigger }}</th>
 
             <th scope="col">{{ strings.admin.snapshots.time }}</th>
 
@@ -25,7 +25,7 @@
         <tbody>
           <template v-for="snapshot in admin.snapshots" :key="snapshot.name">
             <tr>
-              <td>{{ strings.admin.snapshots.kinds[snapshot.kind] }}</td>
+              <td>{{ strings.admin.snapshots.triggers[snapshot.trigger] }}</td>
 
               <th scope="row" class="admin-snapshots__time">{{ formatTimestamp(snapshot.takenAt) }}</th>
 
@@ -34,21 +34,20 @@
               <td class="admin-snapshots__actions">
                 <a :href="`/ui/snapshots/${encodeURIComponent(snapshot.name)}`" :download="`${snapshot.name}.sqlite`" class="admin-snapshots__download">{{ strings.admin.snapshots.download }}</a>
 
-                <AdminAction v-if="snapshot.kind === 'manual'" :id="`${baseId}-delete-${snapshot.name}`" :label="strings.admin.snapshots.delete" variant="danger" @run="confirm(snapshot.name)" />
+                <AdminAction v-if="snapshot.trigger === 'manual'" :id="`${baseId}-delete-${snapshot.name}`" :label="strings.admin.snapshots.delete" variant="danger" @run="confirm(snapshot.name)" />
               </td>
             </tr>
 
             <tr v-if="confirming === snapshot.name">
               <td colspan="4">
-                <div role="group" class="admin-snapshots__confirm" :aria-labelledby="`${baseId}-confirm-${snapshot.name}`">
-                  <span :id="`${baseId}-confirm-${snapshot.name}`">{{ format(strings.admin.snapshots.confirmDelete, { name: snapshot.name }) }}</span>
-
-                  <button :id="`${baseId}-confirm-button-${snapshot.name}`" type="button" class="admin-snapshots__delete" @click="remove(snapshot.name)">{{ strings.admin.snapshots.delete }}</button>
-
-                  <button type="button" class="admin-snapshots__keep" @click="keep(snapshot.name)">{{ strings.admin.snapshots.keep }}</button>
-
-                  <p role="status" class="admin-snapshots__error">{{ deleteError }}</p>
-                </div>
+                <InlineConfirm
+                  :message="format(strings.admin.snapshots.confirmDelete, { name: snapshot.name })"
+                  :confirm-label="strings.admin.snapshots.delete"
+                  :keep-label="strings.admin.snapshots.keep"
+                  :error="deleteAction.error"
+                  @confirm="remove(snapshot.name)"
+                  @keep="keep(snapshot.name)"
+                />
               </td>
             </tr>
           </template>
@@ -66,45 +65,33 @@
 const admin = useAdminStore();
 const { strings, format } = useStrings();
 const baseId = useId();
-const taking = ref(false);
+const takeAction = reactive(useAction());
+const deleteAction = reactive(useAction());
 const takeStatus = ref('');
 const takeFailed = ref(false);
-const deleteError = ref('');
 
-const { confirming, confirm, keep, focusById } = useInlineConfirm({ baseId, triggerPrefix: `${baseId}-delete-` });
+const { confirming, confirm, keep, focusById } = useInlineConfirm({ triggerPrefix: `${baseId}-delete-` });
 
 watch(confirming, () => {
-  deleteError.value = '';
+  deleteAction.error = '';
 });
 
+const explainTake = (failure: unknown) => {
+  takeFailed.value = true;
+  takeStatus.value = apiErrorMessage(failure) || strings.value.admin.snapshots.errors.failed;
+  return '';
+};
+
 const take = async () => {
-  if (taking.value) return;
-  taking.value = true;
   takeStatus.value = '';
   takeFailed.value = false;
-  try {
-    await admin.takeSnapshot();
-    takeStatus.value = strings.value.admin.snapshots.taken;
-  }
-  catch (failure) {
-    takeFailed.value = true;
-    takeStatus.value = apiErrorMessage(failure) || strings.value.admin.snapshots.errors.failed;
-  }
-  finally {
-    taking.value = false;
-  }
+  if (await takeAction.run(() => admin.takeSnapshot(), explainTake)) takeStatus.value = strings.value.admin.snapshots.taken;
 };
 
 const remove = async (name: string) => {
-  deleteError.value = '';
-  try {
-    await admin.deleteSnapshot(name);
-    confirming.value = null;
-    focusById(`${baseId}-take`);
-  }
-  catch {
-    deleteError.value = strings.value.admin.snapshots.errors.deleteFailed;
-  }
+  if (!await deleteAction.run(() => admin.deleteSnapshot(name), () => strings.value.admin.snapshots.errors.deleteFailed)) return;
+  confirming.value = null;
+  focusById(`${baseId}-take`);
 };
 </script>
 
@@ -180,42 +167,10 @@ const remove = async (name: string) => {
     height: $control-height;
   }
 
-  &__confirm {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: $space-2;
-    padding: $space-2 $space-3;
-    border-radius: $radius-control;
-    background: var(--color-tint-blocked);
-    white-space: normal;
-  }
-
-  &__delete {
-    @include button-secondary;
-    color: var(--color-state-blocked);
-  }
-
-  &__keep {
-    @include button-quiet;
-    height: $control-height;
-  }
-
   &__muted {
     margin: 0;
     color: var(--color-muted);
     font-size: $font-size-meta;
-  }
-
-  &__error {
-    @include error-line;
-    flex-basis: 100%;
-    margin: 0;
-    font-size: $font-size-meta;
-
-    &:empty {
-      display: none;
-    }
   }
 }
 </style>

@@ -11,7 +11,7 @@ const storedSettings = () => useStore().select().from(instanceSettings).where(eq
 
 export const triageLabels = () => Object.fromEntries(
   useStore().select({ id: labelGroupMembers.id, displayLabel: labelGroupMembers.displayLabel }).from(labelGroupMembers)
-    .where(eq(labelGroupMembers.groupId, 'triage-state')).orderBy(asc(labelGroupMembers.position)).all()
+    .where(eq(labelGroupMembers.groupId, TRIAGE_GROUP)).orderBy(asc(labelGroupMembers.position)).all()
     .map(({ id, displayLabel }) => [id, displayLabel]),
 );
 

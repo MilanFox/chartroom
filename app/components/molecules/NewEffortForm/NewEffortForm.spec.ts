@@ -1,10 +1,9 @@
-import { mountSuspended, registerEndpoint } from '@nuxt/test-utils/runtime';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { mountSuspended } from '@nuxt/test-utils/runtime';
+import { describe, expect, it, vi } from 'vitest';
 import NewEffortForm from './NewEffortForm.vue';
+import { apiFailure, requestOf, useEndpoints } from '~/test/endpoints';
 
-const unregister: (() => void)[] = [];
-const apiError = (status: number, code: string, field: string) => () =>
-  new Response(JSON.stringify({ error: { code, message: code, field } }), { status, headers: { 'content-type': 'application/json' } });
+const endpoint = useEndpoints();
 
 const fill = async (wrapper: Awaited<ReturnType<typeof mountSuspended>>, title: string, slug: string) => {
   const [titleField, slugField] = wrapper.findAll('input');
@@ -14,12 +13,8 @@ const fill = async (wrapper: Awaited<ReturnType<typeof mountSuspended>>, title: 
 };
 
 describe('NewEffortForm', () => {
-  afterEach(() => {
-    unregister.splice(0).forEach(remove => remove());
-  });
-
   it('reports a taken slug inline on the slug field', async () => {
-    unregister.push(registerEndpoint('/ui/issues', { method: 'POST', handler: apiError(409, 'conflict', 'name') }));
+    endpoint('/ui/issues', { method: 'POST', handler: apiFailure(409, { code: 'conflict', message: 'conflict', field: 'name' }) });
     const wrapper = await mountSuspended(NewEffortForm);
 
     await fill(wrapper, 'Docs site', 'docs');
@@ -33,15 +28,15 @@ describe('NewEffortForm', () => {
 
   it('creates the Effort, leaving the slug out when blank, and hands its number back', async () => {
     const sent: unknown[] = [];
-    unregister.push(registerEndpoint('/ui/issues', {
+    endpoint('/ui/issues', {
       method: 'POST',
       handler: async (event) => {
-        sent.push(await (event as { web: { request: Request } }).web.request.json());
+        sent.push(await requestOf(event).json());
         return { number: 7 };
       },
-    }));
-    unregister.push(registerEndpoint('/ui/efforts', () => ({ items: [], nextCursor: null })));
-    unregister.push(registerEndpoint('/ui/instance', () => ({ projectName: 'Chartroom', effortName: { singular: 'Effort', plural: 'Efforts' }, openIssues: 1 })));
+    });
+    endpoint('/ui/efforts', () => ({ items: [], nextCursor: null }));
+    endpoint('/ui/instance', () => ({ projectName: 'Chartroom', effortName: { singular: 'Effort', plural: 'Efforts' }, openIssues: 1 }));
     const wrapper = await mountSuspended(NewEffortForm);
 
     await fill(wrapper, '  Docs site ', ' ');

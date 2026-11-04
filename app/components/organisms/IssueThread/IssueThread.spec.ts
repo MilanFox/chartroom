@@ -1,16 +1,16 @@
-import { mountSuspended, registerEndpoint } from '@nuxt/test-utils/runtime';
+import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h } from 'vue';
+import { requestOf, useEndpoints } from '~/test/endpoints';
 import type { IssueChange, IssueComment, IssueDocument } from '~/types/api';
 import { useIssuesStore } from '~/stores/issues';
 import { useSessionStore } from '~/stores/session';
-import { holderSession, issueFixture, viewerSession } from '~/test/issue-fixture';
+import { issueFixture } from '~/test/issue-fixture';
+import { holderSession, viewerSession } from '~/test/sessions';
 import IssueCloseForm from '../IssueCloseForm/IssueCloseForm.vue';
 import IssueThread from './IssueThread.vue';
 
-const unregister: (() => void)[] = [];
-const endpoint = (...args: Parameters<typeof registerEndpoint>) => unregister.push(registerEndpoint(...args));
-const requestOf = (event: unknown) => (event as { web: { request: Request } }).web.request;
+const endpoint = useEndpoints();
 
 const comment = (id: number, overrides: Partial<IssueComment> = {}): IssueComment => ({
   id,
@@ -60,7 +60,6 @@ describe('IssueThread', () => {
   });
 
   afterEach(() => {
-    unregister.splice(0).forEach(remove => remove());
     localStorage.clear();
   });
 

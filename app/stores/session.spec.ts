@@ -1,24 +1,17 @@
-import { registerEndpoint } from '@nuxt/test-utils/runtime';
 import { createPinia, setActivePinia } from 'pinia';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { apiFailure, requestOf, useEndpoints } from '~/test/endpoints';
 import { apiErrorCode } from '~/utils/api-error';
 import { useSessionStore } from './session';
 
 const milan = { slug: 'milan', displayName: 'Milan', viewer: false, admin: null };
-const unregister: (() => void)[] = [];
-const endpoint = (...args: Parameters<typeof registerEndpoint>) => unregister.push(registerEndpoint(...args));
-const apiError = (status: number, code: string) => () =>
-  new Response(JSON.stringify({ error: { code, message: code } }), { status, headers: { 'content-type': 'application/json' } });
+const endpoint = useEndpoints();
 
-const requestJson = (event: unknown) => (event as { web: { request: Request } }).web.request.json();
+const requestJson = (event: unknown) => requestOf(event).json();
 
 describe('useSessionStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
-  });
-
-  afterEach(() => {
-    unregister.splice(0).forEach(remove => remove());
   });
 
   it('loads who is signed in from /ui/me', async () => {
@@ -33,7 +26,7 @@ describe('useSessionStore', () => {
   });
 
   it('treats an unauthenticated /ui/me as nobody signed in', async () => {
-    endpoint('/ui/me', apiError(401, 'unauthenticated'));
+    endpoint('/ui/me', apiFailure(401, { code: 'unauthenticated', message: 'unauthenticated' }));
     const session = useSessionStore();
 
     await session.load();
@@ -59,7 +52,7 @@ describe('useSessionStore', () => {
   });
 
   it('rejects a failed login with the API error code and stays signed out', async () => {
-    endpoint('/ui/login', { method: 'POST', handler: apiError(429, 'rate-limited') });
+    endpoint('/ui/login', { method: 'POST', handler: apiFailure(429, { code: 'rate-limited', message: 'rate-limited' }) });
     const session = useSessionStore();
 
     const failure = await session.login('wrong').catch(apiErrorCode);

@@ -32,18 +32,18 @@
       >
         <option :value="null">{{ strings.admin.environments.anyEnvironment }}</option>
 
-        <option v-for="option in admin.environments" :key="option.id" :value="option.id">{{ option.name }}</option>
+        <option v-for="option in environmentsStore.environments" :key="option.id" :value="option.id">{{ option.name }}</option>
       </select>
 
       <p :id="`${formId}-environment-error`" role="status" class="pointer-form__error">{{ errors.environment }}</p>
     </div>
 
     <div class="pointer-form__actions">
-      <button type="submit" class="pointer-form__save">{{ submitting ? strings.admin.environments.saving : strings.admin.environments.savePointer }}</button>
+      <AdminAction :label="action.busy ? strings.admin.environments.saving : strings.admin.environments.savePointer" type="submit" variant="primary" />
 
       <button type="button" class="pointer-form__cancel" @click="emit('cancel')">{{ strings.admin.environments.cancel }}</button>
 
-      <p role="status" class="pointer-form__error">{{ formError }}</p>
+      <p role="status" class="pointer-form__error">{{ action.error }}</p>
     </div>
   </form>
 </template>
@@ -53,14 +53,13 @@ const emit = defineEmits<{ saved: [], cancel: [] }>();
 
 type TextKey = 'label' | 'accountName' | 'whereToFind';
 
-const admin = useAdminStore();
+const environmentsStore = useEnvironmentsStore();
 const { strings } = useStrings();
 const formId = useId();
 const draft = reactive<Record<TextKey, string>>({ label: '', accountName: '', whereToFind: '' });
 const environment = ref<number | null>(null);
 const errors = ref<Partial<Record<TextKey | 'environment', string>>>({});
-const formError = ref('');
-const submitting = ref(false);
+const action = reactive(useAction());
 
 const fields = computed(() => {
   const labels = strings.value.admin.environments;
@@ -73,28 +72,20 @@ const fields = computed(() => {
 
 onMounted(() => document.getElementById(`${formId}-label`)?.focus());
 
+const explain = (failure: unknown) => {
+  const fieldError = fieldErrorOf(failure, [...Object.keys(draft), 'environment']);
+  if (!fieldError) return strings.value.admin.environments.errors.failed;
+  errors.value = { [fieldError.field]: fieldError.message };
+  document.getElementById(`${formId}-${fieldError.field}`)?.focus();
+  return '';
+};
+
 const submit = async () => {
-  if (submitting.value) return;
-  submitting.value = true;
-  errors.value = {};
-  formError.value = '';
-  try {
-    await admin.createPointer({ label: draft.label.trim(), accountName: draft.accountName.trim(), whereToFind: draft.whereToFind.trim(), environment: environment.value });
-    emit('saved');
-  }
-  catch (failure) {
-    const field = apiErrorField(failure) as TextKey | 'environment' | null;
-    if (field && (field in draft || field === 'environment')) {
-      errors.value = { [field]: apiErrorMessage(failure) };
-      document.getElementById(`${formId}-${field}`)?.focus();
-    }
-    else {
-      formError.value = strings.value.admin.environments.errors.failed;
-    }
-  }
-  finally {
-    submitting.value = false;
-  }
+  const saved = await action.run(() => {
+    errors.value = {};
+    return environmentsStore.createPointer({ label: draft.label.trim(), accountName: draft.accountName.trim(), whereToFind: draft.whereToFind.trim(), environment: environment.value });
+  }, explain);
+  if (saved) emit('saved');
 };
 </script>
 
@@ -138,10 +129,6 @@ const submit = async () => {
     align-items: center;
     gap: $space-2;
     grid-column: 1 / -1;
-  }
-
-  &__save {
-    @include button-primary;
   }
 
   &__cancel {
