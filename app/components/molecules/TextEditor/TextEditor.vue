@@ -24,7 +24,7 @@
 
     <ConflictNotice :conflict="conflict ?? null" @reload="emit('reload')" />
 
-    <p :id="errorId" class="text-editor__error" aria-live="polite">{{ failed ? strings.issue.editor.failed : '' }}</p>
+    <p :id="errorId" class="text-editor__error" aria-live="polite">{{ failed ? failedMessage || strings.issue.editor.failed : '' }}</p>
 
     <div class="text-editor__actions">
       <button type="submit" class="text-editor__save">{{ saving ? strings.issue.editor.saving : strings.issue.editor.save }}</button>

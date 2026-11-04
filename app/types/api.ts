@@ -61,6 +61,7 @@ export interface IssueRow {
   parent: number | null
   effort: number | null
   labels: string[]
+  blockedBy: { number: number, open: boolean }[]
   createdAt: string
   updatedAt: string
   url: string
@@ -114,6 +115,40 @@ export interface IssueDocument extends IssueRow {
   links: IssueLink[]
   comments: IssueComment[]
   resolution: IssueComment | null
+}
+
+export interface RolledUpLink {
+  url: string
+  title: string
+  type: LinkType
+  sources: number[]
+}
+
+export type LinkRollup = Record<LinkRole, RolledUpLink[]>;
+
+export interface EffortDocument extends IssueDocument {
+  name: string | null
+  testInstructions: string | null
+  statusRollup: StatusRollup
+  linkRollup: LinkRollup
+  map: IssueRow | null
+  specs: IssueRow[]
+}
+
+export interface CredentialPointer {
+  id: number
+  label: string
+  accountName: string
+  whereToFind: string
+  environment: number | null
+}
+
+export interface Environment {
+  id: number
+  name: string
+  url: string
+  notes: string | null
+  credentialPointers?: CredentialPointer[]
 }
 
 export interface LabelGroup {

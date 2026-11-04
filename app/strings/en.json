@@ -316,5 +316,142 @@
     "loadFailed": "The list could not be loaded. Check the filters, then try again.",
     "loadMoreFailed": "Loading more failed. Try again.",
     "number": "#{number}"
+  },
+  "dashboard": {
+    "notFound": "There is no {effort} #{number}.",
+    "loadFailed": "{effort} #{number} could not be loaded. Try again.",
+    "header": {
+      "number": "#{number}",
+      "editTitle": "Edit title",
+      "titleLabel": "Title",
+      "slug": "slug: {slug}",
+      "slugNone": "no slug",
+      "editSlug": "Edit slug",
+      "slugLabel": "Slug",
+      "createdBy": "created by {holder}",
+      "close": "Close {effort}",
+      "reopen": "Reopen",
+      "closeWarning": "{count} open issues remain under this {effort}.",
+      "closeWarningOne": "1 open issue remains under this {effort}.",
+      "closeAnyway": "Close anyway",
+      "keepOpen": "Keep open",
+      "closing": "Closing…"
+    },
+    "tags": {
+      "label": "Tags",
+      "remove": "Remove tag {tag}",
+      "new": "New tag",
+      "add": "Add tag",
+      "empty": "Enter a tag."
+    },
+    "tiles": {
+      "label": "Metrics",
+      "map": "Map #{number}",
+      "mapDetail": "frontier {frontier} · {open} open · {claimed} claimed · {blocked} blocked · {closed} closed",
+      "spec": "Spec #{number} {title}",
+      "specValue": "{open}/{claimed}/{blocked}/{closed}",
+      "specLegend": "open / claimed / blocked / closed",
+      "specSummary": "{open} open, {claimed} claimed, {blocked} blocked, {closed} closed",
+      "triage": "Triage · tickets without spec",
+      "triageBucket": "{count} {label}",
+      "triageNone": "no triage tickets",
+      "triageNoState": "no triage state",
+      "triageSummary": "{count} triage tickets: {buckets}",
+      "links": "Links",
+      "linksDetail": "{resources} resources · {artifacts} artifacts",
+      "linksSummary": "{count} Links: {detail}",
+      "separator": ", "
+    },
+    "map": {
+      "heading": "Map",
+      "none": "No map yet.",
+      "open": "Open map",
+      "openNamed": "Open map #{number} {title}",
+      "counts": "{total} decision tickets · frontier {frontier} · {open} open · {claimed} claimed · {blocked} blocked · {closed} closed",
+      "list": "Decision tickets ({count})",
+      "empty": "No decision tickets match."
+    },
+    "specs": {
+      "heading": "Specs",
+      "none": "No specs yet.",
+      "open": "Open spec",
+      "openNamed": "Open spec #{number} {title}",
+      "counts": "{open} open · {claimed} claimed · {blocked} blocked · {closed} closed · {artifacts} artifacts"
+    },
+    "tickets": {
+      "heading": "Tickets",
+      "search": "Search tickets",
+      "searchPlaceholder": "Search #n or title",
+      "states": "Filter by state",
+      "label": "Label",
+      "anyLabel": "Any label",
+      "assignee": "Assignee",
+      "anyAssignee": "Anyone",
+      "unassigned": "Unassigned",
+      "sort": "Sort by",
+      "sorts": {
+        "number": "Number",
+        "state": "State",
+        "title": "Title"
+      },
+      "specGroup": "Spec #{number} {title}",
+      "triageGroup": "Triage · no spec",
+      "groupMeta": "· {buckets}",
+      "empty": "No tickets match.",
+      "none": "No tickets yet.",
+      "number": "#{number}",
+      "holder": "@{slug}",
+      "blockedBy": "blocked by",
+      "blockerOpen": "#{number}",
+      "blockerClosed": "#{number} ✓",
+      "blockerOpenState": ", open",
+      "blockerClosedState": ", closed",
+      "claim": "Claim",
+      "unclaim": "Unclaim",
+      "close": "Close",
+      "claimNamed": "Claim #{number}",
+      "unclaimNamed": "Unclaim #{number}",
+      "closeNamed": "Close #{number}",
+      "failed": "#{number}: that did not save. Try again."
+    },
+    "links": {
+      "heading": "Resources & Artifacts",
+      "count": "({resources} · {artifacts})",
+      "roles": {
+        "resource": "Resources ({count})",
+        "artifact": "Artifacts ({count})"
+      },
+      "from": "from {sources}",
+      "source": "#{number}",
+      "sourceClosed": "#{number} (closed)",
+      "none": "none",
+      "copy": "Copy as markdown",
+      "copied": "Copied {count} Artifacts as markdown.",
+      "copyFailed": "Copying failed. Try again.",
+      "note": "Rolled up over the whole {effort}, deduped by URL, Links on closed tickets included.",
+      "addHeading": "Add Link to this {effort}"
+    },
+    "testInstructions": {
+      "heading": "Test instructions",
+      "edit": "Edit test instructions",
+      "label": "Test instructions (markdown)",
+      "empty": "No test instructions yet."
+    },
+    "environments": {
+      "heading": "Environments & credentials",
+      "empty": "No Environments yet.",
+      "pointers": "Credential pointers",
+      "pointer": "{label}: {account}",
+      "anyEnvironment": "Any environment",
+      "hidden": "Credential pointers are visible to Token holders and elevated sessions.",
+      "noPointers": "No credential pointers."
+    },
+    "drawer": {
+      "label": "#{number} {title}",
+      "close": "Close",
+      "openPage": "Open the issue page",
+      "loading": "Loading…",
+      "failed": "#{number} could not be loaded. Try again."
+    }
   }
 }
