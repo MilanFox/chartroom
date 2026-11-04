@@ -12,7 +12,7 @@
 
         <thead>
           <tr>
-            <th scope="col">{{ strings.admin.snapshots.kind }}</th>
+            <th scope="col">{{ strings.admin.snapshots.trigger }}</th>
 
             <th scope="col">{{ strings.admin.snapshots.time }}</th>
 
@@ -25,7 +25,7 @@
         <tbody>
           <template v-for="snapshot in admin.snapshots" :key="snapshot.name">
             <tr>
-              <td>{{ strings.admin.snapshots.kinds[snapshot.kind] }}</td>
+              <td>{{ strings.admin.snapshots.triggers[snapshot.trigger] }}</td>
 
               <th scope="row" class="admin-snapshots__time">{{ formatTimestamp(snapshot.takenAt) }}</th>
 
@@ -34,7 +34,7 @@
               <td class="admin-snapshots__actions">
                 <a :href="`/ui/snapshots/${encodeURIComponent(snapshot.name)}`" :download="`${snapshot.name}.sqlite`" class="admin-snapshots__download">{{ strings.admin.snapshots.download }}</a>
 
-                <AdminAction v-if="snapshot.kind === 'manual'" :id="`${baseId}-delete-${snapshot.name}`" :label="strings.admin.snapshots.delete" variant="danger" @run="confirm(snapshot.name)" />
+                <AdminAction v-if="snapshot.trigger === 'manual'" :id="`${baseId}-delete-${snapshot.name}`" :label="strings.admin.snapshots.delete" variant="danger" @run="confirm(snapshot.name)" />
               </td>
             </tr>
 

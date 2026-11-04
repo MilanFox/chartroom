@@ -29,7 +29,7 @@ describe('AdminSettings', () => {
     remove();
   });
 
-  it('describes the Effort word field with where the word comes from', async () => {
+  it('describes the Effort Display label field with where the word comes from', async () => {
     useSessionStore().me = viewerSession;
     useInstanceStore().instance = fresh;
     const wrapper = await mountSuspended(AdminSettings);

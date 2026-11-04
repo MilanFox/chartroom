@@ -552,7 +552,7 @@
       "optional": "Optional: {projectLink}, {effortLink} and {environmentsLink} — change them any time.",
       "optionalLinks": {
         "projectLink": "project name",
-        "effortLink": "Effort word",
+        "effortLink": "Effort Display label",
         "environmentsLink": "Environments"
       },
       "done": "done",
@@ -561,7 +561,7 @@
     "settings": {
       "intro": "What this instance calls things. Ids stay fixed for the API and CLI.",
       "projectName": "Project name",
-      "effortSingular": "Effort word, singular",
+      "effortSingular": "Effort Display label, singular",
       "effortPlural": "Plural",
       "pluralHint": "Blank: the singular plus s",
       "effortHint": "An Effort is what Matt Pocock's skills call one unit of work (a map, its specs and their tickets); we kept his name, but you can change it to whatever your team says.",
@@ -689,8 +689,8 @@
       "hidden": "Snapshots need admin elevation.",
       "empty": "No Snapshots yet.",
       "caption": "Snapshots",
-      "kind": "Type",
-      "kinds": {
+      "trigger": "Trigger",
+      "triggers": {
         "manual": "Manual",
         "pre-migrate": "Before upgrade"
       },

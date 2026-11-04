@@ -216,7 +216,7 @@ export interface LabelGroupInput {
 
 export interface Snapshot {
   name: string
-  kind: 'pre-migrate' | 'manual'
+  trigger: 'pre-migrate' | 'manual'
   takenAt: string
   size: number
 }

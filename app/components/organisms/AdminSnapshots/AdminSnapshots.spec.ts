@@ -8,8 +8,8 @@ import AdminSnapshots from './AdminSnapshots.vue';
 
 const unregister: (() => void)[] = [];
 const endpoint = (...args: Parameters<typeof registerEndpoint>) => unregister.push(registerEndpoint(...args));
-const manual = { name: 'manual-20261104-091500', kind: 'manual' as const, takenAt: '2026-11-04T09:15:00.000Z', size: 40_960 };
-const preMigrate = { name: 'pre-migrate-0003-to-0.2.0-20261101-080000', kind: 'pre-migrate' as const, takenAt: '2026-11-01T08:00:00.000Z', size: 1_572_864 };
+const manual = { name: 'manual-20261104-091500', trigger: 'manual' as const, takenAt: '2026-11-04T09:15:00.000Z', size: 40_960 };
+const preMigrate = { name: 'pre-migrate-0003-to-0.2.0-20261101-080000', trigger: 'pre-migrate' as const, takenAt: '2026-11-01T08:00:00.000Z', size: 1_572_864 };
 const buttonsNamed = (wrapper: VueWrapper, name: string) => wrapper.findAll('button').filter(button => button.text() === name);
 
 describe('AdminSnapshots', () => {
@@ -21,11 +21,11 @@ describe('AdminSnapshots', () => {
     unregister.splice(0).forEach(remove => remove());
   });
 
-  it('lists kind, time and size under column headers, Download on every row and Delete on manual rows only', async () => {
+  it('lists trigger, time and size under column headers, Download on every row and Delete on manual rows only', async () => {
     useAdminStore().snapshots = [manual, preMigrate];
     const wrapper = await mountSuspended(AdminSnapshots);
 
-    expect(wrapper.findAll('thead th').map(header => header.text())).toEqual(['Type', 'Time', 'Size', 'Actions']);
+    expect(wrapper.findAll('thead th').map(header => header.text())).toEqual(['Trigger', 'Time', 'Size', 'Actions']);
     const rows = wrapper.findAll('tbody tr');
     expect(rows[0]!.get('td').text()).toBe('Manual');
     expect(rows[0]!.text()).toContain('40 KB');

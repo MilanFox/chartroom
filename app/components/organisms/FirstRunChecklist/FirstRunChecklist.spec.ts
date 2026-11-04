@@ -17,8 +17,8 @@ describe('FirstRunChecklist', () => {
 
     expect(linksOf(wrapper, 'ol li')).toEqual([['Create the first Token holder', '#holders']]);
     const optional = wrapper.get('ol + p');
-    expect(optional.text()).toBe('Optional: project name, Effort word and Environments — change them any time.');
-    expect(linksOf(wrapper, 'ol + p')).toEqual([['project name', '#settings'], ['Effort word', '#settings'], ['Environments', '#environments']]);
+    expect(optional.text()).toBe('Optional: project name, Effort Display label and Environments — change them any time.');
+    expect(linksOf(wrapper, 'ol + p')).toEqual([['project name', '#settings'], ['Effort Display label', '#settings'], ['Environments', '#environments']]);
     expect(wrapper.get('button').text()).toContain('Enter admin password');
   });
 });

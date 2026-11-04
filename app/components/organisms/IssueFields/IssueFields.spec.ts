@@ -52,7 +52,7 @@ describe('IssueFields', () => {
     expect(rowNames).toEqual(['Labels', 'Claim', 'Parent', 'Blocked by', 'Blocks', expect.stringMatching(/^Links/)]);
   });
 
-  it('offers parents labelled by Kind, the Effort under the Instance Effort word', async () => {
+  it('offers parents labelled by Kind, the Effort under the Instance Effort Display label', async () => {
     const { wrapper } = await mountFields();
 
     expect(wrapper.get('select:not([id$="-triage-state"])').findAll('option').map(option => option.text())).toEqual(['None', 'Map #2: Agent Tracker v1', 'Effort #1: Tracker']);

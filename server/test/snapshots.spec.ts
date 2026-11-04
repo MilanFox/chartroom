@@ -156,8 +156,8 @@ describe('manual Snapshots on the UI mount', () => {
   afterAll(() => server.stop?.());
 
   const takeManual = async () => (await (await elevatedViewer(server)).json('POST', '/snapshots')).body as { name: string, size: number };
-  const preMigrateName = async () => ((await (await elevatedViewer(server)).json('GET', '/snapshots')).body as { name: string, kind: string }[])
-    .find(snapshot => snapshot.kind === 'pre-migrate')!.name;
+  const preMigrateName = async () => ((await (await elevatedViewer(server)).json('GET', '/snapshots')).body as { name: string, trigger: string }[])
+    .find(snapshot => snapshot.trigger === 'pre-migrate')!.name;
 
   it('an elevated session takes a manual Snapshot', async () => {
     const admin = await elevatedViewer(server);
@@ -167,14 +167,14 @@ describe('manual Snapshots on the UI mount', () => {
 
     expect(taken).toEqual({
       status: 201,
-      body: { name: expect.stringMatching(new RegExp(`^manual-${STAMP}$`)), kind: 'manual', takenAt: expect.any(String), size: expect.any(Number) },
+      body: { name: expect.stringMatching(new RegExp(`^manual-${STAMP}$`)), trigger: 'manual', takenAt: expect.any(String), size: expect.any(Number) },
     });
     expect(Date.parse(taken.body.takenAt)).toBeGreaterThanOrEqual(before - 1);
     expect(taken.body.size).toBeGreaterThan(0);
     expect(backupsOf(server.dataDir)).toContain(`${taken.body.name}.sqlite`);
   });
 
-  it('the list shows each Snapshot with kind, time and size, newest first', async () => {
+  it('the list shows each Snapshot with trigger, time and size, newest first', async () => {
     const admin = await elevatedViewer(server);
     const taken = (await admin.json('POST', '/snapshots')).body;
 
@@ -182,7 +182,7 @@ describe('manual Snapshots on the UI mount', () => {
 
     expect(listed.status).toBe(200);
     expect(listed.body[0]).toEqual(taken);
-    expect(listed.body).toContainEqual({ name: await preMigrateName(), kind: 'pre-migrate', takenAt: expect.any(String), size: expect.any(Number) });
+    expect(listed.body).toContainEqual({ name: await preMigrateName(), trigger: 'pre-migrate', takenAt: expect.any(String), size: expect.any(Number) });
   });
 
   it('a Snapshot downloads as a valid SQLite file', async () => {

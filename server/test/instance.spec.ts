@@ -52,7 +52,7 @@ describe('instance settings', () => {
     expect(viaUi).toEqual(viaApi);
   });
 
-  it('an elevated session renames the project, the Effort word and a triage Display label; the next reads reflect it', async () => {
+  it('an elevated session renames the project, the Effort Display label and a triage Display label; the next reads reflect it', async () => {
     const admin = await elevatedViewer(server);
 
     const written = await admin.json('PATCH', '/instance', { body: { projectName: 'Acme Tracker', effortName: { singular: 'Initiative' }, triageLabels: { 'needs-info': 'Waiting on reporter' } } });
@@ -83,7 +83,7 @@ describe('instance settings', () => {
     expect(await alice.json('PATCH', '/instance', { body: { projectName: 'Nope' } })).toMatchObject({ status: 404, body: { error: { code: 'not-found' } } });
   });
 
-  it('refuses a blank project name, a blank Effort word and an unknown triage label', async () => {
+  it('refuses a blank project name, a blank Effort Display label and an unknown triage label', async () => {
     const admin = await elevatedViewer(server);
 
     expect(await admin.json('PATCH', '/instance', { body: { projectName: ' ' } })).toMatchObject(invalidOn('projectName'));

@@ -474,7 +474,7 @@ const firstStartChecklist = ({ dir, version, baseUrl, port, passwordsChosen }: I
       : ['First start:', ...steps.flatMap((step, index) => step.split('\n').map((line, lineIndex) => `${lineIndex ? '  ' : `${index + 1}.`} ${line}`)), `${steps.length + 1}. In your project repo, connect your agents:`],
     ...connectSubsteps,
     '',
-    dim('Project name, Effort word and Environments are optional; change them any time on the admin page.'),
+    dim('Project name, Effort Display label and Environments are optional; change them any time on the admin page.'),
     dim(`More: ${OPERATING_DOC}`),
     '',
   ].join('\n');

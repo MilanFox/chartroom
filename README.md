@@ -24,7 +24,7 @@ docker compose up -d
 
 1. Open the Instance, `http://localhost:3000` by default, and sign in with your viewer password.
 2. Elevate with the admin password.
-3. Create the first Token holder from the setup checklist on the admin page. Its secret is shown once. Project name, Effort word and Environments are optional.
+3. Create the first Token holder from the setup checklist on the admin page. Its secret is shown once. Project name, Effort Display label and Environments are optional.
 
 ## Connect your agents
 

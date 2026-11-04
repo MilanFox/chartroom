@@ -143,7 +143,7 @@ describe('chartroom init', () => {
           '= the Token holder\'s secret).',
         ]),
         '',
-        'Project name, Effort word and Environments are optional; change them any time on the admin page.',
+        'Project name, Effort Display label and Environments are optional; change them any time on the admin page.',
         'More: https://github.com/MilanFox/chartroom/blob/main/docs/operating.md',
         '',
       ].join('\n')

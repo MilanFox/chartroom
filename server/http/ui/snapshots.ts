@@ -45,8 +45,8 @@ const snapshotDelete = (event: H3Event, principal: Principal) => {
 
 const SNAPSHOT_SCHEMA = {
   type: 'object',
-  properties: { name: { type: 'string' }, kind: { type: 'string', enum: ['pre-migrate', 'manual'] }, takenAt: { type: 'string' }, size: { type: 'integer', description: 'Bytes' } },
-  required: ['name', 'kind', 'takenAt', 'size'],
+  properties: { name: { type: 'string' }, trigger: { type: 'string', enum: ['pre-migrate', 'manual'] }, takenAt: { type: 'string' }, size: { type: 'integer', description: 'Bytes' } },
+  required: ['name', 'trigger', 'takenAt', 'size'],
 };
 const NO_SUCH_SNAPSHOT = { description: 'No such Snapshot' };
 
