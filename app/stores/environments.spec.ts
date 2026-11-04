@@ -1,23 +1,18 @@
-import { registerEndpoint } from '@nuxt/test-utils/runtime';
 import { createPinia, setActivePinia } from 'pinia';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { apiFailure } from '~/test/endpoints';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { apiFailure, useEndpoints } from '~/test/endpoints';
 import { useEnvironmentsStore } from './environments';
 
-const unregister: (() => void)[] = [];
-const endpoint = (...args: Parameters<typeof registerEndpoint>) => unregister.push(registerEndpoint(...args));
 const forbidden = apiFailure(403, { code: 'forbidden', message: 'forbidden' });
 const noContent = () => new Response(null, { status: 204 });
 
 const staging = { id: 1, name: 'Staging', url: 'https://staging.example.test', notes: null };
 
 describe('useEnvironmentsStore', () => {
+  const endpoint = useEndpoints();
+
   beforeEach(() => {
     setActivePinia(createPinia());
-  });
-
-  afterEach(() => {
-    unregister.splice(0).forEach(remove => remove());
   });
 
   it('lists the Environments and leaves the Credential pointers out when the session may not see them', async () => {

@@ -1,23 +1,17 @@
-import { registerEndpoint } from '@nuxt/test-utils/runtime';
 import { createPinia, setActivePinia } from 'pinia';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { requestOf, useEndpoints } from '~/test/endpoints';
 import { useLabelGroupsStore } from './label-groups';
-
-const unregister: (() => void)[] = [];
-const endpoint = (...args: Parameters<typeof registerEndpoint>) => unregister.push(registerEndpoint(...args));
-const requestJson = (event: unknown) => (event as { web: { request: Request } }).web.request.json();
 
 const seeded = { id: 'triage-category', displayName: 'Category', seeded: true, exclusive: true, labels: [{ id: 'bug', displayLabel: 'Bug' }] };
 const priority = (labels: { id: string, displayLabel: string }[]) => ({ id: 'priority', displayName: 'Priority', seeded: false, exclusive: true, labels });
 const effortGroup = { id: 'effort-size', displayName: 'Effort size', seeded: false, exclusive: true, labels: [] };
 
 describe('useLabelGroupsStore', () => {
+  const endpoint = useEndpoints();
+
   beforeEach(() => {
     setActivePinia(createPinia());
-  });
-
-  afterEach(() => {
-    unregister.splice(0).forEach(remove => remove());
   });
 
   it('creating a Label group refreshes the shared groups and the free-form list, so sidebar and Workbench offer it at once', async () => {
@@ -28,7 +22,7 @@ describe('useLabelGroupsStore', () => {
     endpoint('/ui/labels/free-form', { method: 'GET', handler: () => freeForm });
     endpoint('/ui/label-groups', {
       method: 'POST', handler: async (event) => {
-        sent.push(await requestJson(event));
+        sent.push(await requestOf(event).json());
         groups = [seeded, priority([{ id: 'high', displayLabel: 'high' }])];
         freeForm = [];
         return {};
@@ -49,7 +43,7 @@ describe('useLabelGroupsStore', () => {
     endpoint('/ui/labels/free-form', { method: 'GET', handler: () => [] });
     endpoint('/ui/label-groups/priority/labels/order', {
       method: 'PUT', handler: async (event) => {
-        sent.push(await requestJson(event));
+        sent.push(await requestOf(event).json());
         return {};
       },
     });
@@ -67,7 +61,7 @@ describe('useLabelGroupsStore', () => {
     endpoint('/ui/labels/free-form', { method: 'GET', handler: () => [] });
     endpoint('/ui/label-groups/order', {
       method: 'PUT', handler: async (event) => {
-        sent.push(await requestJson(event));
+        sent.push(await requestOf(event).json());
         return [];
       },
     });

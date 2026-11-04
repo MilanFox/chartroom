@@ -1,21 +1,15 @@
-import { registerEndpoint } from '@nuxt/test-utils/runtime';
 import { createPinia, setActivePinia } from 'pinia';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { apiFailure } from '~/test/endpoints';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { apiFailure, requestOf, useEndpoints } from '~/test/endpoints';
 import { useHoldersStore } from './holders';
 
-const unregister: (() => void)[] = [];
-const endpoint = (...args: Parameters<typeof registerEndpoint>) => unregister.push(registerEndpoint(...args));
-const requestJson = (event: unknown) => (event as { web: { request: Request } }).web.request.json();
 const forbidden = apiFailure(403, { code: 'forbidden', message: 'forbidden' });
 
 describe('useHoldersStore', () => {
+  const endpoint = useEndpoints();
+
   beforeEach(() => {
     setActivePinia(createPinia());
-  });
-
-  afterEach(() => {
-    unregister.splice(0).forEach(remove => remove());
   });
 
   it('leaves the roster null when the session may not see it, and offers no assignees', async () => {
@@ -33,7 +27,7 @@ describe('useHoldersStore', () => {
     endpoint('/ui/holders', { method: 'GET', handler: () => roster });
     endpoint('/ui/holders', {
       method: 'POST', handler: async (event) => {
-        const { slug } = await requestJson(event);
+        const { slug } = await requestOf(event).json();
         roster.push({ slug, displayName: null, revoked: false });
         return { slug, displayName: null, revoked: false, secret: 'chr_alice_secret' };
       },
