@@ -11,7 +11,7 @@ Built specifically for the workflow of [Matt Pocock's skills](https://github.com
 ## Install
 
 ```sh
-npx -y chartroom-cli@0 init my-chartroom
+npx -y chartroom-cli@latest init my-chartroom
 cd my-chartroom
 docker compose up -d
 ```
@@ -30,12 +30,12 @@ docker compose up -d
    ```sh
    export CHARTROOM_URL=http://localhost:3000
    export CHARTROOM_TOKEN=<secret>
-   npx -y chartroom-cli@0 adapter --write docs/agents
+   npx -y chartroom-cli@latest adapter --write docs/agents
    ```
 
 ## CLI
 
-`npm install -g chartroom-cli@0` for the `chart` binary, or prefix each command with `npx -y chartroom-cli@0` instead of `chart`. Match the major to your Instance's version. Output is JSON.
+`npm install -g chartroom-cli@latest` for the `chart` binary, or prefix each command with `npx -y chartroom-cli@latest` instead of `chart`. On an Instance older than the latest major, use `@<major>`; the CLI names it when they differ. Output is JSON.
 
 | Command | Does |
 | --- | --- |
