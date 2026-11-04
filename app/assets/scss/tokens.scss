@@ -23,6 +23,7 @@
   --color-tint-accent: #eef2ff;
   --color-edge: #b8bfca;
   --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.04);
+  --color-scrim: rgba(15, 17, 21, 0.25);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -49,5 +50,6 @@
     --color-tint-accent: #1e2140;
     --color-edge: #4b5363;
     --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.35);
+    --color-scrim: rgba(0, 0, 0, 0.5);
   }
 }
