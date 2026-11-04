@@ -1,7 +1,7 @@
 import { mountSuspended, registerEndpoint } from '@nuxt/test-utils/runtime';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h } from 'vue';
-import type { IssueComment, IssueDocument } from '~/types/api';
+import type { IssueChange, IssueComment, IssueDocument } from '~/types/api';
 import { useIssuesStore } from '~/stores/issues';
 import { useSessionStore } from '~/stores/session';
 import { holderSession, issueFixture, viewerSession } from '~/test/issue-fixture';
@@ -25,15 +25,29 @@ const comment = (id: number, overrides: Partial<IssueComment> = {}): IssueCommen
   ...overrides,
 });
 
+const change = (id: number, at: string, overrides: Partial<IssueChange> = {}): IssueChange => ({
+  id,
+  issue: 12,
+  actor: 'milan',
+  origin: 'ui',
+  at,
+  field: 'title',
+  before: 'A',
+  after: 'B',
+  ...overrides,
+});
+
 const DocumentEnd = defineComponent(() => {
   const issues = useIssuesStore();
   return () => [h(IssueThread, { issue: issues.documents[12]! }), h(IssueCloseForm, { issue: issues.documents[12]! })];
 });
 
-const mountThread = async (overrides: Partial<IssueDocument> = {}) => {
+const mountThread = async (overrides: Partial<IssueDocument> = {}, changes: IssueChange[] = []) => {
   let current = issueFixture(overrides);
   endpoint('/ui/issues/12', { method: 'GET', handler: () => current });
+  endpoint('/ui/issues/12/changes', { method: 'GET', handler: () => ({ items: changes, nextCursor: null }) });
   useIssuesStore().documents[12] = current;
+  useIssuesStore().changes = {};
   const wrapper = await mountSuspended(DocumentEnd);
   return { wrapper, serve: (next: Partial<IssueDocument>) => current = issueFixture({ ...overrides, ...next }) };
 };
@@ -47,6 +61,7 @@ describe('IssueThread', () => {
 
   afterEach(() => {
     unregister.splice(0).forEach(remove => remove());
+    localStorage.clear();
   });
 
   it('marks UI-made comments manual, API-made ones not, and offers edit and delete on own comments only', async () => {
@@ -113,11 +128,45 @@ describe('IssueThread', () => {
     expect(articles(wrapper)[0]!.text()).toContain('Resolution');
   });
 
+  it('interleaves merged Change rows with the comments, diffs the body on demand, and hides the rows behind the remembered toggle', async () => {
+    const { wrapper } = await mountThread({ comments: [comment(1, { createdAt: '2026-11-04T09:05:00.000Z' })] }, [
+      change(1, '2026-11-04T09:00:00.000Z', { field: 'title', before: 'Issue view', after: 'Issue page' }),
+      change(2, '2026-11-04T09:01:00.000Z', { field: 'body', before: 'First draft', after: 'First draft\nSecond line' }),
+      change(3, '2026-11-04T09:02:00.000Z', { field: 'body', before: 'First draft\nSecond line', after: 'Second line' }),
+      change(4, '2026-11-04T09:10:00.000Z', { actor: 'claude-a', origin: 'api', field: 'label', before: null, after: 'needs-info' }),
+    ]);
+
+    await vi.waitFor(() => expect(wrapper.findAll('li')).toHaveLength(3));
+    const [edits, commentEntry, relabel] = wrapper.findAll('li');
+    expect(edits!.text()).toContain('milan');
+    expect(edits!.text()).toContain('changed the title');
+    expect(edits!.text()).toContain('edited the body');
+    expect(edits!.text()).toContain('manual');
+    expect(commentEntry!.find('article').exists()).toBe(true);
+    expect(relabel!.text()).toContain('claude-a');
+    expect(relabel!.text()).toContain('added needs-info');
+    expect(relabel!.findAll('button')).toHaveLength(0);
+
+    const expanders = edits!.findAll('button');
+    expect(expanders.map(button => button.text())).toEqual(['Show diff', 'Show diff']);
+    await expanders[1]!.trigger('click');
+    expect(edits!.findAll('del').map(line => line.text())).toEqual(['removed First draft']);
+    expect(edits!.findAll('ins').map(line => line.text())).toEqual(['added Second line']);
+    expect(expanders[1]!.attributes('aria-expanded')).toBe('true');
+
+    const toggle = wrapper.get('[role="switch"]');
+    expect(toggle.text()).toBe('Show changes');
+    expect(toggle.attributes('aria-checked')).toBe('true');
+    await toggle.trigger('click');
+    expect(wrapper.findAll('li')).toHaveLength(1);
+    expect(localStorage.getItem('chartroom:show-changes')).toBe('false');
+  });
+
   it('shows a Viewer the sign-in line in place of the comment box and no close form', async () => {
     useSessionStore().me = viewerSession;
     const { wrapper } = await mountThread({ comments: [comment(1)] });
 
     expect(wrapper.text()).toContain('Sign in as a Token holder to comment');
-    expect(wrapper.findAll('button, textarea, form')).toHaveLength(0);
+    expect(wrapper.findAll('button:not([role="switch"]), textarea, form')).toHaveLength(0);
   });
 });

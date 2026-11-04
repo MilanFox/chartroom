@@ -246,6 +246,41 @@
       "closedHeading": "Closed",
       "closedAt": "closed {date}",
       "reopen": "Reopen"
+    },
+    "changes": {
+      "toggle": "Show changes",
+      "separator": " · ",
+      "showDiff": "Show diff",
+      "hideDiff": "Hide diff",
+      "diffOf": "{field} diff",
+      "removed": "removed",
+      "added": "added",
+      "fields": {
+        "title": "Title",
+        "body": "Body",
+        "name": "Slug",
+        "testInstructions": "Test instructions"
+      },
+      "phrases": {
+        "title": "changed the title",
+        "body": "edited the body",
+        "name": "changed the slug",
+        "testInstructions": "edited the test instructions",
+        "closed": "closed",
+        "reopened": "reopened",
+        "claimed": "claimed",
+        "unclaimed": "unclaimed",
+        "parentSet": "moved under #{number}",
+        "parentRemoved": "removed from #{number}",
+        "parentMoved": "moved from #{before} to #{after}",
+        "labelAdded": "added {label}",
+        "labelRemoved": "removed {label}",
+        "blockerAdded": "added blocker {blocker}",
+        "blockerRemoved": "removed blocker {blocker}",
+        "linkAdded": "added Link {title}",
+        "linkRemoved": "removed Link {title}",
+        "commentDeleted": "deleted a comment"
+      }
     }
   },
   "workbench": {
@@ -452,6 +487,11 @@
       "openPage": "Open the issue page",
       "loading": "Loading…",
       "failed": "#{number} could not be loaded. Try again."
+    },
+    "changes": {
+      "heading": "Changes",
+      "count": "({count})",
+      "empty": "No changes yet."
     }
   }
 }
