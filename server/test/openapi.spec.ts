@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { apiClient, uiClient } from './clients';
 import { TEST_PASSWORDS, useTestServer } from './harness';
 import { ERROR_CODES } from '../utils/errors';
+import { VERB_ROUTES } from '../../cli/src/chartroom';
 
 type OpenApiDocument = {
   openapi: string
@@ -73,6 +74,14 @@ describe('the OpenAPI document', () => {
     expect(document.paths['/snapshots']).toBeUndefined();
     expect(document.security).toEqual([{ bearer: [] }]);
     expect(document.components.securitySchemes).toEqual({ bearer: { type: 'http', scheme: 'bearer' } });
+  });
+
+  it('lists every route a CLI verb maps to', async () => {
+    const document = await apiDocument();
+
+    const documented = VERB_ROUTES.filter(({ method, path }) => document.paths[path]?.[method]?.summary);
+
+    expect(documented).toEqual(VERB_ROUTES);
   });
 
   it('adds the UI-only routes under the ui server', async () => {

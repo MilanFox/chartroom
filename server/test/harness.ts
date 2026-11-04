@@ -29,7 +29,7 @@ export interface LaunchedServer {
   stop: () => Promise<void>
 }
 
-const freePort = () => new Promise<number>((resolvePort, reject) => {
+export const freePort = () => new Promise<number>((resolvePort, reject) => {
   const probe = createServer();
   probe.unref();
   probe.on('error', reject);

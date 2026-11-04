@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "workspaces": [
+    "cli"
+  ],
   "engines": {
     "node": ">=24"
   },
@@ -12,7 +15,7 @@
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
     "lint": "eslint .",
-    "typecheck": "vue-tsc --noEmit && vue-tsc --noEmit -p server/tsconfig.json",
+    "typecheck": "vue-tsc --noEmit && vue-tsc --noEmit -p server/tsconfig.json && tsc --noEmit -p cli/tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
     "prepare": "husky"
