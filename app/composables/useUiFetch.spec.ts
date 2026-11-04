@@ -41,4 +41,15 @@ describe('useUiFetch', () => {
     expect(session.me).toEqual(milan);
     expect(navigateToMock).not.toHaveBeenCalled();
   });
+
+  it('leaves a wrong admin password to the elevation prompt', async () => {
+    unregister.push(registerEndpoint('/ui/elevate', { method: 'POST', handler: unauthenticated }));
+    const session = useSessionStore();
+    session.me = milan;
+
+    await expect(useUiFetch()('/elevate', { method: 'POST', body: { password: 'wrong' } })).rejects.toThrow();
+
+    expect(session.me).toEqual(milan);
+    expect(navigateToMock).not.toHaveBeenCalled();
+  });
 });

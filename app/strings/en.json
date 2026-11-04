@@ -508,7 +508,7 @@
       "empty": "No Environments yet.",
       "pointers": "Credential pointers",
       "pointer": "{label}: {account}",
-      "anyEnvironment": "Any environment",
+      "anyEnvironment": "Any Environment",
       "hidden": "Credential pointers are visible to Token holders and elevated sessions.",
       "noPointers": "No credential pointers."
     },
@@ -523,6 +523,127 @@
       "heading": "Changes",
       "count": "({count})",
       "empty": "No changes yet."
+    }
+  },
+  "admin": {
+    "pageTitle": "Admin",
+    "heading": "Admin",
+    "lockedHint": "Write controls unlock with the admin password",
+    "sectionNav": "Admin sections",
+    "prompt": {
+      "label": "Admin password",
+      "hint": "elevates this session for 1 hour",
+      "elevate": "Elevate",
+      "elevating": "Elevating…",
+      "cancel": "Cancel",
+      "wrong": "That is not the admin password.",
+      "rateLimited": "Too many failed attempts. Wait a minute, then try again.",
+      "failed": "Elevation failed. Try again."
+    },
+    "firstRun": {
+      "heading": "First-run setup",
+      "hint": "enter the admin password to start",
+      "steps": {
+        "project": "Name the project",
+        "effort": "Pick the Effort word",
+        "environments": "Add Environments",
+        "holder": "Create the first Token holder"
+      },
+      "done": "done",
+      "enterPassword": "Enter admin password"
+    },
+    "settings": {
+      "intro": "What this instance calls things. Ids stay fixed for the API and CLI.",
+      "projectName": "Project name",
+      "effortSingular": "Effort word, singular",
+      "effortPlural": "Plural",
+      "pluralHint": "Blank: the singular plus s",
+      "triageHeading": "Triage display labels",
+      "save": "Save settings",
+      "saving": "Saving…",
+      "saved": "Settings saved.",
+      "failed": "Saving failed. Try again."
+    },
+    "environments": {
+      "intro": "Where the project runs. Credential pointers say which account to use and where its secret lives, never the secret.",
+      "empty": "No Environments yet.",
+      "anyEnvironment": "Any Environment",
+      "pointersHidden": "Credential pointers need a Token holder session or admin elevation.",
+      "noPointers": "No credential pointers.",
+      "pointers": "Credential pointers of {name}",
+      "pointerEnvironment": "Environment of {label}",
+      "edit": "Edit",
+      "delete": "Delete",
+      "keep": "Keep",
+      "confirmDelete": "Delete {name}? Its credential pointers become unbound and move to Any Environment.",
+      "confirmDeletePointer": "Delete the pointer {label}?",
+      "add": "Add Environment",
+      "addPointer": "Add credential pointer",
+      "name": "Name",
+      "url": "URL",
+      "notes": "Notes (optional)",
+      "save": "Save Environment",
+      "label": "Label",
+      "accountName": "Account name",
+      "whereToFind": "Where to find the secret",
+      "environment": "Environment",
+      "savePointer": "Save pointer",
+      "cancel": "Cancel",
+      "saving": "Saving…",
+      "errors": {
+        "failed": "Saving failed. Try again.",
+        "deleteFailed": "Deleting failed. Try again."
+      }
+    },
+    "holders": {
+      "intro": "Who may use the API and sign in. Rotate replaces a secret; revoke ends a holder for good, keeping it listed.",
+      "hidden": "The Token holder roster needs a Token holder session or admin elevation.",
+      "empty": "No Token holders yet.",
+      "roster": "Token holders",
+      "slug": "Slug",
+      "displayName": "Display name",
+      "created": "Created",
+      "lastUsed": "Last used",
+      "status": "Status",
+      "actions": "Actions",
+      "active": "Active",
+      "revoked": "Revoked",
+      "never": "Never",
+      "unknown": "—",
+      "rotate": "Rotate",
+      "revoke": "Revoke",
+      "keep": "Keep",
+      "confirmRevoke": "Revoke {slug} for good? Its secret stops working and it cannot be reactivated.",
+      "create": "Create holder",
+      "creating": "Creating…",
+      "slugHint": "Lowercase letters, digits and hyphens; fixed once created.",
+      "displayNameOptional": "Display name (optional)",
+      "secretHeading": "Secret for {slug}",
+      "secretHint": "Shown once. Copy it now; it cannot be shown again.",
+      "copy": "Copy secret",
+      "copied": "Secret copied.",
+      "copyFailed": "Copy failed. Select the secret and copy it by hand.",
+      "dismiss": "Done",
+      "errors": {
+        "slugTaken": "Another holder already uses that slug.",
+        "slugShape": "Use lowercase letters, digits and hyphens; admin is reserved.",
+        "failed": "That did not work. Try again."
+      }
+    },
+    "about": {
+      "version": "Version",
+      "runtime": "Runtime settings",
+      "runtimeHint": "Set by environment variables, read-only here; change them with a restart.",
+      "baseUrl": "Base URL",
+      "derived": "Derived from each request",
+      "trustProxy": "Proxy trust",
+      "port": "Port",
+      "updateCheck": "Update check",
+      "on": "On",
+      "off": "Off",
+      "adapter": "Adapter files",
+      "issueTracker": "issue-tracker.md",
+      "triageLabels": "triage-labels.md"
     }
   }
 }
