@@ -577,7 +577,7 @@ const execute = async (context: CliContext) => {
   const path = fillPath(verb, positionals, flags);
   const body = verb.body && JSON.stringify(await verb.body({ flags, text: textReader(flags, context.stdin) }));
   const env = { ...dotEnvIn(context.cwd ?? process.cwd()), ...context.env };
-  // issue link add owns --url as the Link target, so its instance URL comes from the environment only
+  // issue link add owns --url as the Link target, so its instance URL comes from the environment or ./.env only
   const url = (verb.flags?.url ? undefined : flags.url as string | undefined) ?? env.CHARTROOM_URL;
   const secret = (flags.token as string | undefined) ?? env.CHARTROOM_TOKEN;
   if (!url) throw new UsageError('set CHARTROOM_URL or pass --url');
