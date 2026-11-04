@@ -16,13 +16,14 @@
 
         <p v-if="group.notes" class="admin-environments__notes">{{ group.notes }}</p>
 
-        <div v-if="group.environment && confirming === group.key" role="group" class="admin-environments__confirm" :aria-labelledby="`${baseId}-confirm-${group.key}`">
-          <span :id="`${baseId}-confirm-${group.key}`">{{ format(strings.admin.environments.confirmDelete, { name: group.name }) }}</span>
-
-          <button :id="`${baseId}-confirm-button-${group.key}`" type="button" class="admin-environments__delete" @click="removeEnvironment(group.environment.id)">{{ strings.admin.environments.delete }}</button>
-
-          <button type="button" class="admin-environments__keep" @click="keep(group.key)">{{ strings.admin.environments.keep }}</button>
-        </div>
+        <InlineConfirm
+          v-if="group.environment && confirming === group.key"
+          :message="format(strings.admin.environments.confirmDelete, { name: group.name })"
+          :confirm-label="strings.admin.environments.delete"
+          :keep-label="strings.admin.environments.keep"
+          @confirm="removeEnvironment(group.environment.id)"
+          @keep="keep(group.key)"
+        />
 
         <EnvironmentForm v-if="group.environment && editing === group.environment.id" :environment="group.environment" @saved="editing = null" @cancel="stopEditing(group.environment.id)" />
 
@@ -47,13 +48,15 @@
 
             <AdminAction :id="`${baseId}-delete-pointer-${pointer.id}`" :label="strings.admin.environments.delete" variant="danger" @run="confirm(`pointer-${pointer.id}`)" />
 
-            <div v-if="confirming === `pointer-${pointer.id}`" role="group" class="admin-environments__confirm" :aria-labelledby="`${baseId}-confirm-pointer-${pointer.id}`">
-              <span :id="`${baseId}-confirm-pointer-${pointer.id}`">{{ format(strings.admin.environments.confirmDeletePointer, { label: pointer.label }) }}</span>
-
-              <button :id="`${baseId}-confirm-button-pointer-${pointer.id}`" type="button" class="admin-environments__delete" @click="removePointer(pointer.id)">{{ strings.admin.environments.delete }}</button>
-
-              <button type="button" class="admin-environments__keep" @click="keep(`pointer-${pointer.id}`)">{{ strings.admin.environments.keep }}</button>
-            </div>
+            <InlineConfirm
+              v-if="confirming === `pointer-${pointer.id}`"
+              class="admin-environments__confirm"
+              :message="format(strings.admin.environments.confirmDeletePointer, { label: pointer.label })"
+              :confirm-label="strings.admin.environments.delete"
+              :keep-label="strings.admin.environments.keep"
+              @confirm="removePointer(pointer.id)"
+              @keep="keep(`pointer-${pointer.id}`)"
+            />
           </li>
         </ul>
 
@@ -89,7 +92,7 @@ const editing = ref<number | null>(null);
 const adding = ref<'environment' | 'pointer' | null>(null);
 const error = ref('');
 
-const { confirming, confirm, keep, focusById } = useInlineConfirm({ baseId, triggerPrefix: `${baseId}-delete-` });
+const { confirming, confirm, keep, focusById } = useInlineConfirm({ triggerPrefix: `${baseId}-delete-` });
 
 const groups = computed(() => environmentGroups(environmentsStore.environments, environmentsStore.pointers ?? [], strings.value.admin.environments.anyEnvironment));
 
@@ -223,24 +226,7 @@ const rebind = (pointer: CredentialPointer, environment: string) => {
   }
 
   &__confirm {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: $space-2;
     grid-column: 1 / -1;
-    padding: $space-2 $space-3;
-    border-radius: $radius-control;
-    background: var(--color-tint-blocked);
-  }
-
-  &__delete {
-    @include button-secondary;
-    color: var(--color-state-blocked);
-  }
-
-  &__keep {
-    @include button-quiet;
-    height: $control-height;
   }
 
   &__error {

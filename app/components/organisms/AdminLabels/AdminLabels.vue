@@ -366,7 +366,7 @@ const dragged = ref<{ groupId: string, memberId: string } | null>(null);
 
 const { locked, prompting, close, lockedControl } = useElevationGate();
 
-const { confirming, confirm, keep, focusById } = useInlineConfirm({ baseId, triggerPrefix: `${baseId}-` });
+const { confirming, confirm, keep, focusById } = useInlineConfirm({ triggerPrefix: `${baseId}-` });
 
 const seededGroups = computed(() => labelGroupsStore.labelGroups.filter(group => group.seeded));
 const adminGroups = computed(() => labelGroupsStore.labelGroups.filter(group => !group.seeded));

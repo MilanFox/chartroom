@@ -40,15 +40,14 @@
 
             <tr v-if="confirming === snapshot.name">
               <td colspan="4">
-                <div role="group" class="admin-snapshots__confirm" :aria-labelledby="`${baseId}-confirm-${snapshot.name}`">
-                  <span :id="`${baseId}-confirm-${snapshot.name}`">{{ format(strings.admin.snapshots.confirmDelete, { name: snapshot.name }) }}</span>
-
-                  <button :id="`${baseId}-confirm-button-${snapshot.name}`" type="button" class="admin-snapshots__delete" @click="remove(snapshot.name)">{{ strings.admin.snapshots.delete }}</button>
-
-                  <button type="button" class="admin-snapshots__keep" @click="keep(snapshot.name)">{{ strings.admin.snapshots.keep }}</button>
-
-                  <p role="status" class="admin-snapshots__error">{{ deleteError }}</p>
-                </div>
+                <InlineConfirm
+                  :message="format(strings.admin.snapshots.confirmDelete, { name: snapshot.name })"
+                  :confirm-label="strings.admin.snapshots.delete"
+                  :keep-label="strings.admin.snapshots.keep"
+                  :error="deleteError"
+                  @confirm="remove(snapshot.name)"
+                  @keep="keep(snapshot.name)"
+                />
               </td>
             </tr>
           </template>
@@ -71,7 +70,7 @@ const takeStatus = ref('');
 const takeFailed = ref(false);
 const deleteError = ref('');
 
-const { confirming, confirm, keep, focusById } = useInlineConfirm({ baseId, triggerPrefix: `${baseId}-delete-` });
+const { confirming, confirm, keep, focusById } = useInlineConfirm({ triggerPrefix: `${baseId}-delete-` });
 
 watch(confirming, () => {
   deleteError.value = '';
@@ -180,42 +179,10 @@ const remove = async (name: string) => {
     height: $control-height;
   }
 
-  &__confirm {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: $space-2;
-    padding: $space-2 $space-3;
-    border-radius: $radius-control;
-    background: var(--color-tint-blocked);
-    white-space: normal;
-  }
-
-  &__delete {
-    @include button-secondary;
-    color: var(--color-state-blocked);
-  }
-
-  &__keep {
-    @include button-quiet;
-    height: $control-height;
-  }
-
   &__muted {
     margin: 0;
     color: var(--color-muted);
     font-size: $font-size-meta;
-  }
-
-  &__error {
-    @include error-line;
-    flex-basis: 100%;
-    margin: 0;
-    font-size: $font-size-meta;
-
-    &:empty {
-      display: none;
-    }
   }
 }
 </style>

@@ -60,13 +60,13 @@
 
             <tr v-if="confirming === holder.slug">
               <td colspan="6">
-                <div role="group" class="admin-holders__confirm" :aria-labelledby="`${baseId}-confirm-${holder.slug}`">
-                  <span :id="`${baseId}-confirm-${holder.slug}`">{{ format(strings.admin.holders.confirmRevoke, { slug: holder.slug }) }}</span>
-
-                  <button :id="`${baseId}-confirm-button-${holder.slug}`" type="button" class="admin-holders__revoke" @click="revoke(holder.slug)">{{ strings.admin.holders.revoke }}</button>
-
-                  <button type="button" class="admin-holders__keep" @click="keep(holder.slug)">{{ strings.admin.holders.keep }}</button>
-                </div>
+                <InlineConfirm
+                  :message="format(strings.admin.holders.confirmRevoke, { slug: holder.slug })"
+                  :confirm-label="strings.admin.holders.revoke"
+                  :keep-label="strings.admin.holders.keep"
+                  @confirm="revoke(holder.slug)"
+                  @keep="keep(holder.slug)"
+                />
               </td>
             </tr>
           </template>
@@ -120,7 +120,7 @@ const creating = ref(false);
 
 const { locked } = useElevationGate();
 
-const { confirming, confirm, keep, focusById } = useInlineConfirm({ baseId, triggerPrefix: `${baseId}-revoke-` });
+const { confirming, confirm, keep, focusById } = useInlineConfirm({ triggerPrefix: `${baseId}-revoke-` });
 
 const lastUsedOf = (holder: RosterHolder) => {
   if (holder.lastUsedAt === undefined) return strings.value.admin.holders.unknown;
@@ -303,27 +303,6 @@ const create = async () => {
 
   &__table &__actions {
     white-space: normal;
-  }
-
-  &__confirm {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: $space-2;
-    padding: $space-2 $space-3;
-    border-radius: $radius-control;
-    background: var(--color-tint-blocked);
-    white-space: normal;
-  }
-
-  &__revoke {
-    @include button-secondary;
-    color: var(--color-state-blocked);
-  }
-
-  &__keep {
-    @include button-quiet;
-    height: $control-height;
   }
 
   &__muted {
