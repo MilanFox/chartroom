@@ -7,7 +7,7 @@
         <dd>
           {{ instanceStore.instance?.version }}
 
-          <span v-if="updateLabel" class="admin-about__update">{{ updateLabel }}</span>
+          <ExternalLink v-if="updateNotice" :href="updateNotice.url" class="admin-about__update">{{ updateNotice.label }}</ExternalLink>
         </dd>
       </div>
     </dl>
@@ -40,15 +40,10 @@ const ADAPTER_PATHS = {
   triageLabels: '/ui/instance/adapter/triage-labels.md',
 };
 
-const session = useSessionStore();
 const instanceStore = useInstanceStore();
 const admin = useAdminStore();
-const { strings, format } = useStrings();
-
-const updateLabel = computed(() => {
-  const version = instanceStore.instance?.updateAvailable;
-  return session.adminUntil && version ? format(strings.value.shell.updateAvailable, { version }) : null;
-});
+const { strings } = useStrings();
+const updateNotice = useUpdateNotice();
 
 const runtimeEntries = computed(() => {
   const labels = strings.value.admin.about;
@@ -94,6 +89,16 @@ const runtimeEntries = computed(() => {
   &__update {
     @include kind-chip;
     margin-left: $space-2;
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-accent);
+      outline-offset: 2px;
+    }
   }
 
   &__hint {

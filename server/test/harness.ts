@@ -7,6 +7,7 @@ import { afterAll, beforeAll } from 'vitest';
 
 const SERVER_ENTRY = resolve(import.meta.dirname, '../../.output/server/index.mjs');
 const BOOT_TIMEOUT_MS = 10_000;
+const UNREACHABLE_RELEASE_URL = 'http://127.0.0.1:9/releases/latest';
 
 export const TEST_PASSWORDS = {
   CHARTROOM_ADMIN_PASSWORD: 'admin-secret',
@@ -53,6 +54,7 @@ export const launchServer = async (options: { env?: Record<string, string>, data
       NODE_ENV: 'production',
       CHARTROOM_DATA_DIR: dataDir,
       CHARTROOM_PORT: String(port),
+      CHARTROOM_RELEASE_URL: UNREACHABLE_RELEASE_URL,
       ...TEST_PASSWORDS,
       ...options.env,
     },

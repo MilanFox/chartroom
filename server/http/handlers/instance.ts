@@ -1,10 +1,11 @@
 import type { H3Event } from 'h3';
 import type { AdapterFile } from '../../utils/adapter';
+import type { Principal } from '../../utils/principal';
 
-export const instanceRead = () => ({
+export const instanceRead = (_event: H3Event, principal: Principal) => ({
   ...instanceSettingsOf(),
   version: useRuntimeConfig().version,
-  updateAvailable: null,
+  updateAvailable: isElevated(principal) ? availableUpdate() : null,
   openIssues: openIssueCount(),
 });
 
@@ -22,7 +23,12 @@ export const SETTINGS_PROPERTIES = {
 const INSTANCE_PROPERTIES = {
   ...SETTINGS_PROPERTIES,
   version: { type: 'string' },
-  updateAvailable: { type: ['string', 'null'] },
+  updateAvailable: {
+    type: ['object', 'null'],
+    description: 'A newer release; set for an elevated session on the UI mount only, always null on the bearer mount',
+    properties: { version: { type: 'string' }, url: { type: 'string' } },
+    required: ['version', 'url'],
+  },
   openIssues: { type: 'integer', description: 'Open issues of every Kind on the Instance' },
 };
 

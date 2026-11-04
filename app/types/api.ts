@@ -14,10 +14,15 @@ export interface InstanceNames {
   effortName: { singular: string, plural: string }
 }
 
+export interface UpdateNotice {
+  version: string
+  url: string
+}
+
 export interface Instance extends InstanceNames {
   triageLabels: Record<string, string>
   version: string
-  updateAvailable: string | null
+  updateAvailable: UpdateNotice | null
   openIssues: number
 }
 

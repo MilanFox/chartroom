@@ -33,11 +33,15 @@
 
         <li role="presentation" aria-hidden="true" class="top-bar__menu-heading">{{ strings.shell.admin }}</li>
 
-        <MenuItem v-for="section in adminSections" :key="section.id" :to="section.to">
-          <span>{{ section.label }}</span>
+        <template v-for="section in adminSections" :key="section.id">
+          <MenuItem :to="section.to">
+            <span>{{ section.label }}</span>
+          </MenuItem>
 
-          <span v-if="section.chip" class="top-bar__update">{{ section.chip }}</span>
-        </MenuItem>
+          <MenuItem v-if="section.update" :href="section.update.url">
+            <span class="top-bar__update">{{ section.update.label }}</span>
+          </MenuItem>
+        </template>
 
         <li role="separator" class="top-bar__separator" />
 

@@ -13,16 +13,13 @@ export const useShell = () => {
 
   const openIssues = computed(() => instanceStore.instance?.openIssues ?? 0);
 
-  const updateLabel = computed(() => {
-    const version = instanceStore.instance?.updateAvailable;
-    return session.adminUntil && version ? format(strings.value.shell.updateAvailable, { version }) : null;
-  });
+  const updateNotice = useUpdateNotice();
 
   const adminSections = computed(() => ADMIN_SECTION_IDS.map(id => ({
     id,
     label: strings.value.shell.adminSections[id],
     to: adminSectionPath(id),
-    chip: id === 'about' ? updateLabel.value : null,
+    update: id === 'about' ? updateNotice.value : null,
   })));
 
   const elevateLink = adminSectionPath('elevate');

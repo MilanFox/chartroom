@@ -11,6 +11,7 @@
 </template>
 
 <script setup lang="ts">
+const session = useSessionStore();
 const instanceStore = useInstanceStore();
 const effortsStore = useEffortsStore();
 const { strings, format } = useStrings();
@@ -18,6 +19,10 @@ const { strings, format } = useStrings();
 await useAsyncData('shell', async () => {
   await Promise.all([instanceStore.load(), effortsStore.load()]);
   return true;
+});
+
+watch(() => Boolean(session.adminUntil), (elevated) => {
+  if (elevated) instanceStore.refreshUpdateNotice();
 });
 
 useHead(() => ({

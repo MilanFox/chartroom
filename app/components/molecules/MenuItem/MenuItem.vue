@@ -10,6 +10,16 @@
       <slot />
     </NuxtLink>
 
+    <ExternalLink
+      v-else-if="href"
+      :href="href"
+      role="menuitem"
+      tabindex="-1"
+      class="menu-item"
+    >
+      <slot />
+    </ExternalLink>
+
     <button
       v-else
       type="button"

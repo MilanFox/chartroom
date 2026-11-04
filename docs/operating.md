@@ -23,6 +23,7 @@ The container refuses to start without either password and names the missing var
 | `CHARTROOM_UPDATE_CHECK` | `true` | `false` stops the check for a newer release at boot and every 24 h. |
 | `CHARTROOM_DATA_DIR` | `/data` | Development and tests only, not for production. Keep it out of `.env`. |
 | `CHARTROOM_ELEVATION_SECONDS` | `3600` | Development and tests only, not for production. Keep it out of `.env`. |
+| `CHARTROOM_RELEASE_URL` | GitHub latest-release API | Development and tests only, not for production. Points the update check at a stub. Keep it out of `.env`. |
 
 ## TLS at the reverse proxy
 

@@ -9,5 +9,10 @@ export const useInstanceStore = defineStore('instance', () => {
     instance.value = await uiFetch<Instance>('/instance');
   };
 
-  return { instance, load };
+  const refreshUpdateNotice = async () => {
+    const { updateAvailable } = await uiFetch<Instance>('/instance');
+    if (instance.value) instance.value.updateAvailable = updateAvailable;
+  };
+
+  return { instance, load, refreshUpdateNotice };
 });
