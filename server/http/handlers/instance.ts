@@ -1,8 +1,9 @@
 import type { H3Event } from 'h3';
+import type { Instance } from '#shared/api';
 import type { AdapterFile } from '../../utils/adapter';
 import type { Principal } from '../../utils/principal';
 
-export const instanceRead = (_event: H3Event, principal: Principal) => ({
+export const instanceRead = (_event: H3Event, principal: Principal): Instance => ({
   ...instanceSettingsOf(),
   version: useRuntimeConfig().version,
   updateAvailable: isElevated(principal) ? availableUpdate() : null,

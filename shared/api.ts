@@ -172,6 +172,9 @@ export interface RosterHolder extends Holder {
   createdAt?: string
   lastUsedAt?: string | null
   revokedAt?: string | null
+  updatedAt?: string
+  updatedBy?: string
+  secretHistory?: { hash: string, createdAt: string, revokedAt: string | null }[]
 }
 
 export interface HolderSecret extends RosterHolder {

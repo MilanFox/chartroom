@@ -5,6 +5,8 @@ import type { BlockerRef } from '../utils/blockers';
 import type { CommentRecord } from '../utils/comments';
 import type { IssueRecord } from '../utils/issues';
 import type { LinkRecord } from '../utils/links';
+import type { CredentialPointer, EffortDocument, Environment, Holder, IssueComment, IssueDocument, IssueLink, IssueRow, Origin, RosterHolder } from '#shared/api';
+import type { IssueState, Kind, LinkRole, LinkType } from '#shared/domain';
 import { STATUSES } from '#shared/domain';
 import type { JsonSchema } from './table';
 import { nullable, pageSchema, stringList } from './schemas';
@@ -17,13 +19,13 @@ interface RowRelations {
 
 const relationsOf = (issue: IssueRecord): RowRelations => ({ labels: labelsOf(issue.number), blockers: blockersOf(issue.number), effort: effortNumberOf(issue) });
 
-export const toRow = (event: H3Event, issue: IssueRecord, relations?: RowRelations) => {
+export const toRow = (event: H3Event, issue: IssueRecord, relations?: RowRelations): IssueRow => {
   const { labels, blockers, effort } = relations ?? relationsOf(issue);
   return {
     number: issue.number,
-    kind: issue.kind,
+    kind: issue.kind as Kind,
     title: issue.title,
-    state: issue.state,
+    state: issue.state as IssueState,
     status: statusOf(issue, blockers),
     assignee: issue.assignee,
     parent: issue.parent,
@@ -36,14 +38,14 @@ export const toRow = (event: H3Event, issue: IssueRecord, relations?: RowRelatio
   };
 };
 
-export const toDocument = (event: H3Event, issue: IssueRecord) => {
+export const toDocument = (event: H3Event, issue: IssueRecord): IssueDocument => {
   const resolution = resolutionOf(issue.number);
   const relations = relationsOf(issue);
   return {
     ...toRow(event, issue, relations),
     body: issue.body,
     createdBy: issue.createdBy,
-    origin: issue.origin,
+    origin: issue.origin as Origin,
     closedAt: issue.closedAt,
     version: issue.version,
     blockedBy: relations.blockers,
@@ -56,7 +58,7 @@ export const toDocument = (event: H3Event, issue: IssueRecord) => {
   };
 };
 
-export const toRows = (event: H3Event, records: IssueRecord[]) => {
+export const toRows = (event: H3Event, records: IssueRecord[]): IssueRow[] => {
   const numbers = records.map(issue => issue.number);
   const labels = labelsByIssue(numbers);
   const blockers = blockersByIssue(numbers);
@@ -64,12 +66,12 @@ export const toRows = (event: H3Event, records: IssueRecord[]) => {
   return records.map(issue => toRow(event, issue, { labels: labels.get(issue.number) ?? [], blockers: blockers.get(issue.number) ?? [], effort: efforts.get(issue.number) ?? null }));
 };
 
-export const toComment = (event: H3Event, comment: CommentRecord) => ({
+export const toComment = (event: H3Event, comment: CommentRecord): IssueComment => ({
   id: comment.id,
   issue: comment.issue,
   author: comment.author,
   body: comment.body,
-  origin: comment.origin,
+  origin: comment.origin as Origin,
   resolution: comment.resolution,
   createdAt: comment.createdAt,
   updatedAt: comment.updatedAt,
@@ -90,15 +92,15 @@ const COMMENT_PROPERTIES = {
 
 export const COMMENT_SCHEMA = { type: 'object', properties: COMMENT_PROPERTIES, required: Object.keys(COMMENT_PROPERTIES) };
 
-export const toLink = (link: LinkRecord) => ({
+export const toLink = (link: LinkRecord): IssueLink => ({
   id: link.id,
   issue: link.issue,
-  role: link.role,
-  type: link.type,
+  role: link.role as LinkRole,
+  type: link.type as LinkType,
   url: link.url,
   title: link.title,
   addedBy: link.addedBy,
-  origin: link.origin,
+  origin: link.origin as Origin,
   createdAt: link.createdAt,
 });
 
@@ -190,7 +192,7 @@ export const ISSUE_PAGE_SCHEMA = {
   required: [...ROW_PAGE_SCHEMA.required, 'effortCounts'],
 };
 
-export const toPointer = (pointer: PointerRecord) => ({
+export const toPointer = (pointer: PointerRecord): CredentialPointer => ({
   id: pointer.id,
   label: pointer.label,
   accountName: pointer.accountName,
@@ -198,7 +200,7 @@ export const toPointer = (pointer: PointerRecord) => ({
   environment: pointer.environment,
 });
 
-export const toEnvironment = (environment: EnvironmentRecord, pointers: PointerRecord[] | null) => ({
+export const toEnvironment = (environment: EnvironmentRecord, pointers: PointerRecord[] | null): Environment => ({
   id: environment.id,
   name: environment.name,
   url: environment.url,
@@ -226,13 +228,13 @@ const ENVIRONMENT_PROPERTIES = {
 
 export const ENVIRONMENT_SCHEMA = { type: 'object', properties: ENVIRONMENT_PROPERTIES, required: ['id', 'name', 'url', 'notes'] };
 
-export const basicHolder = (holder: HolderRecord) => ({
+export const basicHolder = (holder: HolderRecord): Holder => ({
   slug: holder.slug,
   displayName: holder.displayName,
   revoked: holder.revokedAt !== null,
 });
 
-export const fullHolder = (holder: HolderRecord) => ({
+export const fullHolder = (holder: HolderRecord): Required<RosterHolder> => ({
   ...basicHolder(holder),
   createdAt: holder.createdAt,
   revokedAt: holder.revokedAt,
@@ -256,11 +258,13 @@ const HOLDER_PROPERTIES = {
 export const HOLDER_SCHEMA: JsonSchema = { type: 'object', properties: HOLDER_PROPERTIES, required: ['slug', 'displayName', 'revoked'] };
 export const HOLDER_WITH_SECRET_SCHEMA: JsonSchema = { type: 'object', properties: { ...HOLDER_PROPERTIES, secret: { type: 'string' } }, required: ['slug', 'displayName', 'revoked', 'secret'] };
 
-export const toEffortDocument = (event: H3Event, effort: IssueRecord) => {
+export const toEffortDocument = (event: H3Event, effort: IssueRecord): EffortDocument => {
   const children = childrenOf(effort.number);
   const map = children.find(child => child.kind === 'map');
   return {
     ...toDocument(event, effort),
+    name: effort.name,
+    testInstructions: effort.testInstructions,
     statusRollup: statusRollupOf(effort.number),
     linkRollup: linkRollupOf(effort.number),
     map: map ? toRow(event, map) : null,
