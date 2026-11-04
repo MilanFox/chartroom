@@ -562,7 +562,7 @@
       "effortSingular": "Effort word, singular",
       "effortPlural": "Plural",
       "pluralHint": "Blank: the singular plus s",
-      "effortHint": "An Effort is what Matt Pocock's skills call one unit of work: a map, its specs and their tickets. We kept his name; rename it to whatever your team says.",
+      "effortHint": "An Effort is what Matt Pocock's skills call one unit of work (a map, its specs and their tickets); we kept his name, but you can change it to whatever your team says.",
       "triageHeading": "Triage display labels",
       "save": "Save settings",
       "saving": "Saving…",

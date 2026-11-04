@@ -36,7 +36,7 @@ describe('AdminSettings', () => {
 
     const field = wrapper.get('input[name="singular"]');
     const descriptions = field.attributes('aria-describedby')!.split(' ').map(id => wrapper.get(`[id="${id}"]`).text());
-    expect(descriptions).toContain('An Effort is what Matt Pocock\'s skills call one unit of work: a map, its specs and their tickets. We kept his name; rename it to whatever your team says.');
+    expect(descriptions).toContain('An Effort is what Matt Pocock\'s skills call one unit of work (a map, its specs and their tickets); we kept his name, but you can change it to whatever your team says.');
   });
 
   it('keeps a locked field focusable under its label with a lock mark, and typing into it opens the password prompt under that field', async () => {

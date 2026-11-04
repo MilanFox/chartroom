@@ -38,8 +38,9 @@
 
 <script setup lang="ts">
 import type { AdminSectionId } from '~/utils/paths';
+import type catalog from '~/strings/en.json';
 
-const OPTIONAL_SECTIONS: Record<string, AdminSectionId> = { projectLink: 'settings', effortLink: 'settings', environmentsLink: 'environments' };
+const OPTIONAL_SECTIONS: Record<keyof typeof catalog.admin.firstRun.optionalLinks, AdminSectionId> = { projectLink: 'settings', effortLink: 'settings', environmentsLink: 'environments' };
 
 const session = useSessionStore();
 const admin = useAdminStore();

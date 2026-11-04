@@ -433,11 +433,12 @@ const firstStartChecklist = ({ dir, version, baseUrl, port, passwordsChosen }: I
   const styles = stylesFor(stdout, env);
   const { bold, dim, green, cyan } = styles;
   const url = baseUrl ?? `http://localhost:${port}`;
-  const viewerPassword = passwordsChosen ? 'your viewer password' : `the viewer password (in ${join(dir, '.env')})`;
+  const envFile = join(dir, '.env');
+  const viewerPassword = passwordsChosen ? 'your viewer password' : `the viewer password (in ${envFile})`;
   const steps = [
     ...started ? [] : [dir === '.' ? 'docker compose up -d' : `cd ${dir} && docker compose up -d`],
     `Open ${url} and sign in with ${viewerPassword}${url.startsWith('https:') ? `\nPut a TLS reverse proxy in front: ${OPERATING_DOC}#tls-at-the-reverse-proxy` : ''}`,
-    `Admin → "Enter admin password…" → elevate${passwordsChosen ? '' : ` with the admin password (in ${join(dir, '.env')})`}`,
+    `Admin → "Enter admin password…" → elevate${passwordsChosen ? '' : ` with the admin password (in ${envFile})`}`,
     'Token holders → create one and copy its secret, it is shown once',
     'In your project repo, run:',
   ];
