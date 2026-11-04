@@ -13,10 +13,6 @@ export interface Principal {
 
 export const isElevated = (principal: Principal) => principal.adminUntil !== null && principal.adminUntil > nowIso();
 
-export const requireElevation = (principal: Principal) => {
-  if (!isElevated(principal)) throw forbidden('admin writes require elevation');
-};
-
 export const actorSlug = (principal: Principal) => principal.slug ?? 'admin';
 
 export const sessionPrincipal = (session: SessionRecord, holder: HolderRecord | null): Principal => ({

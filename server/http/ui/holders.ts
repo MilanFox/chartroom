@@ -5,7 +5,6 @@ import type { MountRoute } from '../mount';
 import type { JsonSchema } from '../table';
 
 const create = async (event: H3Event, principal: Principal) => {
-  requireElevation(principal);
   const body = await readJsonObject(event);
   const input = { slug: requireString(body, 'slug'), displayName: optionalString(body, 'displayName') };
   const { holder, secret } = createHolder(input, actorSlug(principal));
@@ -14,15 +13,11 @@ const create = async (event: H3Event, principal: Principal) => {
 };
 
 const rotate = (event: H3Event, principal: Principal) => {
-  requireElevation(principal);
   const { holder, secret } = rotateHolder(getRouterParam(event, 'slug')!, actorSlug(principal));
   return { ...fullHolder(holder), secret };
 };
 
-const revoke = (event: H3Event, principal: Principal) => {
-  requireElevation(principal);
-  return fullHolder(revokeHolder(getRouterParam(event, 'slug')!, actorSlug(principal)));
-};
+const revoke = (event: H3Event, principal: Principal) => fullHolder(revokeHolder(getRouterParam(event, 'slug')!, actorSlug(principal)));
 
 const HOLDER_PROPERTIES = {
   slug: { type: 'string' },
@@ -37,7 +32,6 @@ const HOLDER_PROPERTIES = {
 };
 const HOLDER_SCHEMA: JsonSchema = { type: 'object', properties: HOLDER_PROPERTIES, required: ['slug', 'displayName', 'revoked'] };
 const HOLDER_WITH_SECRET_SCHEMA: JsonSchema = { type: 'object', properties: { ...HOLDER_PROPERTIES, secret: { type: 'string' } }, required: ['slug', 'displayName', 'revoked', 'secret'] };
-const ELEVATION_REQUIRED = { description: 'Elevation required' };
 const NO_SUCH_HOLDER = { description: 'No such holder' };
 
 export const holderAdminRoutes: MountRoute[] = [
@@ -45,31 +39,34 @@ export const holderAdminRoutes: MountRoute[] = [
     method: 'post',
     path: '/holders',
     handler: create,
+    elevated: true,
     openapi: {
       summary: 'Create a Token holder',
       tags: ['holders'],
       requestBody: { type: 'object', properties: { slug: { type: 'string' }, displayName: { type: 'string' } }, required: ['slug'] },
-      responses: { 201: { description: 'The holder with its one-time secret', schema: HOLDER_WITH_SECRET_SCHEMA }, 400: { description: 'Invalid input' }, 403: ELEVATION_REQUIRED, 409: { description: 'Slug taken' } },
+      responses: { 201: { description: 'The holder with its one-time secret', schema: HOLDER_WITH_SECRET_SCHEMA }, 400: { description: 'Invalid input' }, 409: { description: 'Slug taken' } },
     },
   },
   {
     method: 'post',
     path: '/holders/:slug/rotate',
     handler: rotate,
+    elevated: true,
     openapi: {
       summary: 'Rotate a Token holder secret',
       tags: ['holders'],
-      responses: { 200: { description: 'The holder with its new secret', schema: HOLDER_WITH_SECRET_SCHEMA }, 403: ELEVATION_REQUIRED, 404: NO_SUCH_HOLDER },
+      responses: { 200: { description: 'The holder with its new secret', schema: HOLDER_WITH_SECRET_SCHEMA }, 404: NO_SUCH_HOLDER },
     },
   },
   {
     method: 'post',
     path: '/holders/:slug/revoke',
     handler: revoke,
+    elevated: true,
     openapi: {
       summary: 'Revoke a Token holder',
       tags: ['holders'],
-      responses: { 200: { description: 'The revoked holder', schema: HOLDER_SCHEMA }, 403: ELEVATION_REQUIRED, 404: NO_SUCH_HOLDER },
+      responses: { 200: { description: 'The revoked holder', schema: HOLDER_SCHEMA }, 404: NO_SUCH_HOLDER },
     },
   },
 ];

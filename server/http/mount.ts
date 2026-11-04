@@ -16,6 +16,7 @@ export interface PublicRoute extends DescribedRoute {
 }
 
 export interface ExtraRoute extends DescribedRoute {
+  elevated?: true
   handler: TableRoute['handler']
 }
 
@@ -52,6 +53,7 @@ const routeHandler = (route: MountRoute, viewerWall: boolean) => defineEventHand
   if ('public' in route) return route.handler(event);
   const principal = event.context.principal as Principal;
   if (viewerWall && principal.viewer && route.method !== 'get') throw forbidden('viewer sessions are read-only');
+  if (route.elevated && !isElevated(principal)) throw forbidden('admin writes require elevation');
   return route.handler(event, principal);
 });
 

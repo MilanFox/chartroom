@@ -3,7 +3,6 @@ import type { JsonObject } from '../../utils/body';
 import type { Principal } from '../../utils/principal';
 import { LABEL_GROUP_SCHEMA } from '../handlers/labels';
 import type { MountRoute } from '../mount';
-import { ELEVATION_REQUIRED } from './instance';
 
 const optionalText = (body: JsonObject, field: string) => (body[field] ?? null) === null ? null : requireText(body, field);
 
@@ -27,7 +26,6 @@ const idList = (body: JsonObject, field: string) => {
 };
 
 const groupCreate = async (event: H3Event, principal: Principal) => {
-  requireElevation(principal);
   const body = await readJsonObject(event);
   const input = { id: requireString(body, 'id'), displayName: optionalText(body, 'displayName'), labels: membersOf(body) };
   setResponseStatus(event, 201);
@@ -37,24 +35,18 @@ const groupCreate = async (event: H3Event, principal: Principal) => {
 const groupParam = (event: H3Event) => getRouterParam(event, 'id', { decode: true }) ?? '';
 
 const groupRename = async (event: H3Event, principal: Principal) => {
-  requireElevation(principal);
   const groupId = groupParam(event);
   return renameLabelGroup(groupId, requireText(await readJsonObject(event), 'displayName'), actorSlug(principal));
 };
 
-const groupReorder = async (event: H3Event, principal: Principal) => {
-  requireElevation(principal);
-  return reorderLabelGroups(idList(await readJsonObject(event), 'groups'), actorSlug(principal));
-};
+const groupReorder = async (event: H3Event, principal: Principal) => reorderLabelGroups(idList(await readJsonObject(event), 'groups'), actorSlug(principal));
 
-const groupDelete = (event: H3Event, principal: Principal) => {
-  requireElevation(principal);
+const groupDelete = (event: H3Event) => {
   deleteLabelGroup(groupParam(event));
   return sendNoContent(event);
 };
 
 const memberAdd = async (event: H3Event, principal: Principal) => {
-  requireElevation(principal);
   const groupId = groupParam(event);
   const member = memberOf(await readJsonObject(event));
   setResponseStatus(event, 201);
@@ -64,22 +56,17 @@ const memberAdd = async (event: H3Event, principal: Principal) => {
 const memberParam = (event: H3Event) => getRouterParam(event, 'label', { decode: true }) ?? '';
 
 const memberRename = async (event: H3Event, principal: Principal) => {
-  requireElevation(principal);
   const groupId = groupParam(event);
   const memberId = memberParam(event);
   return renameGroupMember(groupId, { id: memberId, displayLabel: requireText(await readJsonObject(event), 'displayLabel') }, actorSlug(principal));
 };
 
 const memberReorder = async (event: H3Event, principal: Principal) => {
-  requireElevation(principal);
   const groupId = groupParam(event);
   return reorderGroupMembers(groupId, idList(await readJsonObject(event), 'labels'), actorSlug(principal));
 };
 
-const memberRemove = (event: H3Event, principal: Principal) => {
-  requireElevation(principal);
-  return removeGroupMember(groupParam(event), memberParam(event), actorSlug(principal));
-};
+const memberRemove = (event: H3Event, principal: Principal) => removeGroupMember(groupParam(event), memberParam(event), actorSlug(principal));
 
 const ADMIN_LABEL_GROUP_SCHEMA = { type: 'object', properties: { ...LABEL_GROUP_SCHEMA.properties, updatedAt: { type: ['string', 'null'] }, updatedBy: { type: ['string', 'null'] } } };
 const ADMIN_LABEL_GROUP = { description: 'The admin Label group', schema: ADMIN_LABEL_GROUP_SCHEMA };
@@ -94,6 +81,7 @@ export const labelGroupAdminRoutes: MountRoute[] = [
     method: 'post',
     path: '/label-groups',
     handler: groupCreate,
+    elevated: true,
     openapi: {
       summary: 'Create an admin Label group, adopting issues that already carry its members',
       tags: ['labels'],
@@ -101,7 +89,6 @@ export const labelGroupAdminRoutes: MountRoute[] = [
       responses: {
         201: ADMIN_LABEL_GROUP,
         400: { description: 'A non-slug or reserved id (field id), a non-slug, repeated or already grouped member id (field labels)' },
-        403: ELEVATION_REQUIRED,
         409: { description: `The id is taken (field id), or ${ADOPTION_CLASH.description.toLowerCase()}` },
       },
     },
@@ -110,75 +97,82 @@ export const labelGroupAdminRoutes: MountRoute[] = [
     method: 'put',
     path: '/label-groups/order',
     handler: groupReorder,
+    elevated: true,
     openapi: {
       summary: 'Reorder the admin Label groups; the seeded groups always come first',
       tags: ['labels'],
       requestBody: { type: 'object', properties: { groups: { type: 'array', items: { type: 'string' }, description: 'Exactly the admin group ids, each once' } }, required: ['groups'] },
-      responses: { 200: { description: 'The admin Label groups in their new order', schema: { type: 'array', items: ADMIN_LABEL_GROUP_SCHEMA } }, 400: { description: 'Not a permutation of the admin group ids (field groups)' }, 403: ELEVATION_REQUIRED },
+      responses: { 200: { description: 'The admin Label groups in their new order', schema: { type: 'array', items: ADMIN_LABEL_GROUP_SCHEMA } }, 400: { description: 'Not a permutation of the admin group ids (field groups)' } },
     },
   },
   {
     method: 'patch',
     path: '/label-groups/:id',
     handler: groupRename,
+    elevated: true,
     openapi: {
       summary: 'Rename an admin Label group',
       tags: ['labels'],
       requestBody: { type: 'object', properties: { displayName: { type: 'string' } }, required: ['displayName'] },
-      responses: { 200: ADMIN_LABEL_GROUP, 400: { description: `${SEEDED_GROUP} or a blank displayName` }, 403: ELEVATION_REQUIRED, 404: NO_SUCH_GROUP },
+      responses: { 200: ADMIN_LABEL_GROUP, 400: { description: `${SEEDED_GROUP} or a blank displayName` }, 404: NO_SUCH_GROUP },
     },
   },
   {
     method: 'delete',
     path: '/label-groups/:id',
     handler: groupDelete,
+    elevated: true,
     openapi: {
       summary: 'Delete an admin Label group; issues keep its labels as free-form labels',
       tags: ['labels'],
-      responses: { 204: { description: 'Deleted' }, 400: { description: SEEDED_GROUP }, 403: ELEVATION_REQUIRED, 404: NO_SUCH_GROUP },
+      responses: { 204: { description: 'Deleted' }, 400: { description: SEEDED_GROUP }, 404: NO_SUCH_GROUP },
     },
   },
   {
     method: 'post',
     path: '/label-groups/:id/labels',
     handler: memberAdd,
+    elevated: true,
     openapi: {
       summary: 'Append a member to an admin Label group, adopting issues that already carry it',
       tags: ['labels'],
       requestBody: MEMBER_BODY,
-      responses: { 201: ADMIN_LABEL_GROUP, 400: { description: `${SEEDED_GROUP}, or a non-slug or already grouped member id (field id)` }, 403: ELEVATION_REQUIRED, 404: NO_SUCH_GROUP, 409: ADOPTION_CLASH },
+      responses: { 201: ADMIN_LABEL_GROUP, 400: { description: `${SEEDED_GROUP}, or a non-slug or already grouped member id (field id)` }, 404: NO_SUCH_GROUP, 409: ADOPTION_CLASH },
     },
   },
   {
     method: 'put',
     path: '/label-groups/:id/labels/order',
     handler: memberReorder,
+    elevated: true,
     openapi: {
       summary: 'Reorder the members of an admin Label group',
       tags: ['labels'],
       requestBody: { type: 'object', properties: { labels: { type: 'array', items: { type: 'string' }, description: 'Exactly the member ids, each once' } }, required: ['labels'] },
-      responses: { 200: ADMIN_LABEL_GROUP, 400: { description: `${SEEDED_GROUP} or not a permutation of the member ids (field labels)` }, 403: ELEVATION_REQUIRED, 404: NO_SUCH_GROUP },
+      responses: { 200: ADMIN_LABEL_GROUP, 400: { description: `${SEEDED_GROUP} or not a permutation of the member ids (field labels)` }, 404: NO_SUCH_GROUP },
     },
   },
   {
     method: 'patch',
     path: '/label-groups/:id/labels/:label',
     handler: memberRename,
+    elevated: true,
     openapi: {
       summary: 'Rename a member of an admin Label group',
       tags: ['labels'],
       requestBody: { type: 'object', properties: { displayLabel: { type: 'string' } }, required: ['displayLabel'] },
-      responses: { 200: ADMIN_LABEL_GROUP, 400: { description: `${SEEDED_GROUP} or a blank displayLabel` }, 403: ELEVATION_REQUIRED, 404: NO_SUCH_MEMBER },
+      responses: { 200: ADMIN_LABEL_GROUP, 400: { description: `${SEEDED_GROUP} or a blank displayLabel` }, 404: NO_SUCH_MEMBER },
     },
   },
   {
     method: 'delete',
     path: '/label-groups/:id/labels/:label',
     handler: memberRemove,
+    elevated: true,
     openapi: {
       summary: 'Remove a member; issues keep the label as a free-form label',
       tags: ['labels'],
-      responses: { 200: ADMIN_LABEL_GROUP, 400: { description: SEEDED_GROUP }, 403: ELEVATION_REQUIRED, 404: NO_SUCH_MEMBER },
+      responses: { 200: ADMIN_LABEL_GROUP, 400: { description: SEEDED_GROUP }, 404: NO_SUCH_MEMBER },
     },
   },
   {

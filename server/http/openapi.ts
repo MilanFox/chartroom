@@ -48,7 +48,8 @@ const response = (status: string, { description, schema, contentType = 'applicat
 const operation = (route: MountRoute) => {
   const meta = route.openapi;
   const parameters = [...pathParameters(route.path, meta?.parameters ?? []), ...(meta?.parameters ?? [])];
-  const responses = Object.fromEntries(Object.entries(meta?.responses ?? {}).map(([status, given]) => [status, response(status, given)]));
+  const elevationRequired = 'elevated' in route && route.elevated ? { 403: { description: 'Elevation required' } } : {};
+  const responses = Object.fromEntries(Object.entries({ ...meta?.responses, ...elevationRequired }).map(([status, given]) => [status, response(status, given)]));
   return {
     summary: meta?.summary ?? `${route.method.toUpperCase()} ${route.path}`,
     ...(meta?.description ? { description: meta.description } : {}),

@@ -8,8 +8,6 @@ import { SETTINGS_PROPERTIES } from '../handlers/instance';
 import { absoluteUrl } from '../handlers/links';
 import type { MountRoute } from '../mount';
 
-export const ELEVATION_REQUIRED = { description: 'Elevation required' };
-
 const effortNameOf = (body: JsonObject) => {
   const effortName = nestedObject(body, 'effortName');
   const plural = effortName['effortName.plural'] ?? null;
@@ -32,10 +30,7 @@ const settingsPatch = (body: JsonObject): SettingsPatch => ({
   ...('triageLabels' in body ? { triageLabels: triageLabelsOf(body) } : {}),
 });
 
-const settingsWrite = async (event: H3Event, principal: Principal) => {
-  requireElevation(principal);
-  return writeInstanceSettings(settingsPatch(await readJsonObject(event)), actorSlug(principal));
-};
+const settingsWrite = async (event: H3Event, principal: Principal) => writeInstanceSettings(settingsPatch(await readJsonObject(event)), actorSlug(principal));
 
 const runtimeRead = () => {
   const { baseUrl, trustProxy, port, updateCheck, projectName } = useDeploymentConfig();
@@ -81,7 +76,6 @@ const adminEnvironment = (environment: EnvironmentRecord) => ({ ...toEnvironment
 const adminPointer = (pointer: PointerRecord) => ({ ...toPointer(pointer), updatedAt: pointer.updatedAt, updatedBy: pointer.updatedBy });
 
 const environmentCreate = async (event: H3Event, principal: Principal) => {
-  requireElevation(principal);
   const body = await readJsonObject(event);
   const fields = { name: requireText(body, 'name'), url: absoluteUrl(body), notes: secretFreeNotes(body) };
   setResponseStatus(event, 201);
@@ -89,19 +83,16 @@ const environmentCreate = async (event: H3Event, principal: Principal) => {
 };
 
 const environmentUpdate = async (event: H3Event, principal: Principal) => {
-  requireElevation(principal);
   const id = idParam(event);
   return adminEnvironment(updateEnvironment(id, environmentFields(await readJsonObject(event)), actorSlug(principal)));
 };
 
-const environmentDelete = (event: H3Event, principal: Principal) => {
-  requireElevation(principal);
+const environmentDelete = (event: H3Event) => {
   deleteEnvironment(idParam(event));
   return sendNoContent(event);
 };
 
 const pointerCreate = async (event: H3Event, principal: Principal) => {
-  requireElevation(principal);
   const body = await readJsonObject(event);
   const fields = { label: requireText(body, 'label'), accountName: secretFreeText(body, 'accountName'), whereToFind: secretFreeText(body, 'whereToFind'), environment: environmentId(body) };
   setResponseStatus(event, 201);
@@ -109,13 +100,11 @@ const pointerCreate = async (event: H3Event, principal: Principal) => {
 };
 
 const pointerUpdate = async (event: H3Event, principal: Principal) => {
-  requireElevation(principal);
   const id = idParam(event);
   return adminPointer(updatePointer(id, pointerFields(await readJsonObject(event)), actorSlug(principal)));
 };
 
-const pointerDelete = (event: H3Event, principal: Principal) => {
-  requireElevation(principal);
+const pointerDelete = (event: H3Event) => {
   deletePointer(idParam(event));
   return sendNoContent(event);
 };
@@ -161,6 +150,7 @@ export const instanceAdminRoutes: MountRoute[] = [
     method: 'patch',
     path: '/instance',
     handler: settingsWrite,
+    elevated: true,
     openapi: {
       summary: 'Write the Instance settings',
       tags: ['instance'],
@@ -175,7 +165,6 @@ export const instanceAdminRoutes: MountRoute[] = [
       responses: {
         200: { description: 'The settings', schema: { type: 'object', properties: { ...SETTINGS_PROPERTIES, ...ADMIN_STAMP } } },
         400: { description: 'A blank value or an unknown triage-state member; field set' },
-        403: ELEVATION_REQUIRED,
       },
     },
   },
@@ -183,64 +172,70 @@ export const instanceAdminRoutes: MountRoute[] = [
     method: 'post',
     path: '/environments',
     handler: environmentCreate,
+    elevated: true,
     openapi: {
       summary: 'Create an Environment',
       tags: ['instance'],
       requestBody: { ...ENVIRONMENT_BODY, required: ['name', 'url'] },
-      responses: { 201: { description: 'Environment', schema: ADMIN_ENVIRONMENT_SCHEMA }, 400: { description: SECRET_REFUSED }, 403: ELEVATION_REQUIRED },
+      responses: { 201: { description: 'Environment', schema: ADMIN_ENVIRONMENT_SCHEMA }, 400: { description: SECRET_REFUSED } },
     },
   },
   {
     method: 'patch',
     path: '/environments/:id',
     handler: environmentUpdate,
+    elevated: true,
     openapi: {
       summary: 'Update an Environment',
       tags: ['instance'],
       requestBody: ENVIRONMENT_BODY,
-      responses: { 200: { description: 'Environment', schema: ADMIN_ENVIRONMENT_SCHEMA }, 400: { description: SECRET_REFUSED }, 403: ELEVATION_REQUIRED, 404: { description: 'No such Environment' } },
+      responses: { 200: { description: 'Environment', schema: ADMIN_ENVIRONMENT_SCHEMA }, 400: { description: SECRET_REFUSED }, 404: { description: 'No such Environment' } },
     },
   },
   {
     method: 'delete',
     path: '/environments/:id',
     handler: environmentDelete,
+    elevated: true,
     openapi: {
       summary: 'Delete an Environment; its pointers become unbound',
       tags: ['instance'],
-      responses: { 204: { description: 'Deleted' }, 403: ELEVATION_REQUIRED, 404: { description: 'No such Environment' } },
+      responses: { 204: { description: 'Deleted' }, 404: { description: 'No such Environment' } },
     },
   },
   {
     method: 'post',
     path: '/credential-pointers',
     handler: pointerCreate,
+    elevated: true,
     openapi: {
       summary: 'Create a Credential pointer',
       tags: ['instance'],
       requestBody: { ...POINTER_BODY, required: ['label', 'accountName', 'whereToFind'] },
-      responses: { 201: { description: 'Credential pointer', schema: ADMIN_POINTER_SCHEMA }, 400: { description: SECRET_REFUSED }, 403: ELEVATION_REQUIRED, 404: { description: 'No such Environment' } },
+      responses: { 201: { description: 'Credential pointer', schema: ADMIN_POINTER_SCHEMA }, 400: { description: SECRET_REFUSED }, 404: { description: 'No such Environment' } },
     },
   },
   {
     method: 'patch',
     path: '/credential-pointers/:id',
     handler: pointerUpdate,
+    elevated: true,
     openapi: {
       summary: 'Update a Credential pointer',
       tags: ['instance'],
       requestBody: POINTER_BODY,
-      responses: { 200: { description: 'Credential pointer', schema: ADMIN_POINTER_SCHEMA }, 400: { description: SECRET_REFUSED }, 403: ELEVATION_REQUIRED, 404: { description: 'No such pointer or Environment' } },
+      responses: { 200: { description: 'Credential pointer', schema: ADMIN_POINTER_SCHEMA }, 400: { description: SECRET_REFUSED }, 404: { description: 'No such pointer or Environment' } },
     },
   },
   {
     method: 'delete',
     path: '/credential-pointers/:id',
     handler: pointerDelete,
+    elevated: true,
     openapi: {
       summary: 'Delete a Credential pointer',
       tags: ['instance'],
-      responses: { 204: { description: 'Deleted' }, 403: ELEVATION_REQUIRED, 404: { description: 'No such pointer' } },
+      responses: { 204: { description: 'Deleted' }, 404: { description: 'No such pointer' } },
     },
   },
 ];

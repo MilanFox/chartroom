@@ -1,7 +1,5 @@
 import type { H3Event } from 'h3';
-import type { Principal } from '../../utils/principal';
 import type { MountRoute } from '../mount';
-import { ELEVATION_REQUIRED } from './instance';
 
 const dataDir = () => useDeploymentConfig().dataDir;
 
@@ -12,13 +10,9 @@ const requireSnapshot = (event: H3Event) => {
   return snapshot;
 };
 
-const snapshotList = (_event: H3Event, principal: Principal) => {
-  requireElevation(principal);
-  return listSnapshots(dataDir());
-};
+const snapshotList = () => listSnapshots(dataDir());
 
-const snapshotTake = (event: H3Event, principal: Principal) => {
-  requireElevation(principal);
+const snapshotTake = (event: H3Event) => {
   try {
     const snapshot = takeSnapshot(useStore(), dataDir(), manualStem());
     setResponseStatus(event, 201);
@@ -29,16 +23,14 @@ const snapshotTake = (event: H3Event, principal: Principal) => {
   }
 };
 
-const snapshotDownload = (event: H3Event, principal: Principal) => {
-  requireElevation(principal);
+const snapshotDownload = (event: H3Event) => {
   const { name } = requireSnapshot(event);
   setResponseHeader(event, 'content-type', 'application/vnd.sqlite3');
   setResponseHeader(event, 'content-disposition', `attachment; filename="${name}.sqlite"`);
   return readSnapshot(dataDir(), name);
 };
 
-const snapshotDelete = (event: H3Event, principal: Principal) => {
-  requireElevation(principal);
+const snapshotDelete = (event: H3Event) => {
   deleteSnapshot(dataDir(), requireSnapshot(event).name);
   return sendNoContent(event);
 };
@@ -55,40 +47,44 @@ export const snapshotAdminRoutes: MountRoute[] = [
     method: 'get',
     path: '/snapshots',
     handler: snapshotList,
+    elevated: true,
     openapi: {
       summary: 'List the Snapshots in backups/, newest first',
       tags: ['snapshots'],
-      responses: { 200: { description: 'Snapshots', schema: { type: 'array', items: SNAPSHOT_SCHEMA } }, 403: ELEVATION_REQUIRED },
+      responses: { 200: { description: 'Snapshots', schema: { type: 'array', items: SNAPSHOT_SCHEMA } } },
     },
   },
   {
     method: 'post',
     path: '/snapshots',
     handler: snapshotTake,
+    elevated: true,
     openapi: {
       summary: 'Take a manual Snapshot now',
       tags: ['snapshots'],
-      responses: { 201: { description: 'The new Snapshot', schema: SNAPSHOT_SCHEMA }, 403: ELEVATION_REQUIRED, 500: { description: 'The Snapshot failed (code internal); no file is left behind' } },
+      responses: { 201: { description: 'The new Snapshot', schema: SNAPSHOT_SCHEMA }, 500: { description: 'The Snapshot failed (code internal); no file is left behind' } },
     },
   },
   {
     method: 'get',
     path: '/snapshots/:name',
     handler: snapshotDownload,
+    elevated: true,
     openapi: {
       summary: 'Download a Snapshot as its SQLite file',
       tags: ['snapshots'],
-      responses: { 200: { description: 'The SQLite file', contentType: 'application/vnd.sqlite3', schema: { type: 'string', format: 'binary' } }, 403: ELEVATION_REQUIRED, 404: NO_SUCH_SNAPSHOT },
+      responses: { 200: { description: 'The SQLite file', contentType: 'application/vnd.sqlite3', schema: { type: 'string', format: 'binary' } }, 404: NO_SUCH_SNAPSHOT },
     },
   },
   {
     method: 'delete',
     path: '/snapshots/:name',
     handler: snapshotDelete,
+    elevated: true,
     openapi: {
       summary: 'Delete a manual Snapshot',
       tags: ['snapshots'],
-      responses: { 204: { description: 'Deleted' }, 400: { description: 'A pre-migrate Snapshot (field name)' }, 403: ELEVATION_REQUIRED, 404: NO_SUCH_SNAPSHOT },
+      responses: { 204: { description: 'Deleted' }, 400: { description: 'A pre-migrate Snapshot (field name)' }, 404: NO_SUCH_SNAPSHOT },
     },
   },
 ];
