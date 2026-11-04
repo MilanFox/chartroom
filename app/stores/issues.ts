@@ -24,6 +24,7 @@ export const useIssuesStore = defineStore('issues', () => {
   const uiFetch = useUiFetch();
   const documents = ref<Record<number, IssueDocument>>({});
   const changes = ref<Record<number, IssueChange[]>>({});
+  const children = ref<Record<number, IssueRow[]>>({});
   const parentCandidates = ref<ParentCandidate[]>([]);
 
   const keep = (document: IssueDocument) => {
@@ -89,6 +90,10 @@ export const useIssuesStore = defineStore('issues', () => {
     changes.value[number] = await allPages<IssueChange>(`/issues/${number}/changes`);
   };
 
+  const loadChildren = async (number: number) => {
+    children.value[number] = await allPages<IssueRow>('/issues', { parent: number, sort: 'number', order: 'asc' });
+  };
+
   const rowsOfKind = (kind: IssueKind) => allPages<IssueRow>('/issues', { kind });
 
   const loadParentCandidates = async () => {
@@ -99,9 +104,11 @@ export const useIssuesStore = defineStore('issues', () => {
   return {
     documents,
     changes,
+    children,
     parentCandidates,
     load,
     loadChanges,
+    loadChildren,
     edit,
     claim,
     unassign,
