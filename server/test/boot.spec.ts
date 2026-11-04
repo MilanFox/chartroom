@@ -2,6 +2,7 @@ import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { bootServer, launchServer, useTestServer } from './harness';
+import { MANIFEST_VERSION } from './manifest-version';
 
 describe('boot with both passwords', () => {
   const server = useTestServer();
@@ -16,7 +17,7 @@ describe('boot with both passwords', () => {
     const response = await server.fetch('/health');
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ ok: true, version: '0.1.0' });
+    expect(await response.json()).toEqual({ ok: true, version: MANIFEST_VERSION });
   });
 });
 

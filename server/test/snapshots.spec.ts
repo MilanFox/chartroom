@@ -7,6 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { apiClient, holderSecret, uiClient } from './clients';
 import { bootServer, launchServer, TEST_PASSWORDS } from './harness';
 import type { LaunchedServer } from './harness';
+import { asRegExpSource, MANIFEST_VERSION } from './manifest-version';
 
 const MIGRATIONS_DIR = resolve(import.meta.dirname, '../db/migrations');
 const journal = JSON.parse(readFileSync(join(MIGRATIONS_DIR, 'meta/_journal.json'), 'utf8')) as { entries: { tag: string, when: number }[] };
@@ -68,7 +69,7 @@ describe('boot against a store at an older migration state', () => {
 
     const [snapshotFile, ...others] = backupsOf(server.dataDir);
     expect(others).toEqual([]);
-    expect(snapshotFile).toMatch(new RegExp(`^pre-migrate-0002-to-0\\.1\\.0-${STAMP}\\.sqlite$`));
+    expect(snapshotFile).toMatch(new RegExp(`^pre-migrate-0002-to-${asRegExpSource(MANIFEST_VERSION)}-${STAMP}\\.sqlite$`));
     expect(migrationRows(join(server.dataDir, 'backups', snapshotFile!))).toEqual({ count: 3 });
     expect(stdout).toContain(`pre-migrate Snapshot taken: ${join(server.dataDir, 'backups', snapshotFile!)}`);
     expect(stdout).toContain(`applied migrations: ${journal.entries.slice(3).map(entry => entry.tag).join(', ')}`);
@@ -91,7 +92,7 @@ describe('boot against a store at an older migration state', () => {
 
     const retried = await bootServer({ dataDir });
     await retried.kill();
-    expect((await retried.exited).stdout).toMatch(new RegExp(`pre-migrate Snapshot taken: .*pre-migrate-0002-to-0\\.1\\.0-${STAMP}\\.sqlite\\napplied migrations: 0003_comments`));
+    expect((await retried.exited).stdout).toMatch(new RegExp(`pre-migrate Snapshot taken: .*pre-migrate-0002-to-${asRegExpSource(MANIFEST_VERSION)}-${STAMP}\\.sqlite\\napplied migrations: 0003_comments`));
     await retried.stop();
   });
 });
