@@ -1,4 +1,3 @@
-import { readFileSync, rmSync } from 'node:fs';
 import type { H3Event } from 'h3';
 import type { Principal } from '../../utils/principal';
 import type { MountRoute } from '../mount';
@@ -35,14 +34,12 @@ const snapshotDownload = (event: H3Event, principal: Principal) => {
   const { name } = requireSnapshot(event);
   setResponseHeader(event, 'content-type', 'application/vnd.sqlite3');
   setResponseHeader(event, 'content-disposition', `attachment; filename="${name}.sqlite"`);
-  return readFileSync(snapshotFile(dataDir(), name));
+  return readSnapshot(dataDir(), name);
 };
 
 const snapshotDelete = (event: H3Event, principal: Principal) => {
   requireElevation(principal);
-  const { name, kind } = requireSnapshot(event);
-  if (kind === 'pre-migrate') throw invalid('a pre-migrate Snapshot cannot be deleted', 'name');
-  rmSync(snapshotFile(dataDir(), name));
+  deleteSnapshot(dataDir(), requireSnapshot(event).name);
   return sendNoContent(event);
 };
 

@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, rmSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import Database from 'better-sqlite3';
 import { sql } from 'drizzle-orm';
@@ -49,6 +49,8 @@ export const snapshotToRestore = (dataDir: string, imageIndex: string) => {
   return preMigrate.find(snapshot => oldSchemaOf(snapshot) === imageIndex) ?? preMigrate.find(snapshot => oldSchemaOf(snapshot) <= imageIndex) ?? null;
 };
 
+export const readSnapshot = (dataDir: string, name: string) => readFileSync(snapshotFile(dataDir, name));
+
 export const findSnapshot = (dataDir: string, name: string) => listSnapshots(dataDir).find(snapshot => snapshot.name === name) ?? null;
 
 const assertIntact = (file: string) => {
@@ -74,4 +76,9 @@ export const takeSnapshot = (store: Store, dataDir: string, stem: string) => {
     throw error;
   }
   return describeSnapshot(dataDir, `${stem}.sqlite`)!;
+};
+
+export const deleteSnapshot = (dataDir: string, name: string) => {
+  if (findSnapshot(dataDir, name)?.kind === 'pre-migrate') throw invalid('a pre-migrate Snapshot cannot be deleted', 'name');
+  rmSync(snapshotFile(dataDir, name));
 };

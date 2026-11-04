@@ -12,6 +12,12 @@ export const labelsByIssue = (numbers: number[]) => {
   return labels;
 };
 
+export const TRIAGE_GROUP = 'triage-state';
+
+export const triageMemberIds = () =>
+  useStore().select({ id: labelGroupMembers.id }).from(labelGroupMembers)
+    .where(eq(labelGroupMembers.groupId, TRIAGE_GROUP)).orderBy(asc(labelGroupMembers.position)).all().map(row => row.id);
+
 export const labelsOf = (issue: number): string[] => labelsByIssue([issue]).get(issue) ?? [];
 
 export const findLabelGroup = (id: string) =>
