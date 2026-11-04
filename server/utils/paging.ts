@@ -55,6 +55,31 @@ export const decodeCursor = (query: Query): unknown[] | null => {
   return key;
 };
 
+export const idCursor = (query: Query) => {
+  const key = decodeCursor(query);
+  if (key === null) return null;
+  const [id] = key;
+  if (typeof id !== 'number') throw invalid('cursor is not valid', 'cursor');
+  return id;
+};
+
+// eslint-disable-next-line no-unused-vars -- the core rule misreads type-level parameters
+export const sortCursor = <Key = unknown>(query: Query, sort: string, isKey: (key: unknown) => boolean) => {
+  const key = decodeCursor(query);
+  if (key === null) return null;
+  const [cursorSort, sortKey, number] = key;
+  if (cursorSort !== sort || !isKey(sortKey) || typeof number !== 'number') throw invalid('cursor is not valid', 'cursor');
+  return { key: sortKey as Key, number };
+};
+
+// eslint-disable-next-line no-unused-vars -- the core rule misreads type-level parameters
+export const tupleCursor = <Tuple extends unknown[]>(query: Query, guards: ((value: unknown) => boolean)[]) => {
+  const key = decodeCursor(query);
+  if (key === null) return null;
+  if (!guards.every((isValid, index) => isValid(key[index]))) throw invalid('cursor is not valid', 'cursor');
+  return key as Tuple;
+};
+
 // eslint-disable-next-line no-unused-vars -- the core rule misreads type-level parameters
 export const pageOf = <T>(rows: T[], limit: number, keyOf: (row: T) => unknown[]): Page<T> => {
   const items = rows.slice(0, limit);

@@ -1,10 +1,11 @@
 import type { H3Event } from 'h3';
+import { textParam } from '../handlers/params';
 import type { MountRoute } from '../mount';
 
 const dataDir = () => useDeploymentConfig().dataDir;
 
 const requireSnapshot = (event: H3Event) => {
-  const name = getRouterParam(event, 'name', { decode: true }) ?? '';
+  const name = textParam(event, 'name');
   const snapshot = findSnapshot(dataDir(), name);
   if (!snapshot) throw notFound(`Snapshot ${name} does not exist`);
   return snapshot;

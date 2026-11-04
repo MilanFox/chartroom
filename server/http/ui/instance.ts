@@ -5,7 +5,7 @@ import type { SettingsPatch } from '../../utils/instance';
 import type { Principal } from '../../utils/principal';
 import { ENVIRONMENT_SCHEMA, POINTER_SCHEMA, toEnvironment, toPointer } from '../representations';
 import { SETTINGS_PROPERTIES } from '../handlers/instance';
-import { absoluteUrl } from '../handlers/links';
+import { numericParam } from '../handlers/params';
 import type { MountRoute } from '../mount';
 
 const effortNameOf = (body: JsonObject) => {
@@ -39,11 +39,7 @@ const runtimeRead = () => {
 
 const setupRead = () => ({ firstRun: listHolders().length === 0 });
 
-const idParam = (event: H3Event) => {
-  const raw = getRouterParam(event, 'id') ?? '';
-  if (!/^\d+$/.test(raw)) throw notFound(`${raw} does not exist`);
-  return Number(raw);
-};
+const idParam = (event: H3Event) => numericParam(event, 'id', raw => `${raw} does not exist`);
 
 const secretFreeText = (body: JsonObject, field: string) => refuseSecretLooking(requireText(body, field), field);
 

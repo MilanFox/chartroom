@@ -1,22 +1,13 @@
 import type { H3Event } from 'h3';
-import type { Query } from '../../utils/paging';
 import type { Principal } from '../../utils/principal';
 import { toComment } from '../representations';
 import { commentIdParam, issueNumberParam } from './params';
-
-const commentCursor = (query: Query) => {
-  const key = decodeCursor(query);
-  if (key === null) return null;
-  const [id] = key;
-  if (typeof id !== 'number') throw invalid('cursor is not valid', 'cursor');
-  return id;
-};
 
 const commentList = (event: H3Event) => {
   const number = issueNumberParam(event);
   const query = getQuery(event);
   const limit = pageLimit(query);
-  const rows = listComments(number, { after: commentCursor(query), limit: limit + 1 }).map(comment => toComment(event, comment));
+  const rows = listComments(number, { after: idCursor(query), limit: limit + 1 }).map(comment => toComment(event, comment));
   return pageOf(rows, limit, comment => [comment.id]);
 };
 

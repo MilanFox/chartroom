@@ -1,16 +1,9 @@
 import type { H3Event } from 'h3';
 import type { JsonObject } from '../../utils/body';
 import type { LinkFields } from '../../utils/links';
-import type { Query } from '../../utils/paging';
 import type { Principal } from '../../utils/principal';
 import { LINK_FIELDS, toLink } from '../representations';
 import { issueNumberParam, linkIdParam } from './params';
-
-export const absoluteUrl = (body: JsonObject) => {
-  const value = body.url;
-  if (typeof value !== 'string' || !URL.canParse(value)) throw invalid('url must be an absolute URL', 'url');
-  return value;
-};
 
 const linkFields = (body: JsonObject): LinkFields => {
   const fields: LinkFields = {};
@@ -20,19 +13,11 @@ const linkFields = (body: JsonObject): LinkFields => {
   return fields;
 };
 
-const linkCursor = (query: Query) => {
-  const key = decodeCursor(query);
-  if (key === null) return null;
-  const [id] = key;
-  if (typeof id !== 'number') throw invalid('cursor is not valid', 'cursor');
-  return id;
-};
-
 const linkList = (event: H3Event) => {
   const number = issueNumberParam(event);
   const query = getQuery(event);
   const limit = pageLimit(query);
-  const rows = listLinks(number, { after: linkCursor(query), limit: limit + 1 }).map(toLink);
+  const rows = listLinks(number, { after: idCursor(query), limit: limit + 1 }).map(toLink);
   return pageOf(rows, limit, link => [link.id]);
 };
 

@@ -1,5 +1,6 @@
 import type { H3Event } from 'h3';
 import type { Principal } from '../../utils/principal';
+import { textParam } from '../handlers/params';
 import type { MountRoute } from '../mount';
 import { fullHolder, HOLDER_SCHEMA, HOLDER_WITH_SECRET_SCHEMA } from '../representations';
 
@@ -12,11 +13,11 @@ const create = async (event: H3Event, principal: Principal) => {
 };
 
 const rotate = (event: H3Event, principal: Principal) => {
-  const { holder, secret } = rotateHolder(getRouterParam(event, 'slug')!, actorSlug(principal));
+  const { holder, secret } = rotateHolder(textParam(event, 'slug'), actorSlug(principal));
   return { ...fullHolder(holder), secret };
 };
 
-const revoke = (event: H3Event, principal: Principal) => fullHolder(revokeHolder(getRouterParam(event, 'slug')!, actorSlug(principal)));
+const revoke = (event: H3Event, principal: Principal) => fullHolder(revokeHolder(textParam(event, 'slug'), actorSlug(principal)));
 
 const NO_SUCH_HOLDER = { description: 'No such holder' };
 

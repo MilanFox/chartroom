@@ -2,9 +2,8 @@ import type { H3Event } from 'h3';
 import type { JsonObject } from '../../utils/body';
 import type { Principal } from '../../utils/principal';
 import { LABEL_GROUP_SCHEMA } from '../handlers/labels';
+import { textParam } from '../handlers/params';
 import type { MountRoute } from '../mount';
-
-const optionalText = (body: JsonObject, field: string) => (body[field] ?? null) === null ? null : requireText(body, field);
 
 const memberOf = (body: JsonObject) => ({ id: requireString(body, 'id'), displayLabel: optionalText(body, 'displayLabel') });
 
@@ -19,12 +18,6 @@ const membersOf = (body: JsonObject) => {
   });
 };
 
-const idList = (body: JsonObject, field: string) => {
-  const value = body[field];
-  if (!Array.isArray(value) || !value.every(id => typeof id === 'string')) throw invalid(`${field} must be an array of ids`, field);
-  return value as string[];
-};
-
 const groupCreate = async (event: H3Event, principal: Principal) => {
   const body = await readJsonObject(event);
   const input = { id: requireString(body, 'id'), displayName: optionalText(body, 'displayName'), labels: membersOf(body) };
@@ -32,14 +25,14 @@ const groupCreate = async (event: H3Event, principal: Principal) => {
   return createLabelGroup(input, actorSlug(principal));
 };
 
-const groupParam = (event: H3Event) => getRouterParam(event, 'id', { decode: true }) ?? '';
+const groupParam = (event: H3Event) => textParam(event, 'id');
 
 const groupRename = async (event: H3Event, principal: Principal) => {
   const groupId = groupParam(event);
   return renameLabelGroup(groupId, requireText(await readJsonObject(event), 'displayName'), actorSlug(principal));
 };
 
-const groupReorder = async (event: H3Event, principal: Principal) => reorderLabelGroups(idList(await readJsonObject(event), 'groups'), actorSlug(principal));
+const groupReorder = async (event: H3Event, principal: Principal) => reorderLabelGroups(stringArray(await readJsonObject(event), 'groups'), actorSlug(principal));
 
 const groupDelete = (event: H3Event) => {
   deleteLabelGroup(groupParam(event));
@@ -53,7 +46,7 @@ const memberAdd = async (event: H3Event, principal: Principal) => {
   return addGroupMember(groupId, member, actorSlug(principal));
 };
 
-const memberParam = (event: H3Event) => getRouterParam(event, 'label', { decode: true }) ?? '';
+const memberParam = (event: H3Event) => textParam(event, 'label');
 
 const memberRename = async (event: H3Event, principal: Principal) => {
   const groupId = groupParam(event);
@@ -63,7 +56,7 @@ const memberRename = async (event: H3Event, principal: Principal) => {
 
 const memberReorder = async (event: H3Event, principal: Principal) => {
   const groupId = groupParam(event);
-  return reorderGroupMembers(groupId, idList(await readJsonObject(event), 'labels'), actorSlug(principal));
+  return reorderGroupMembers(groupId, stringArray(await readJsonObject(event), 'labels'), actorSlug(principal));
 };
 
 const memberRemove = (event: H3Event, principal: Principal) => removeGroupMember(groupParam(event), memberParam(event), actorSlug(principal));

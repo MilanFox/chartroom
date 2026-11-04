@@ -15,18 +15,7 @@ const parentField = (body: JsonObject) => {
   throw invalid('parent must be an issue number or null', 'parent');
 };
 
-const textField = (body: JsonObject, field: string) => {
-  const value = body[field];
-  if (typeof value !== 'string') throw invalid(`${field} must be a string`, field);
-  return value;
-};
-
-const labelsField = (body: JsonObject) => {
-  const value = body.labels;
-  if (value === undefined) return undefined;
-  if (!Array.isArray(value) || !value.every(label => typeof label === 'string' && label.trim() !== '')) throw invalid('labels must be an array of non-blank strings', 'labels');
-  return value.map(label => label.trim());
-};
+const labelsField = (body: JsonObject) => body.labels === undefined ? undefined : stringArray(body, 'labels', { nonBlank: true }).map(label => label.trim());
 
 const blockedByField = (body: JsonObject) => {
   const value = body.blockedBy;
@@ -38,7 +27,7 @@ const blockedByField = (body: JsonObject) => {
 const fieldsFrom = (body: JsonObject): IssueFields => {
   const fields: IssueFields = {};
   if ('title' in body) fields.title = requireString(body, 'title');
-  if ('body' in body) fields.body = textField(body, 'body');
+  if ('body' in body) fields.body = anyString(body, 'body');
   if ('parent' in body) fields.parent = parentField(body);
   if ('name' in body) fields.name = optionalString(body, 'name');
   if ('testInstructions' in body) fields.testInstructions = optionalString(body, 'testInstructions');
@@ -170,14 +159,6 @@ const isCursorKeyFor = (sort: string, key: unknown) => {
   return key === null || typeof key === 'number';
 };
 
-const issueCursor = (query: Query, sort: string): IssueCursor | null => {
-  const key = decodeCursor(query);
-  if (key === null) return null;
-  const [cursorSort, sortKey, number] = key;
-  if (cursorSort !== sort || !isCursorKeyFor(sort, sortKey) || typeof number !== 'number') throw invalid('cursor is not valid', 'cursor');
-  return { key: sortKey as IssueCursor['key'], number };
-};
-
 const sortKeyOf = (sort: string) => {
   if (isIssueSort(sort)) return (row: ReturnType<typeof toRow>) => row[sort];
   return (row: ReturnType<typeof toRow>) => soleMemberPositionAmong(sort, row.labels);
@@ -202,7 +183,7 @@ const issueList = (event: H3Event, principal: Principal) => {
     holder: principal.slug,
     sort,
     order: queryOneOf(query, 'order', SORT_ORDERS) ?? 'asc',
-    after: issueCursor(query, sort),
+    after: sortCursor<IssueCursor['key']>(query, sort, key => isCursorKeyFor(sort, key)),
     limit: limit + 1,
   };
   const rows = toRows(event, listIssues(request));
@@ -212,19 +193,12 @@ const issueList = (event: H3Event, principal: Principal) => {
   return { ...pageOf(rows, limit, row => [sort, keyOf(row), row.number]), effortCounts };
 };
 
-const changeCursor = (query: Query) => {
-  const key = decodeCursor(query);
-  if (key === null) return null;
-  const [at, id] = key;
-  if (typeof at !== 'string' || typeof id !== 'number') throw invalid('cursor is not valid', 'cursor');
-  return { at, id };
-};
-
 const issueChanges = (event: H3Event) => {
   const number = issueNumberParam(event);
   const query = getQuery(event);
   const limit = pageLimit(query);
-  const rows = listChanges(number, { field: queryString(query, 'field'), after: changeCursor(query), limit: limit + 1 });
+  const cursor = tupleCursor<[string, number]>(query, [value => typeof value === 'string', value => typeof value === 'number']);
+  const rows = listChanges(number, { field: queryString(query, 'field'), after: cursor && { at: cursor[0], id: cursor[1] }, limit: limit + 1 });
   return pageOf(rows, limit, change => [change.at, change.id]);
 };
 
