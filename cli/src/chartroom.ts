@@ -4,7 +4,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { basename, join, resolve as resolvePath } from 'node:path';
-import { parseArgs } from 'node:util';
+import { parseArgs, parseEnv } from 'node:util';
 import type { ParseArgsOptionsConfig } from 'node:util';
 
 // eslint-disable-next-line no-unused-vars -- the core rule misreads type-level parameters
@@ -43,6 +43,7 @@ interface Output {
 export interface CliContext {
   argv: string[]
   env: Record<string, string | undefined>
+  cwd?: string
   stdin: AsyncIterable<string | Uint8Array>
   stdout: Output
   stderr: Output
@@ -56,6 +57,8 @@ interface AskOptions {
 }
 
 class UsageError extends Error {}
+
+class UnreadableFile extends Error {}
 
 class InitAborted extends Error {
   // eslint-disable-next-line no-unused-vars -- the core rule misreads parameter properties
@@ -308,7 +311,8 @@ const warnOnMajorMismatch = async (root: string, context: CliContext) => {
   const { version: instanceVersion } = await health.json().catch(() => ({})) as { version?: string };
   const cliVersion = context.version ?? ownVersion();
   if (typeof instanceVersion === 'string' && majorOf(instanceVersion) !== majorOf(cliVersion)) {
-    context.stderr.write(`chartroom: the instance runs ${instanceVersion} but this CLI is ${cliVersion}; use npx -y chartroom-cli@${majorOf(instanceVersion)}\n`);
+    const major = majorOf(instanceVersion);
+    context.stderr.write(`chartroom: the instance runs ${instanceVersion} but this CLI is ${cliVersion}; install chartroom-cli@${major} (npm install -g chartroom-cli@${major}) or use npx -y chartroom-cli@${major}\n`);
   }
 };
 
@@ -440,12 +444,14 @@ const firstStartChecklist = ({ dir, version, baseUrl, port, passwordsChosen }: I
     `Open ${url} and sign in with ${viewerPassword}${url.startsWith('https:') ? `\nPut a TLS reverse proxy in front: ${OPERATING_DOC}#tls-at-the-reverse-proxy` : ''}`,
     `Admin → "Enter admin password…" → elevate${passwordsChosen ? '' : ` with the admin password (in ${envFile})`}`,
     'Token holders → create one and copy its secret, it is shown once',
-    'In your project repo, run:',
+    `In your project repo, run /setup-matt-pocock-skills (issue tracker: Other, "Chartroom at ${url}"), then:`,
   ];
   const commands = [
-    `export CHARTROOM_URL=${url}`,
-    'export CHARTROOM_TOKEN=<the secret>',
-    `npx -y chartroom-cli@${majorOf(version)} adapter --write docs/agents`,
+    `  ${cyan(`npm install -g chartroom-cli@${majorOf(version)}`)}`,
+    '  Put these two lines in the repo\'s untracked .env:',
+    `    ${cyan(`CHARTROOM_URL=${url}`)}`,
+    `    ${cyan('CHARTROOM_TOKEN=<the secret>')}`,
+    `  ${cyan('chartroom adapter --write docs/agents')}`,
   ];
   return [
     `${green('✔')} ${bold(started ? `Chartroom is running in ${dir}` : `Wrote compose.yaml and .env to ${dir}`)}`,
@@ -453,7 +459,7 @@ const firstStartChecklist = ({ dir, version, baseUrl, port, passwordsChosen }: I
     ...styles.styled
       ? checklistBox(steps, stdout.columns, styles)
       : ['First start:', ...steps.flatMap((step, index) => step.split('\n').map((line, lineIndex) => `${lineIndex ? '  ' : `${index + 1}.`} ${line}`))],
-    ...commands.map(command => `  ${cyan(command)}`),
+    ...commands,
     '',
     dim('Project name, Effort word and Environments are optional; change them any time on the admin page.'),
     dim(`More: ${OPERATING_DOC}`),
@@ -553,15 +559,27 @@ const init = async (context: CliContext) => {
   return exitCode;
 };
 
+const dotEnvIn = (cwd: string) => {
+  const file = join(cwd, '.env');
+  try {
+    return parseEnv(readFileSync(file, 'utf8'));
+  }
+  catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return {};
+    throw new UnreadableFile(`cannot read ${file}: ${(error as Error).message}`);
+  }
+};
+
 const execute = async (context: CliContext) => {
   if (context.argv[0] === 'init') return init(context);
   const verb = findVerb(context.argv);
   const { values: flags, positionals } = parseVerbArgs(verb, context.argv);
   const path = fillPath(verb, positionals, flags);
   const body = verb.body && JSON.stringify(await verb.body({ flags, text: textReader(flags, context.stdin) }));
+  const env = { ...dotEnvIn(context.cwd ?? process.cwd()), ...context.env };
   // issue link add owns --url as the Link target, so its instance URL comes from the environment only
-  const url = (verb.flags?.url ? undefined : flags.url as string | undefined) ?? context.env.CHARTROOM_URL;
-  const secret = (flags.token as string | undefined) ?? context.env.CHARTROOM_TOKEN;
+  const url = (verb.flags?.url ? undefined : flags.url as string | undefined) ?? env.CHARTROOM_URL;
+  const secret = (flags.token as string | undefined) ?? env.CHARTROOM_TOKEN;
   if (!url) throw new UsageError('set CHARTROOM_URL or pass --url');
   const root = url.replace(/\/+$/, '');
   await warnOnMajorMismatch(root, context);
@@ -609,6 +627,10 @@ export const runCli = async (context: CliContext) => {
     return await execute(context);
   }
   catch (error) {
+    if (error instanceof UnreadableFile) {
+      context.stderr.write(`chartroom: ${error.message}\n`);
+      return 1;
+    }
     if (error instanceof InitAborted) {
       context.stderr.write(`chartroom: ${error.message}\n`);
       return error.exitCode;

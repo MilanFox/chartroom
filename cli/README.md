@@ -4,13 +4,14 @@ Every Chartroom tracker operation from the shell. One verb per API route; output
 
 ## Install
 
-No install needed. Run it with the major version of your Instance, `0` while it is `0.x`:
+Install it globally at the major version of your Instance, `0` while it is `0.x`. The binary is `chartroom`, with the aliases `chart` and `chartroom-cli`, which is what the Adapter's commands call. Node 24 or newer.
 
 ```sh
-npx -y chartroom-cli@<major> me
+npm install -g chartroom-cli@<major>
+chartroom me
 ```
 
-Installed globally (`npm install -g chartroom-cli@<major>`), the binary is `chartroom` with the aliases `chart` and `chartroom-cli`. The examples below use `chart`. Node 24 or newer.
+Without an install, prefix each command with `npx -y chartroom-cli@<major>` instead. The examples below use `chart`.
 
 ## Start an Instance
 
@@ -27,7 +28,7 @@ Writes `compose.yaml` and `.env` into `my-chartroom/` (default: the current dire
 | `CHARTROOM_URL` | `--url` | Instance base URL, e.g. `https://chartroom.example.com`. |
 | `CHARTROOM_TOKEN` | `--token` | A Token holder's secret, sent as a bearer token. The holder is the actor on every write. |
 
-Flags override the environment per call, except on `issue link add`, where `--url` is the Link target. No login command, no config file.
+Both are also read from `./.env` in the current directory when it exists; the environment wins over the file. Flags override both per call, except on `issue link add`, where `--url` is the Link target. No login command; `init` does not read `./.env`.
 
 ```sh
 export CHARTROOM_URL=https://chartroom.example.com
@@ -95,10 +96,10 @@ export CHARTROOM_TOKEN=<secret>
 | Exit | Meaning |
 | --- | --- |
 | `0` | Success. JSON on stdout; `effort artifacts` and `adapter` print markdown, `init` prints its checklist as plain text. |
-| `1` | The API's error envelope on stderr, or `unreachable` when the Instance cannot be reached. |
+| `1` | The API's error envelope on stderr, `unreachable` when the Instance cannot be reached, or a one-line error when `./.env` exists but cannot be read. |
 | `2` | Usage error; the usage list follows on stderr. |
 
-When the Instance's major version differs from the CLI's, one line on stderr names the right `npx -y chartroom-cli@<major>`, then the call proceeds.
+When the Instance's major version differs from the CLI's, one line on stderr names the right `npm install -g chartroom-cli@<major>` and `npx -y chartroom-cli@<major>`, then the call proceeds.
 
 ## API reference
 

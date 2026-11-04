@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { mkdtempSync, readdirSync, readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { Readable } from 'node:stream';
@@ -8,7 +8,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { runCli } from '../../cli/src/chartroom';
 import { apiClient, holderSecret } from './clients';
 import { freePort, useTestServer } from './harness';
-import { asRegExpSource, MANIFEST_VERSION, NEXT_MAJOR_VERSION } from './manifest-version';
+import { MANIFEST_MAJOR, MANIFEST_VERSION, NEXT_MAJOR_VERSION } from './manifest-version';
 
 const CLI_ROOT = resolve(import.meta.dirname, '../../cli');
 
@@ -71,6 +71,66 @@ describe('the CLI', () => {
 
     expect(result).toMatchObject({ code: 1, stdout: '' });
     expect(JSON.parse(result.stderr)).toEqual({ error: { code: 'unreachable', message: expect.stringContaining(closedUrl) } });
+  });
+
+  describe('with a .env in the working directory', () => {
+    // eslint-disable-next-line no-unused-vars -- the core rule misreads type-level parameters
+    const inDirWith = async (prepare: (dotEnvPath: string) => void, argv: string[], env: Record<string, string>) => {
+      const cwd = mkdtempSync(join(tmpdir(), 'chartroom-dotenv-'));
+      prepare(join(cwd, '.env'));
+      let stdout = '';
+      let stderr = '';
+      const code = await runCli({
+        argv,
+        env,
+        cwd,
+        stdin: Readable.from(['']),
+        stdout: { write: (chunk: string) => (stdout += chunk, true) },
+        stderr: { write: (chunk: string) => (stderr += chunk, true) },
+      });
+      return { code, stdout, stderr, dotEnvPath: join(cwd, '.env') };
+    };
+
+    const ALICE = `${JSON.stringify({ slug: 'alice', displayName: 'Alice' }, null, 2)}\n`;
+
+    it('takes the URL and the secret from the file when the environment has neither', async () => {
+      const result = await inDirWith(path => writeFileSync(path, `CHARTROOM_URL=${server.baseUrl}\nCHARTROOM_TOKEN=${aliceSecret}\n`), ['me'], {});
+
+      expect(result).toMatchObject({ code: 0, stdout: ALICE });
+    });
+
+    it('the environment wins over the file', async () => {
+      const closedUrl = `http://127.0.0.1:${await freePort()}`;
+
+      const result = await inDirWith(path => writeFileSync(path, `CHARTROOM_URL=${closedUrl}\nCHARTROOM_TOKEN=wrong\n`), ['me'], { CHARTROOM_URL: server.baseUrl, CHARTROOM_TOKEN: aliceSecret });
+
+      expect(result).toMatchObject({ code: 0, stdout: ALICE });
+    });
+
+    it('--url and --token win over the environment and the file', async () => {
+      const closedUrl = `http://127.0.0.1:${await freePort()}`;
+
+      const result = await inDirWith(
+        path => writeFileSync(path, `CHARTROOM_URL=${closedUrl}\nCHARTROOM_TOKEN=wrong\n`),
+        ['me', '--url', server.baseUrl, '--token', aliceSecret],
+        { CHARTROOM_URL: closedUrl, CHARTROOM_TOKEN: 'also-wrong' },
+      );
+
+      expect(result).toMatchObject({ code: 0, stdout: ALICE });
+    });
+
+    it('a missing file is silent', async () => {
+      const result = await inDirWith(() => {}, ['me'], { CHARTROOM_URL: server.baseUrl, CHARTROOM_TOKEN: aliceSecret });
+
+      expect(result).toMatchObject({ code: 0, stdout: ALICE, stderr: '' });
+    });
+
+    it('an unreadable file is one line naming it on stderr with exit 1', async () => {
+      const result = await inDirWith(mkdirSync, ['me'], { CHARTROOM_URL: server.baseUrl, CHARTROOM_TOKEN: aliceSecret });
+
+      expect(result).toMatchObject({ code: 1, stdout: '' });
+      expect(result.stderr).toMatch(new RegExp(`^chartroom: cannot read ${result.dotEnvPath}: [^\n]+\n$`));
+    });
   });
 
   it('a wrong flag, an unknown command or a missing argument is usage on stderr with exit 2', async () => {
@@ -228,12 +288,12 @@ describe('the CLI', () => {
     expect(result).toEqual({ code: 0, stdout: '- [Spike](https://git.example/tree/spike)\n', stderr: '' });
   });
 
-  it('an instance on another major prints one warning line on stderr and still completes the call', async () => {
+  it('an instance on another major prints one warning line naming the install and npx fixes, and still completes the call', async () => {
     const result = await chartroom(['me'], { version: NEXT_MAJOR_VERSION });
 
     expect(result.code).toBe(0);
     expect(JSON.parse(result.stdout)).toEqual({ slug: 'alice', displayName: 'Alice' });
-    expect(result.stderr.split('\n')).toEqual([expect.stringMatching(new RegExp(`${asRegExpSource(MANIFEST_VERSION)}.*${asRegExpSource(NEXT_MAJOR_VERSION)}|${asRegExpSource(NEXT_MAJOR_VERSION)}.*${asRegExpSource(MANIFEST_VERSION)}`)), '']);
+    expect(result.stderr).toBe(`chartroom: the instance runs ${MANIFEST_VERSION} but this CLI is ${NEXT_MAJOR_VERSION}; install chartroom-cli@${MANIFEST_MAJOR} (npm install -g chartroom-cli@${MANIFEST_MAJOR}) or use npx -y chartroom-cli@${MANIFEST_MAJOR}\n`);
   });
 
   it('every verb reaches its route and prints the API JSON unchanged; writes without a body print nothing', async () => {
