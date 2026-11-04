@@ -102,3 +102,31 @@ export const links = sqliteTable('links', {
   origin: text().notNull(),
   createdAt: text('created_at').notNull(),
 }, table => [unique().on(table.issue, table.url)]);
+
+export const instanceSettings = sqliteTable('instance_settings', {
+  id: integer().primaryKey(),
+  projectName: text('project_name').notNull(),
+  effortSingular: text('effort_singular').notNull(),
+  effortPlural: text('effort_plural'),
+  updatedAt: text('updated_at').notNull(),
+  updatedBy: text('updated_by').notNull(),
+});
+
+export const environments = sqliteTable('environments', {
+  id: integer().primaryKey({ autoIncrement: true }),
+  name: text().notNull(),
+  url: text().notNull(),
+  notes: text(),
+  updatedAt: text('updated_at').notNull(),
+  updatedBy: text('updated_by').notNull(),
+});
+
+export const credentialPointers = sqliteTable('credential_pointers', {
+  id: integer().primaryKey({ autoIncrement: true }),
+  label: text().notNull(),
+  accountName: text('account_name').notNull(),
+  whereToFind: text('where_to_find').notNull(),
+  environment: integer().references(() => environments.id, { onDelete: 'set null' }),
+  updatedAt: text('updated_at').notNull(),
+  updatedBy: text('updated_by').notNull(),
+});
