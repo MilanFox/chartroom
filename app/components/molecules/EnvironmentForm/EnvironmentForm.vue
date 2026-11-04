@@ -19,7 +19,7 @@
     </div>
 
     <div class="environment-form__actions">
-      <button type="submit" class="environment-form__save">{{ action.busy ? strings.admin.environments.saving : strings.admin.environments.save }}</button>
+      <AdminAction :label="action.busy ? strings.admin.environments.saving : strings.admin.environments.save" type="submit" variant="primary" />
 
       <button type="button" class="environment-form__cancel" @click="emit('cancel')">{{ strings.admin.environments.cancel }}</button>
 
@@ -112,10 +112,6 @@ const submit = async () => {
     align-items: center;
     gap: $space-2;
     grid-column: 1 / -1;
-  }
-
-  &__save {
-    @include button-primary;
   }
 
   &__cancel {

@@ -39,7 +39,7 @@
     </div>
 
     <div class="pointer-form__actions">
-      <button type="submit" class="pointer-form__save">{{ action.busy ? strings.admin.environments.saving : strings.admin.environments.savePointer }}</button>
+      <AdminAction :label="action.busy ? strings.admin.environments.saving : strings.admin.environments.savePointer" type="submit" variant="primary" />
 
       <button type="button" class="pointer-form__cancel" @click="emit('cancel')">{{ strings.admin.environments.cancel }}</button>
 
@@ -129,10 +129,6 @@ const submit = async () => {
     align-items: center;
     gap: $space-2;
     grid-column: 1 / -1;
-  }
-
-  &__save {
-    @include button-primary;
   }
 
   &__cancel {
