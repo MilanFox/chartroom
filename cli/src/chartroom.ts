@@ -36,6 +36,8 @@ interface Verb {
 
 interface Output {
   write: Handler<[string], boolean>
+  isTTY?: boolean
+  columns?: number
 }
 
 export interface CliContext {
@@ -348,13 +350,25 @@ volumes:
   chartroom-data:
 `;
 
-const ENV_TEMPLATE = ({ adminPassword, viewerPassword, passwordsChosen, baseUrl, updateCheck }: InitSettings) => `# Chartroom environment, see ${OPERATING_DOC}
+// eslint-disable-next-line no-control-regex -- control characters are exactly what is rejected
+const UNQUOTABLE = /['\u0000-\u001f\u007f]/;
+
+const UNQUOTABLE_REASON = 'Must not contain \' or control characters.';
+
+const projectNameOf = (dir: string) => {
+  const name = basename(resolvePath(dir));
+  return /^[\w.-]+$/.test(name) ? name : `'${name.replace(new RegExp(UNQUOTABLE, 'g'), '')}'`;
+};
+
+const ENV_TEMPLATE = ({ dir, adminPassword, viewerPassword, passwordsChosen, baseUrl, updateCheck }: InitSettings) => `# Chartroom environment, see ${OPERATING_DOC}
 
 # Required. Elevates any session to Admin.
 CHARTROOM_ADMIN_PASSWORD=${passwordsChosen ? `'${adminPassword}'` : adminPassword}
 # Required. Shared read-only login for the UI.
 CHARTROOM_VIEWER_PASSWORD=${passwordsChosen ? `'${viewerPassword}'` : viewerPassword}
 
+# Optional, default none. Project name shown until one is saved in Settings; init writes the folder name.
+CHARTROOM_PROJECT_NAME=${projectNameOf(dir)}
 # Optional, default derived from the request. Public URL used in absolute links, e.g. https://chartroom.example.com
 ${baseUrl ? `CHARTROOM_BASE_URL=${baseUrl}` : '# CHARTROOM_BASE_URL='}
 # Optional, default false. true reads X-Forwarded-For and X-Forwarded-Proto from the reverse proxy.
@@ -367,29 +381,81 @@ ${updateCheck ? '# CHARTROOM_UPDATE_CHECK=true' : 'CHARTROOM_UPDATE_CHECK=false'
 
 const freshPassword = () => randomBytes(24).toString('base64url');
 
-const firstStartChecklist = ({ dir, version, baseUrl, port, passwordsChosen }: InitSettings, started: boolean) => {
+const ansi = (code: string) => (text: string) => `\u001b[${code}m${text}\u001b[0m`;
+
+const unstyled = (text: string) => text;
+
+const stylesFor = (output: Output, env: CliContext['env']) => {
+  const styled = output.isTTY === true && !env.NO_COLOR;
+  return {
+    styled,
+    bold: styled ? ansi('1') : unstyled,
+    dim: styled ? ansi('2') : unstyled,
+    green: styled ? ansi('32') : unstyled,
+    cyan: styled ? ansi('36') : unstyled,
+  };
+};
+
+const visibleLength = (text: string) => [...text].length;
+
+const wrap = (text: string, width: number) => {
+  const words = text.split(' ').flatMap(word => visibleLength(word) > width ? word.match(new RegExp(`.{1,${width}}`, 'gu'))! : [word]);
+  const lines: string[] = [];
+  let line = '';
+  for (const word of words) {
+    if (line && visibleLength(line) + 1 + visibleLength(word) > width) {
+      lines.push(line);
+      line = word;
+    }
+    else line = line ? `${line} ${word}` : word;
+  }
+  return [...lines, line];
+};
+
+const checklistBox = (steps: string[], columns: number | undefined, { bold, dim }: ReturnType<typeof stylesFor>) => {
+  const width = Math.max(Math.min(columns || 80, 80), 24);
+  const inner = width - 4;
+  const row = (text = '', visible = visibleLength(text)) => `${dim('│')} ${text}${' '.repeat(inner - visible)} ${dim('│')}`;
+  const stepRows = steps.flatMap((step, index) => step.split('\n').flatMap(paragraph => wrap(paragraph, inner - 3)).map((line, lineIndex) => lineIndex
+    ? row(`   ${line}`)
+    : row(`${bold(`${index + 1}.`)} ${line}`, visibleLength(line) + 3)));
+  return [
+    `${dim('╭─')} ${bold('First start')} ${dim(`${'─'.repeat(width - 16)}╮`)}`,
+    row(),
+    ...stepRows,
+    row(),
+    dim(`╰${'─'.repeat(width - 2)}╯`),
+    '',
+  ];
+};
+
+const firstStartChecklist = ({ dir, version, baseUrl, port, passwordsChosen }: InitSettings, started: boolean, { stdout, env }: CliContext) => {
+  const styles = stylesFor(stdout, env);
+  const { bold, dim, green, cyan } = styles;
   const url = baseUrl ?? `http://localhost:${port}`;
-  const envFile = join(dir, '.env');
+  const viewerPassword = passwordsChosen ? 'your viewer password' : `the viewer password (in ${join(dir, '.env')})`;
   const steps = [
     ...started ? [] : [dir === '.' ? 'docker compose up -d' : `cd ${dir} && docker compose up -d`],
-    `Open ${url}${url.startsWith('https:') ? `\n   Put a TLS reverse proxy in front: ${OPERATING_DOC}#tls-at-the-reverse-proxy` : ''}`,
-    passwordsChosen ? 'Sign in with your viewer password' : `Sign in with the viewer password (in ${envFile})`,
-    'Admin menu → "Enter admin password…" → elevate with the admin password',
-    'Follow "First-run setup" on the admin page: project name, Effort word, Environments, create the first Token holder — copy its secret, it is shown once',
-    [
-      'In your project repo:',
-      `   export CHARTROOM_URL=${url}`,
-      '   export CHARTROOM_TOKEN=<the holder\'s secret>',
-      `   npx -y chartroom-cli@${majorOf(version)} adapter --write docs/agents`,
-    ].join('\n'),
+    `Open ${url} and sign in with ${viewerPassword}${url.startsWith('https:') ? `\nPut a TLS reverse proxy in front: ${OPERATING_DOC}#tls-at-the-reverse-proxy` : ''}`,
+    `Admin → "Enter admin password…" → elevate${passwordsChosen ? '' : ` with the admin password (in ${join(dir, '.env')})`}`,
+    'Token holders → create one and copy its secret, it is shown once',
+    'In your project repo, run:',
+  ];
+  const commands = [
+    `export CHARTROOM_URL=${url}`,
+    'export CHARTROOM_TOKEN=<the secret>',
+    `npx -y chartroom-cli@${majorOf(version)} adapter --write docs/agents`,
   ];
   return [
-    `Wrote compose.yaml and .env to ${dir}.${passwordsChosen ? '' : ` The passwords are in ${envFile}.`}`,
+    `${green('✔')} ${bold(started ? `Chartroom is running in ${dir}` : `Wrote compose.yaml and .env to ${dir}`)}`,
     '',
-    'First start:',
-    ...steps.map((step, index) => `${index + 1}. ${step}`),
+    ...styles.styled
+      ? checklistBox(steps, stdout.columns, styles)
+      : ['First start:', ...steps.flatMap((step, index) => step.split('\n').map((line, lineIndex) => `${lineIndex ? '  ' : `${index + 1}.`} ${line}`))],
+    ...commands.map(command => `  ${cyan(command)}`),
     '',
-    `More: ${OPERATING_DOC}`,
+    dim('Project name, Effort word and Environments are optional; change them any time on the admin page.'),
+    dim(`More: ${OPERATING_DOC}`),
     '',
   ].join('\n');
 };
@@ -398,14 +464,10 @@ const yesOrNo = (typed: string, byDefault: boolean) => typed === '' ? byDefault 
 
 const isHttpUrl = (typed: string) => URL.canParse(typed) && ['http:', 'https:'].includes(new URL(typed).protocol);
 
-// eslint-disable-next-line no-control-regex -- control characters are exactly what is rejected
-const UNQUOTABLE = /['\u0000-\u001f\u007f]/;
-
-const UNQUOTABLE_REASON = 'Must not contain \' or control characters.';
-
 const runWizard = async (context: CliContext, ask: NonNullable<CliContext['ask']>, defaults: InitSettings) => {
+  const { bold, dim, cyan } = stylesFor(context.stderr, context.env);
   const say = (line: string) => context.stderr.write(`${line}\n`);
-  const step = (number: number, name: string) => say(`\nStep ${number} of 7 — ${name}`);
+  const step = (number: number, name: string) => say(`\n${cyan('◆')} ${bold(name)} ${dim(`(${number}/7)`)}`);
   const answer = async <Accepted>({ question, ...options }: AskOptions & { question: string }, accept: Handler<[string], Accepted | undefined>, invalid: string | Handler<[string], string>) => {
     for (;;) {
       const typed = await ask(question, options);
@@ -486,7 +548,7 @@ const init = async (context: CliContext) => {
   await writeFile(join(dir, 'compose.yaml'), COMPOSE_TEMPLATE(settings));
   await writeFile(join(dir, '.env'), ENV_TEMPLATE(settings), { mode: 0o600 });
   const exitCode = start ? await (context.startInstance ?? dockerComposeUp(context))(dir) : 0;
-  context.stdout.write(firstStartChecklist(settings, start && exitCode === 0));
+  context.stdout.write(firstStartChecklist(settings, start && exitCode === 0, context));
   return exitCode;
 };
 
