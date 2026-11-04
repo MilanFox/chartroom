@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { VERB_ROUTES } from '../../cli/src/chartroom';
+import { VERB_ROUTES, VERBS } from '../../cli/src/chartroom';
 
 const read = (path: string) => readFileSync(resolve(import.meta.dirname, '../..', path), 'utf8');
 
@@ -45,5 +45,13 @@ describe('the CLI README', () => {
 describe.each(['issue-tracker.md', 'triage-labels.md'])('the Adapter template %s', (file) => {
   it('names only verbs and flags the CLI has', () => {
     expect(unknownFlagsIn(examplesIn(`server/adapter/${file}`, 'chartroom'))).toEqual([]);
+  });
+});
+
+describe('the global flags', () => {
+  it('are never redeclared by a verb except --url on issue link add', () => {
+    const redeclared = VERBS.flatMap(verb => Object.keys(verb.flags ?? {}).filter(name => name === 'url' || name === 'token').map(name => `${verb.words.join(' ')} --${name}`));
+
+    expect(redeclared).toEqual(['issue link add --url']);
   });
 });

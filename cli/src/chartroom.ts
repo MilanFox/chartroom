@@ -31,7 +31,14 @@ interface Verb {
   body?: Handler<[Input], Promise<Record<string, unknown>>>
   ifVersion?: boolean
   markdown?: boolean
-  extraFiles?: string[]
+  paths?: string[]
+  print?: Handler<[PrintInput], Promise<number>>
+}
+
+interface PrintInput {
+  flags: Flags
+  call: Handler<[string], Promise<Response>>
+  stdout: Output
 }
 
 interface Output {
@@ -58,11 +65,9 @@ interface AskOptions {
 
 class UsageError extends Error {}
 
-class UnreadableFile extends Error {}
-
-class InitAborted extends Error {
+class CliExit extends Error {
   // eslint-disable-next-line no-unused-vars -- the core rule misreads parameter properties
-  constructor(message: string, readonly exitCode: number) {
+  constructor(message: string, readonly exitCode = 1) {
     super(message);
   }
 }
@@ -101,7 +106,22 @@ const issueVerb = (command: string, route: string, rest: Partial<Verb> = {}): Ve
   return { words: ['issue', ...command.split(' ')], method: method as Method, path: `/issues/{number}${path}`, positionals: ['number'], ...rest };
 };
 
-const VERBS: Verb[] = [
+const ADAPTER_PATHS = ['/instance/adapter/issue-tracker.md', '/instance/adapter/triage-labels.md'];
+
+const printAdapter = async ({ flags, call, stdout }: PrintInput) => {
+  if (typeof flags.write === 'string') {
+    await mkdir(flags.write, { recursive: true });
+    for (const filePath of ADAPTER_PATHS) {
+      const served = Buffer.from(await (await call(filePath)).arrayBuffer());
+      await writeFile(join(flags.write, basename(filePath)), served);
+    }
+    return 0;
+  }
+  for (const filePath of ADAPTER_PATHS) stdout.write(`<!-- docs/agents/${basename(filePath)} -->\n${await (await call(filePath)).text()}`);
+  return 0;
+};
+
+export const VERBS: Verb[] = [
   {
     words: ['issue', 'create'],
     method: 'post',
@@ -182,14 +202,14 @@ const VERBS: Verb[] = [
   {
     words: ['adapter'],
     method: 'get',
-    path: '/instance/adapter/issue-tracker.md',
+    path: ADAPTER_PATHS[0]!,
+    paths: ADAPTER_PATHS,
     flags: valueFlags('write'),
-    markdown: true,
-    extraFiles: ['/instance/adapter/triage-labels.md'],
+    print: printAdapter,
   },
 ];
 
-const routesOf = (verb: Verb) => [verb.path, ...verb.extraFiles ?? []];
+const routesOf = (verb: Verb) => verb.paths ?? [verb.path];
 
 const ownFlags = (verb: Verb): ParseArgsOptionsConfig => ({ ...verb.flags, ...verb.paged ? PAGING_FLAGS : {} });
 
@@ -505,7 +525,7 @@ const runWizard = async (context: CliContext, ask: NonNullable<CliContext['ask']
   const answer = async <Accepted>({ question, ...options }: AskOptions & { question: string }, accept: Handler<[string], Accepted | undefined>, invalid: string | Handler<[string], string>) => {
     for (;;) {
       const typed = await ask(question, options);
-      if (typed === null) throw new InitAborted('input ended, nothing written', 1);
+      if (typed === null) throw new CliExit('input ended, nothing written', 1);
       const kept = options.hidden ? typed : typed.trim();
       const accepted = accept(kept);
       if (accepted !== undefined) return accepted;
@@ -552,7 +572,7 @@ const runWizard = async (context: CliContext, ask: NonNullable<CliContext['ask']
   say(`Public URL: ${settings.baseUrl ?? 'not set'}`);
   say(`Host port: ${settings.port}`);
   say(`Update check: ${settings.updateCheck ? 'on' : 'off'}`);
-  if (!await confirm('Write compose.yaml and .env? [Y/n] ', true)) throw new InitAborted('aborted, nothing written', 1);
+  if (!await confirm('Write compose.yaml and .env? [Y/n] ', true)) throw new CliExit('aborted, nothing written', 1);
   step(7, 'Start now');
   const start = await confirm('Run docker compose up -d now? [y/N] ', false);
   return { settings, start };
@@ -593,7 +613,7 @@ const dotEnvIn = (cwd: string) => {
   }
   catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return {};
-    throw new UnreadableFile(`cannot read ${file}: ${(error as Error).message}`);
+    throw new CliExit(`cannot read ${file}: ${(error as Error).message}`);
   }
 };
 
@@ -605,7 +625,8 @@ const execute = async (context: CliContext) => {
   const body = verb.body && JSON.stringify(await verb.body({ flags, text: textReader(flags, context.stdin) }));
   const env = { ...dotEnvIn(context.cwd ?? process.cwd()), ...context.env };
   // issue link add owns --url as the Link target, so its instance URL comes from the environment or ./.env only
-  const url = (verb.flags?.url ? undefined : flags.url as string | undefined) ?? env.CHARTROOM_URL;
+  const ownsUrlFlag = 'url' in (verb.flags ?? {});
+  const url = (ownsUrlFlag ? undefined : flags.url as string | undefined) ?? env.CHARTROOM_URL;
   const secret = (flags.token as string | undefined) ?? env.CHARTROOM_TOKEN;
   if (!url) throw new UsageError('set CHARTROOM_URL or pass --url');
   const root = url.replace(/\/+$/, '');
@@ -620,18 +641,7 @@ const execute = async (context: CliContext) => {
     return response;
   };
 
-  if (verb.markdown && typeof flags.write === 'string') {
-    await mkdir(flags.write, { recursive: true });
-    for (const filePath of routesOf(verb)) {
-      const served = Buffer.from(await (await call(filePath)).arrayBuffer());
-      await writeFile(join(flags.write, basename(filePath)), served);
-    }
-    return 0;
-  }
-  if (verb.markdown && verb.extraFiles) {
-    for (const filePath of routesOf(verb)) context.stdout.write(`<!-- docs/agents/${basename(filePath)} -->\n${await (await call(filePath)).text()}`);
-    return 0;
-  }
+  if (verb.print) return verb.print({ flags, call, stdout: context.stdout });
   if (verb.markdown) {
     context.stdout.write(await (await call(path)).text());
     return 0;
@@ -658,11 +668,7 @@ export const runCli = async (context: CliContext) => {
     return await execute(context);
   }
   catch (error) {
-    if (error instanceof UnreadableFile) {
-      context.stderr.write(`chartroom: ${error.message}\n`);
-      return 1;
-    }
-    if (error instanceof InitAborted) {
+    if (error instanceof CliExit) {
       context.stderr.write(`chartroom: ${error.message}\n`);
       return error.exitCode;
     }
@@ -693,7 +699,7 @@ const terminalAsk = (input: NodeJS.ReadStream, output: Output): NonNullable<CliC
         const char = String.fromCodePoint(pending.codePointAt(0)!);
         pending = pending.slice(char.length);
         if (char === '\u0003') {
-          settle(() => reject(new InitAborted('interrupted, nothing written', 130)));
+          settle(() => reject(new CliExit('interrupted, nothing written', 130)));
           return;
         }
         if (char === '\u0004') {
