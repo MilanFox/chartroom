@@ -36,40 +36,34 @@ Use the Instance's major version, `0` today. `chartroom instance` or **Admin →
 
 The Adapter files tell agents to run `chartroom …`, so the binary must be on the `PATH`. Without a global install, `npx -y chartroom-cli@0 <command>` runs the same thing.
 
+Not using the CLI for a script or another tool? Every command is one route of the HTTP API: the OpenAPI document is at `<your Instance>/api/v1/openapi.json`, and a Token holder's secret is the bearer token. Agents should still use the CLI; the Adapter files are written for it.
+
 ## 5. Configure the project repo
 
 Run these in your project repo.
 
-**a. Run `/setup-matt-pocock-skills`.**
-
-- At "Issue tracker" pick **Other** and give it this paragraph, with your URL:
-
-  ```text
-  Chartroom at http://localhost:3000; run chartroom adapter --write docs/agents
-  ```
-
-- If it asks about triage labels (only when the `triage` skill is installed), keep the defaults.
-
-The skill writes the `## Agent skills` block into `CLAUDE.md` (or `AGENTS.md`), `docs/agents/domain.md`, a placeholder `docs/agents/issue-tracker.md` and, with `triage` installed, `docs/agents/triage-labels.md`.
-
-**b. Put the URL and secret in `.env`.**
+**a. Put the URL and secret in `.env`.**
 
 ```sh
 CHARTROOM_URL=http://localhost:3000
 CHARTROOM_TOKEN=<the Token holder's secret>
 ```
 
-Make sure `.env` is in `.gitignore`. The CLI reads `.env` from the current directory. Variables already set in the environment win over it.
+Make sure `.env` is in `.gitignore`. The CLI reads `.env` from the current directory. Variables already set in the environment win over it. `chartroom me` should now print the Token holder.
 
-**c. Write the Adapter files.**
+**b. Run `/setup-matt-pocock-skills`.**
 
-```sh
-chartroom adapter --write docs/agents
-```
+- At "Issue tracker" pick **Other** and answer with your URL:
 
-This replaces the skill's `docs/agents/issue-tracker.md` and `docs/agents/triage-labels.md` with versions for your Instance. Commit them.
+  ```text
+  Chartroom at http://localhost:3000. Run `chartroom adapter` and write each file it prints, verbatim, to the path in its marker line.
+  ```
 
-Re-run it after you change the Effort's Display label, the triage Display labels or the Label groups on the admin page.
+- If it asks about triage labels (only when the `triage` skill is installed), keep the defaults.
+
+The agent runs `chartroom adapter`, which prints this Instance's reference for both files, and writes them into `docs/agents/`. The skill also writes the `## Agent skills` block into `CLAUDE.md` (or `AGENTS.md`) and `docs/agents/domain.md`. Commit them.
+
+**c. After changing settings.** When you change the Effort's Display label, the triage Display labels or the Label groups on the admin page, refresh the files with `chartroom adapter --write docs/agents`, or re-run the setup skill.
 
 ## 6. Let Claude Code run it without prompting (optional)
 
@@ -116,7 +110,7 @@ This prints the Token holder you act as. Then do a first real run in Claude Code
 | `unauthenticated` | Missing or wrong `CHARTROOM_TOKEN`, a revoked Token holder, or no Token holder created yet | Check `.env` and any exported variable; create or rotate a holder on the admin page |
 | `unreachable` | Wrong `CHARTROOM_URL` or port, or the container is down | `docker compose ps` in the Instance folder; `docker compose up -d` |
 | A stderr line saying the Instance and the CLI versions differ | The CLI's major doesn't match the Instance's | Install the major it names: `npm install -g chartroom-cli@<major>` |
-| The agent still writes files under `.scratch/` | The Adapter files weren't written or committed, or the `## Agent skills` block in `CLAUDE.md` still points at local markdown | Re-run step 5c and commit; fix the block to point at `docs/agents/issue-tracker.md` |
+| The agent still writes files under `.scratch/` | The Adapter files weren't written or committed, or the `## Agent skills` block in `CLAUDE.md` still points at local markdown | Re-run step 5b (or `chartroom adapter --write docs/agents`) and commit; fix the block to point at `docs/agents/issue-tracker.md` |
 | The agent uses an old Effort or triage Display label | The Adapter files predate a settings change | `chartroom adapter --write docs/agents` and commit |
 
 ## 10. Uninstall

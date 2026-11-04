@@ -295,7 +295,8 @@ describe('the Adapter files', () => {
   it('issue-tracker.md carries the spec\'s recipes for edits, appends, reporter activity, changes, list links, PRs, setup and finishing', async () => {
     const doc = await adapterFile(alice, 'issue-tracker.md');
 
-    expect(doc).toContain(`Chartroom at \`${server.baseUrl}\`; run \`chartroom adapter --write docs/agents\``);
+    expect(doc).toContain(`Chartroom at ${server.baseUrl}. Run \`chartroom adapter\` and write each file it prints, verbatim, to the path in its marker line.`);
+    expect(doc).toContain('After changing settings on the admin page, refresh both files with `chartroom adapter --write docs/agents`, or re-run the setup skill.');
     expect(doc).toContain('`setup-matt-pocock-skills`');
     expect(doc).toContain('`chartroom issue edit <n> --if-version <version> --body-file -`');
     expect(doc).toContain('`conflict`');

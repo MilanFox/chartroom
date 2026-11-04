@@ -31,7 +31,7 @@ interface Verb {
   body?: Handler<[Input], Promise<Record<string, unknown>>>
   ifVersion?: boolean
   markdown?: boolean
-  alsoWrites?: string[]
+  extraFiles?: string[]
 }
 
 interface Output {
@@ -185,11 +185,11 @@ const VERBS: Verb[] = [
     path: '/instance/adapter/issue-tracker.md',
     flags: valueFlags('write'),
     markdown: true,
-    alsoWrites: ['/instance/adapter/triage-labels.md'],
+    extraFiles: ['/instance/adapter/triage-labels.md'],
   },
 ];
 
-const routesOf = (verb: Verb) => [verb.path, ...verb.alsoWrites ?? []];
+const routesOf = (verb: Verb) => [verb.path, ...verb.extraFiles ?? []];
 
 export const VERB_ROUTES = VERBS.flatMap(verb => routesOf(verb).map(path => ({ command: verb.words.join(' '), method: verb.method, path })));
 
@@ -397,6 +397,8 @@ const stylesFor = (output: Output, env: CliContext['env']) => {
     dim: styled ? ansi('2') : unstyled,
     green: styled ? ansi('32') : unstyled,
     cyan: styled ? ansi('36') : unstyled,
+    boldYellow: styled ? ansi('1;33') : unstyled,
+    chip: styled ? (text: string) => ansi('48;5;236;38;5;117')(` ${text} `) : unstyled,
   };
 };
 
@@ -416,8 +418,10 @@ const wrap = (text: string, width: number) => {
   return [...lines, line];
 };
 
+const boxWidth = (columns: number | undefined) => Math.max(Math.min(columns || 80, 80), 24);
+
 const checklistBox = (steps: string[], columns: number | undefined, { bold, dim }: ReturnType<typeof stylesFor>) => {
-  const width = Math.max(Math.min(columns || 80, 80), 24);
+  const width = boxWidth(columns);
   const inner = width - 4;
   const row = (text = '', visible = visibleLength(text)) => `${dim('│')} ${text}${' '.repeat(inner - visible)} ${dim('│')}`;
   const stepRows = steps.flatMap((step, index) => step.split('\n').flatMap(paragraph => wrap(paragraph, inner - 3)).map((line, lineIndex) => lineIndex
@@ -429,13 +433,13 @@ const checklistBox = (steps: string[], columns: number | undefined, { bold, dim 
     ...stepRows,
     row(),
     dim(`╰${'─'.repeat(width - 2)}╯`),
-    '',
   ];
 };
 
 const firstStartChecklist = ({ dir, version, baseUrl, port, passwordsChosen }: InitSettings, started: boolean, { stdout, env }: CliContext) => {
   const styles = stylesFor(stdout, env);
-  const { bold, dim, green, cyan } = styles;
+  const { bold, dim, green, boldYellow, chip } = styles;
+  const copyable = (text: string) => `     ${chip(text)}`;
   const url = baseUrl ?? `http://localhost:${port}`;
   const envFile = join(dir, '.env');
   const viewerPassword = passwordsChosen ? 'your viewer password' : `the viewer password (in ${envFile})`;
@@ -444,22 +448,31 @@ const firstStartChecklist = ({ dir, version, baseUrl, port, passwordsChosen }: I
     `Open ${url} and sign in with ${viewerPassword}${url.startsWith('https:') ? `\nPut a TLS reverse proxy in front: ${OPERATING_DOC}#tls-at-the-reverse-proxy` : ''}`,
     `Admin → "Enter admin password…" → elevate${passwordsChosen ? '' : ` with the admin password (in ${envFile})`}`,
     'Token holders → create one and copy its secret, it is shown once',
-    `In your project repo, run /setup-matt-pocock-skills (issue tracker: Other, "Chartroom at ${url}"), then:`,
   ];
-  const commands = [
-    `  ${cyan(`npm install -g chartroom-cli@${majorOf(version)}`)}`,
-    '  Put these two lines in the repo\'s untracked .env:',
-    `    ${cyan(`CHARTROOM_URL=${url}`)}`,
-    `    ${cyan('CHARTROOM_TOKEN=<the secret>')}`,
-    `  ${cyan('chartroom adapter --write docs/agents')}`,
+  const connectTitle = `${steps.length + 1}. Connect your agents`;
+  const connectSubsteps = [
+    '  a. Install the CLI',
+    copyable(`npm install -g chartroom-cli@${majorOf(version)}`),
+    ...wrap(`Rather not install it? Prefix commands with npx -y chartroom-cli@${majorOf(version)}. For scripts without the CLI: ${url}/api/v1/openapi.json (bearer = the Token holder's secret).`, boxWidth(stdout.columns) - 5).map(line => `     ${dim(line)}`),
+    '',
+    '  b. Add to the repo\'s untracked .env',
+    copyable(`CHARTROOM_URL=${url}`),
+    copyable('CHARTROOM_TOKEN=<the secret>'),
+    '',
+    '  c. Run /setup-matt-pocock-skills and pick Other at "Issue tracker"',
+    `     ${boldYellow('Paste this to your agent:')}`,
+    copyable(`Chartroom at ${url}. Run \`chartroom adapter\` and write each file it prints, verbatim, to the path in its marker line.`),
   ];
   return [
     `${green('✔')} ${bold(started ? `Chartroom is running in ${dir}` : `Wrote compose.yaml and .env to ${dir}`)}`,
     '',
     ...styles.styled
-      ? checklistBox(steps, stdout.columns, styles)
-      : ['First start:', ...steps.flatMap((step, index) => step.split('\n').map((line, lineIndex) => `${lineIndex ? '  ' : `${index + 1}.`} ${line}`))],
-    ...commands,
+      ? [
+          ...checklistBox([...steps, 'In your project repo, connect your agents (continue below)'], stdout.columns, styles),
+          `${dim('──')} ${bold(connectTitle)} ${dim('─'.repeat(boxWidth(stdout.columns) - visibleLength(connectTitle) - 4))}`,
+        ]
+      : ['First start:', ...steps.flatMap((step, index) => step.split('\n').map((line, lineIndex) => `${lineIndex ? '  ' : `${index + 1}.`} ${line}`)), `${steps.length + 1}. In your project repo, connect your agents:`],
+    ...connectSubsteps,
     '',
     dim('Project name, Effort word and Environments are optional; change them any time on the admin page.'),
     dim(`More: ${OPERATING_DOC}`),
@@ -599,6 +612,10 @@ const execute = async (context: CliContext) => {
       const served = Buffer.from(await (await call(filePath)).arrayBuffer());
       await writeFile(join(flags.write, basename(filePath)), served);
     }
+    return 0;
+  }
+  if (verb.markdown && verb.extraFiles) {
+    for (const filePath of routesOf(verb)) context.stdout.write(`<!-- docs/agents/${basename(filePath)} -->\n${await (await call(filePath)).text()}`);
     return 0;
   }
   if (verb.markdown) {
