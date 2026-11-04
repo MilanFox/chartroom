@@ -4,7 +4,7 @@ A tag is the release. There is no cadence: a human cuts it, or the agent on an e
 
 ## Cut a release
 
-1. On `main`, set the version in both manifests and the lockfile:
+1. On a branch `chore/release-<X.Y.Z>` from `main`, set the version in both manifests and the lockfile:
 
    ```sh
    npm version <X.Y.Z> --no-git-tag-version --workspaces --include-workspace-root
@@ -12,12 +12,14 @@ A tag is the release. There is no cadence: a human cuts it, or the agent on an e
    ```
 
 2. Pin `<X.Y.Z>` as the image tag in `compose.example.yaml`.
-3. Commit it: `chore: release <X.Y.Z>`.
-4. Tag and push:
+3. Run `npm test`; the gate runs the same suite against the new version.
+4. Commit it as `chore: release <X.Y.Z>`, open a PR and merge it. `main` only takes merged PRs.
+5. Tag the merge commit and push the tag:
 
    ```sh
+   git switch main && git pull
    git tag v<X.Y.Z>
-   git push origin main v<X.Y.Z>
+   git push origin v<X.Y.Z>
    ```
 
 The `Release` workflow (`.github/workflows/release.yml`) runs on `v*` tags only; no push or pull request builds anything.

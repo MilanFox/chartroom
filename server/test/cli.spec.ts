@@ -8,6 +8,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { runCli } from '../../cli/src/chartroom';
 import { apiClient, holderSecret } from './clients';
 import { freePort, useTestServer } from './harness';
+import { asRegExpSource, MANIFEST_VERSION, NEXT_MAJOR_VERSION } from './manifest-version';
 
 const CLI_ROOT = resolve(import.meta.dirname, '../../cli');
 
@@ -228,11 +229,11 @@ describe('the CLI', () => {
   });
 
   it('an instance on another major prints one warning line on stderr and still completes the call', async () => {
-    const result = await chartroom(['me'], { version: '9.0.0' });
+    const result = await chartroom(['me'], { version: NEXT_MAJOR_VERSION });
 
     expect(result.code).toBe(0);
     expect(JSON.parse(result.stdout)).toEqual({ slug: 'alice', displayName: 'Alice' });
-    expect(result.stderr.split('\n')).toEqual([expect.stringMatching(/0\.1\.0.*9\.0\.0|9\.0\.0.*0\.1\.0/), '']);
+    expect(result.stderr.split('\n')).toEqual([expect.stringMatching(new RegExp(`${asRegExpSource(MANIFEST_VERSION)}.*${asRegExpSource(NEXT_MAJOR_VERSION)}|${asRegExpSource(NEXT_MAJOR_VERSION)}.*${asRegExpSource(MANIFEST_VERSION)}`)), '']);
   });
 
   it('every verb reaches its route and prints the API JSON unchanged; writes without a body print nothing', async () => {

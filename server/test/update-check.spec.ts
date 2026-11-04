@@ -4,8 +4,9 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { apiClient, holderSecret, uiClient } from './clients';
 import { bootServer, TEST_PASSWORDS } from './harness';
 import type { LaunchedServer } from './harness';
+import { MANIFEST_VERSION, NEXT_MINOR_VERSION } from './manifest-version';
 
-const NEWER_RELEASE = { tag_name: 'v0.2.0', html_url: 'https://github.com/milanfox/chartroom/releases/tag/v0.2.0' };
+const NEWER_RELEASE = { tag_name: `v${NEXT_MINOR_VERSION}`, html_url: `https://github.com/milanfox/chartroom/releases/tag/v${NEXT_MINOR_VERSION}` };
 
 const releaseStub = async (respond: { status: number, body: unknown }) => {
   let requests = 0;
@@ -51,7 +52,7 @@ describe('a newer release on the release endpoint', () => {
   it('an elevated session reads the newer version and its release notes url on the UI mount', async () => {
     const admin = await elevatedSession(server);
 
-    await vi.waitFor(async () => expect(await updateAvailableFor(admin)).toEqual({ version: '0.2.0', url: NEWER_RELEASE.html_url }));
+    await vi.waitFor(async () => expect(await updateAvailableFor(admin)).toEqual({ version: NEXT_MINOR_VERSION, url: NEWER_RELEASE.html_url }));
   });
 
   it('a holder session, a Viewer and every bearer call read null', async () => {
@@ -102,7 +103,7 @@ describe('the update check switched off', () => {
 });
 
 describe('a release that is not newer', () => {
-  it.each(['v0.1.0', 'v0.0.9', 'v0.1.0-rc.1'])('%s reads null for an elevated session', async (tag) => {
+  it.each([`v${MANIFEST_VERSION}`, 'v0.0.9', `v${MANIFEST_VERSION}-rc.1`])('%s reads null for an elevated session', async (tag) => {
     const stub = await releaseStub({ status: 200, body: { ...NEWER_RELEASE, tag_name: tag } });
     const server = await bootServer({ env: { CHARTROOM_RELEASE_URL: stub.url } });
     const admin = await elevatedSession(server);

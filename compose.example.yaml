@@ -1,6 +1,6 @@
 services:
   chartroom:
-    image: ghcr.io/milanfox/chartroom:0.1.0
+    image: ghcr.io/milanfox/chartroom:0.2.0
     env_file: .env
     environment:
       # Published on loopback only, so every request arrives through the reverse proxy; trust its forwarded headers.
