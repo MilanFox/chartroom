@@ -21,6 +21,6 @@ export const labelParam = (event: H3Event) => {
   return label;
 };
 
-export const effortHandleParam = (event: H3Event) => textParam(event, 'handle');
+export const effortSlugParam = (event: H3Event) => textParam(event, 'handle');
 
 export const linkIdParam = (event: H3Event) => numericParam(event, 'id', raw => `link ${raw} does not exist`);

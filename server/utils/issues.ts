@@ -126,12 +126,12 @@ export const subtreeNumbers = (root: number) => {
   return numbers;
 };
 
-export const findByHandle = (handle: string): IssueRecord | null =>
-  /^\d+$/.test(handle) ? findIssue(Number(handle)) : useStore().select().from(issues).where(eq(issues.name, handle)).get() ?? null;
+export const findBySlugOrNumber = (slugOrNumber: string): IssueRecord | null =>
+  /^\d+$/.test(slugOrNumber) ? findIssue(Number(slugOrNumber)) : useStore().select().from(issues).where(eq(issues.name, slugOrNumber)).get() ?? null;
 
-export const requireEffort = (reference: string): IssueRecord => {
-  const effort = findByHandle(reference);
-  if (!effort || effort.kind !== 'effort') throw invalid(`effort ${reference} does not exist`, 'effort');
+export const requireEffort = (slugOrNumber: string): IssueRecord => {
+  const effort = findBySlugOrNumber(slugOrNumber);
+  if (!effort || effort.kind !== 'effort') throw invalid(`effort ${slugOrNumber} does not exist`, 'effort');
   return effort;
 };
 

@@ -32,9 +32,9 @@ export interface StatusRollup {
 
 const SORT_COLUMNS = { updatedAt: issues.updatedAt, name: issues.name };
 
-export const resolveEffort = (handle: string): IssueRecord => {
-  const issue = findByHandle(handle);
-  if (!issue) throw notFound(`effort ${handle} does not exist`);
+export const resolveEffort = (slugOrNumber: string): IssueRecord => {
+  const issue = findBySlugOrNumber(slugOrNumber);
+  if (!issue) throw notFound(`effort ${slugOrNumber} does not exist`);
   if (issue.kind !== 'effort') throw invalid(`issue #${issue.number} is a ${issue.kind}, not an Effort`, 'handle');
   return issue;
 };

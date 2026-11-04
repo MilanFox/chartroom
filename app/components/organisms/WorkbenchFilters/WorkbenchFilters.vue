@@ -98,7 +98,7 @@
       <select :id="`${idPrefix}-effort`" class="workbench-filters__select" :value="selectedEffort" @change="narrow({ effort: targetValue($event) || null })">
         <option value="">{{ strings.workbench.anyEffort }}</option>
 
-        <option v-for="effort in effortOptions" :key="effort.handle" :value="effort.handle">{{ effort.title }}</option>
+        <option v-for="effort in effortOptions" :key="effort.slug" :value="effort.slug">{{ effort.title }}</option>
       </select>
 
       <label :for="`${idPrefix}-sort`" class="workbench-filters__label">{{ strings.workbench.sort }}</label>
@@ -154,11 +154,11 @@ const assigneeOptions = computed(() => {
   return options;
 });
 
-const effortOptions = computed(() => effortsStore.efforts.map(effort => ({ handle: effort.name ?? String(effort.number), number: effort.number, title: effort.title })));
+const effortOptions = computed(() => effortsStore.efforts.map(effort => ({ slug: effort.name ?? String(effort.number), number: effort.number, title: effort.title })));
 
 const selectedEffort = computed(() => {
   const { effort } = filters.value;
-  return effortOptions.value.find(option => option.handle === effort || String(option.number) === effort)?.handle ?? '';
+  return effortOptions.value.find(option => option.slug === effort || String(option.number) === effort)?.slug ?? '';
 });
 
 const targetValue = (event: Event) => (event.target as HTMLSelectElement | HTMLInputElement).value;

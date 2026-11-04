@@ -2,7 +2,7 @@ import type { H3Event } from 'h3';
 import type { IssueCursor } from '../../utils/issues';
 import { toEffortDocument } from '../representations';
 import { PAGING_PARAMS } from '../schemas';
-import { effortHandleParam } from './params';
+import { effortSlugParam } from './params';
 
 const effortList = (event: H3Event) => {
   const query = getQuery(event);
@@ -13,10 +13,10 @@ const effortList = (event: H3Event) => {
   return pageOf(rows, limit, row => [sort, row[sort], row.number]);
 };
 
-const effortRead = (event: H3Event) => toEffortDocument(event, resolveEffort(effortHandleParam(event)));
+const effortRead = (event: H3Event) => toEffortDocument(event, resolveEffort(effortSlugParam(event)));
 
 const effortArtifacts = (event: H3Event) => {
-  const effort = resolveEffort(effortHandleParam(event));
+  const effort = resolveEffort(effortSlugParam(event));
   setResponseHeader(event, 'content-type', 'text/markdown; charset=utf-8');
   return artifactsMarkdownOf(effort.number);
 };
