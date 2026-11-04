@@ -25,7 +25,7 @@ const SECRET_LOOKING = [
 ];
 
 export const refuseSecretLooking = (value: string, field: string) => {
-  if (SECRET_LOOKING.some(pattern => pattern.test(value))) throw invalid(`${field} looks like a secret; store where to find it, never the secret itself`, field);
+  if (SECRET_LOOKING.some(pattern => pattern.test(value))) throw invalid('This looks like a secret. Say where the secret lives, never the secret itself.', field);
   return value;
 };
 

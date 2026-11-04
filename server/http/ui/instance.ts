@@ -37,6 +37,13 @@ const settingsWrite = async (event: H3Event, principal: Principal) => {
   return writeInstanceSettings(settingsPatch(await readJsonObject(event)), actorSlug(principal));
 };
 
+const runtimeRead = () => {
+  const { baseUrl, trustProxy, port, updateCheck } = useDeploymentConfig();
+  return { baseUrl, trustProxy, port, updateCheck };
+};
+
+const setupRead = () => ({ firstRun: listHolders().length === 0 });
+
 const idParam = (event: H3Event) => {
   const raw = getRouterParam(event, 'id') ?? '';
   if (!/^\d+$/.test(raw)) throw notFound(`${raw} does not exist`);
@@ -121,6 +128,35 @@ const POINTER_BODY = { type: 'object', properties: { label: { type: 'string' }, 
 const SECRET_REFUSED = 'A blank or secret-looking value, a bad url or environment; field set';
 
 export const instanceAdminRoutes: MountRoute[] = [
+  {
+    method: 'get',
+    path: '/runtime',
+    handler: runtimeRead,
+    openapi: {
+      summary: 'Read the runtime settings shown in the About block',
+      tags: ['instance'],
+      responses: {
+        200: {
+          description: 'Runtime settings from environment variables',
+          schema: {
+            type: 'object',
+            properties: { baseUrl: { type: ['string', 'null'], description: 'Null: derived from each request' }, trustProxy: { type: 'boolean' }, port: { type: 'integer' }, updateCheck: { type: 'boolean' } },
+            required: ['baseUrl', 'trustProxy', 'port', 'updateCheck'],
+          },
+        },
+      },
+    },
+  },
+  {
+    method: 'get',
+    path: '/setup',
+    handler: setupRead,
+    openapi: {
+      summary: 'Read whether the Instance is still in first-run setup',
+      tags: ['instance'],
+      responses: { 200: { description: 'First run lasts until the first Token holder exists', schema: { type: 'object', properties: { firstRun: { type: 'boolean' } }, required: ['firstRun'] } } },
+    },
+  },
   {
     method: 'patch',
     path: '/instance',

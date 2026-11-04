@@ -5,6 +5,8 @@ interface UiFetchOptions {
   headers?: Record<string, string>
 }
 
+const PASSWORD_PATHS = ['/login', '/elevate'];
+
 const endSession = async () => {
   const session = useSessionStore();
   if (!session.me) return;
@@ -20,7 +22,7 @@ export const useUiFetch = () => {
       return await requestFetch(`/ui${path}`, options as Parameters<typeof requestFetch>[1]) as T;
     }
     catch (error) {
-      if (path !== '/login' && apiErrorCode(error) === 'unauthenticated') await nuxtApp.runWithContext(endSession);
+      if (!PASSWORD_PATHS.includes(path) && apiErrorCode(error) === 'unauthenticated') await nuxtApp.runWithContext(endSession);
       throw error;
     }
   };

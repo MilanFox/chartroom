@@ -334,3 +334,31 @@ describe('the Adapter files', () => {
     expect(triage).toContain('| `ready-for-agent` | `ready-for-agent` | AFK ready | Fully specified, ready for an AFK agent |');
   });
 });
+
+describe('the admin page reads', () => {
+  const server = useTestServer();
+
+  it('every session reads the runtime settings from environment variables, read-only', async () => {
+    const viewer = uiClient(server);
+    await viewer.login(TEST_PASSWORDS.CHARTROOM_VIEWER_PASSWORD);
+
+    expect(await viewer.json('GET', '/runtime')).toEqual({
+      status: 200,
+      body: { baseUrl: null, trustProxy: false, port: server.port, updateCheck: true },
+    });
+    expect(await viewer.json('PATCH', '/runtime', { body: { port: 1 } })).toMatchObject({ status: 404 });
+  });
+
+  it('first run lasts until the first holder exists and never returns, even after that holder is revoked', async () => {
+    const admin = await elevatedViewer(server);
+    expect(await admin.json('GET', '/setup')).toEqual({ status: 200, body: { firstRun: true } });
+
+    await admin.createHolder('alice');
+    expect(await admin.json('GET', '/setup')).toEqual({ status: 200, body: { firstRun: false } });
+
+    await admin.json('POST', '/holders/alice/revoke');
+    const viewer = uiClient(server);
+    await viewer.login(TEST_PASSWORDS.CHARTROOM_VIEWER_PASSWORD);
+    expect(await viewer.json('GET', '/setup')).toEqual({ status: 200, body: { firstRun: false } });
+  });
+});

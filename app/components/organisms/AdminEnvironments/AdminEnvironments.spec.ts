@@ -1,0 +1,81 @@
+import { mountSuspended, registerEndpoint } from '@nuxt/test-utils/runtime';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { nextTick } from 'vue';
+import { useAdminStore } from '~/stores/admin';
+import { useSessionStore } from '~/stores/session';
+import { viewerSession } from '~/test/issue-fixture';
+import AdminEnvironments from './AdminEnvironments.vue';
+
+const unregister: (() => void)[] = [];
+const staging = { id: 1, name: 'Staging', url: 'https://staging.example.test', notes: null };
+const elevated = { ...viewerSession, admin: { until: new Date(Date.now() + 3_600_000).toISOString() } };
+
+const dispatchCancelable = (element: Element, event: Event) => {
+  element.dispatchEvent(event);
+  return event.defaultPrevented;
+};
+
+const pointerSelect = async () => {
+  const wrapper = await mountSuspended(AdminEnvironments, { attachTo: document.body });
+  return { wrapper, select: wrapper.get('select[aria-label="Environment of QA"]') };
+};
+
+describe('AdminEnvironments', () => {
+  const sent: unknown[] = [];
+
+  beforeEach(() => {
+    sent.length = 0;
+    let environment: number | null = null;
+    unregister.push(registerEndpoint('/ui/environments', { method: 'GET', handler: () => [staging] }));
+    unregister.push(registerEndpoint('/ui/credential-pointers', { method: 'GET', handler: () => [{ id: 4, label: 'QA', accountName: 'qa', whereToFind: 'Vault', environment }] }));
+    unregister.push(registerEndpoint('/ui/credential-pointers/4', {
+      method: 'PATCH', handler: async (event) => {
+        const body = await (event as unknown as { web: { request: Request } }).web.request.json();
+        sent.push(body);
+        ({ environment } = body);
+        return {};
+      },
+    }));
+    const admin = useAdminStore();
+    admin.environments = [staging];
+    admin.pointers = [{ id: 4, label: 'QA', accountName: 'qa', whereToFind: 'Vault', environment: null }];
+  });
+
+  afterEach(() => {
+    unregister.splice(0).forEach(remove => remove());
+  });
+
+  it('lets an elevated session rebind a pointer through its Environment select', async () => {
+    useSessionStore().me = elevated;
+    const { wrapper, select } = await pointerSelect();
+
+    expect(select.attributes('aria-disabled')).toBeUndefined();
+    expect(dispatchCancelable(select.element, new MouseEvent('mousedown', { bubbles: true, cancelable: true }))).toBe(false);
+    expect(dispatchCancelable(select.element, new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }))).toBe(false);
+    await select.setValue('1');
+
+    await vi.waitFor(() => expect(sent).toEqual([{ environment: 1 }]));
+    expect(wrapper.find('input[type="password"]').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it('keeps a pointer\'s Environment select visible but locked, opening the password prompt in its row when used', async () => {
+    useSessionStore().me = viewerSession;
+    const { wrapper, select } = await pointerSelect();
+
+    expect(select.attributes('aria-disabled')).toBe('true');
+    expect(select.attributes('disabled')).toBeUndefined();
+    expect(dispatchCancelable(select.element, new MouseEvent('mousedown', { bubbles: true, cancelable: true }))).toBe(true);
+    expect(dispatchCancelable(select.element, new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }))).toBe(true);
+    await nextTick();
+
+    const prompt = select.element.closest('li')!.querySelector('input[type="password"]');
+    expect(prompt).not.toBeNull();
+    expect(document.activeElement).toBe(prompt);
+
+    await select.setValue('1');
+    expect((select.element as HTMLSelectElement).value).toBe('');
+    expect(sent).toEqual([]);
+    wrapper.unmount();
+  });
+});

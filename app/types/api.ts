@@ -165,6 +165,33 @@ export interface Holder {
   revoked: boolean
 }
 
+export interface RosterHolder extends Holder {
+  createdAt?: string
+  lastUsedAt?: string | null
+  revokedAt?: string | null
+}
+
+export interface HolderSecret extends RosterHolder {
+  secret: string
+}
+
+export interface RuntimeSettings {
+  baseUrl: string | null
+  trustProxy: boolean
+  port: number
+  updateCheck: boolean
+}
+
+export interface SettingsInput {
+  projectName: string
+  effortName: { singular: string, plural: string | null }
+  triageLabels: Record<string, string>
+}
+
+export type EnvironmentInput = Pick<Environment, 'name' | 'url' | 'notes'>;
+
+export type PointerInput = Omit<CredentialPointer, 'id'>;
+
 export interface FreeFormLabel {
   label: string
   count: number

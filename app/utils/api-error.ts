@@ -5,3 +5,5 @@ const errorBodyOf = (error: unknown) => (error as { data?: Partial<ApiErrorBody>
 export const apiErrorCode = (error: unknown) => errorBodyOf(error)?.error?.code ?? null;
 
 export const apiErrorField = (error: unknown) => errorBodyOf(error)?.error?.field ?? null;
+
+export const apiErrorMessage = (error: unknown) => errorBodyOf(error)?.error?.message ?? '';
