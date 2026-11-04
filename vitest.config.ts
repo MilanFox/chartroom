@@ -22,6 +22,13 @@ export default defineConfig(async () => ({
           hookTimeout: 60_000,
         },
       },
+      {
+        test: {
+          name: 'scripts',
+          environment: 'node',
+          include: ['scripts/**/*.spec.ts'],
+        },
+      },
     ],
   },
 }));

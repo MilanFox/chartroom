@@ -1,0 +1,122 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions: {}
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - name: Check the tag against the manifests
+        run: node scripts/check-version.ts "$GITHUB_REF_NAME"
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+
+  release:
+    needs: gate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+    env:
+      IMAGE: ghcr.io/milanfox/chartroom
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          registry-url: https://registry.npmjs.org
+      - name: Check the tag against the manifests
+        run: node scripts/check-version.ts "$GITHUB_REF_NAME"
+      - name: Derive the version tags
+        id: version
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          {
+            echo "full=$version"
+            echo "minor=${version%.*}"
+            echo "major=${version%%.*}"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - name: Build the amd64 image for the smoke test
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          tags: chartroom:smoke
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Check the image reports the tag version on /health
+        env:
+          VERSION: ${{ steps.version.outputs.full }}
+        run: |
+          docker run -d --name chartroom-smoke -p 3000:3000 \
+            -e CHARTROOM_ADMIN_PASSWORD=smoke-admin -e CHARTROOM_VIEWER_PASSWORD=smoke-viewer chartroom:smoke
+          for _ in $(seq 30); do
+            health="$(curl -fsS http://127.0.0.1:3000/health)" && break
+            sleep 2
+          done
+          docker rm -f chartroom-smoke
+          echo "health: $health"
+          test "$(jq -r .version <<< "$health")" = "$VERSION"
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push the multi-arch image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          cache-from: type=gha
+          tags: |
+            ${{ env.IMAGE }}:${{ steps.version.outputs.full }}
+            ${{ env.IMAGE }}:${{ steps.version.outputs.minor }}
+            ${{ env.IMAGE }}:${{ steps.version.outputs.major }}
+            ${{ env.IMAGE }}:latest
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.version=${{ steps.version.outputs.full }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.licenses=MIT
+
+      - run: npm ci
+      - run: npm run build --workspace cli
+      - name: Publish the CLI to npm
+        run: npm publish --workspace cli --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node scripts/release-notes.ts "$GITHUB_REF_NAME" > release-notes.md
+          gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file release-notes.md --verify-tag
