@@ -34,7 +34,8 @@
     "logOut": "Log out",
     "openMenu": "Menu",
     "closeMenu": "Close menu",
-    "phoneMenu": "Navigation"
+    "phoneMenu": "Navigation",
+    "apiReference": "API reference"
   },
   "breadcrumb": {
     "label": "Breadcrumb",

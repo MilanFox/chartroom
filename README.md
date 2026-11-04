@@ -51,7 +51,7 @@ Every command: [CLI reference](cli/README.md).
 
 - [Connect your agents](docs/connect-agents.md): end-to-end setup with the skills
 - [Operating an Instance](docs/operating.md): environment variables, TLS, Snapshots, upgrade, rollback, uninstall
-- HTTP API for scripts and other tools: OpenAPI at `<your Instance>/api/v1/openapi.json`; a Token holder's secret is the bearer token
+- HTTP API for scripts and other tools: reference at `<your Instance>/api/docs`, OpenAPI at `<your Instance>/api/v1/openapi.json`; a Token holder's secret is the bearer token
 - [Release notes](https://github.com/MilanFox/chartroom/releases)
 - [MIT licence](LICENSE)
 

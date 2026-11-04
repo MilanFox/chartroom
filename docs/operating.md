@@ -98,6 +98,10 @@ The first boot creates nothing but the seeded Label groups: no Token holder, no 
    `<major>` is the Instance's major version, `0` while it is `0.x`; without a global install, prefix commands with `npx -y chartroom-cli@<major>`.
 5. Run `/setup-matt-pocock-skills` with **Other** as the issue tracker and answer: "Chartroom at `<url>`. Run `chartroom adapter` and write each file it prints, verbatim, to the path in its marker line." After changing settings, refresh the files with `chartroom adapter --write docs/agents`.
 
+## HTTP API reference
+
+`<your Instance>/api/docs` renders the HTTP API from `/api/v1/openapi.json`, linked from the footer of every UI page. Reading it needs no login, and the page loads nothing from other hosts. Its "try it" panel sends a Token holder's secret as the bearer token and keeps it only until the page is closed or reloaded.
+
 ## Uninstall
 
 > [!WARNING]

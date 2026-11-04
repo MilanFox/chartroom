@@ -7,6 +7,10 @@
     <main id="main" class="shell__content" tabindex="-1">
       <slot />
     </main>
+
+    <footer class="shell__footer">
+      <NuxtLink :to="API_DOCS_PATH" class="shell__footer-link">{{ strings.shell.apiReference }}</NuxtLink>
+    </footer>
   </div>
 </template>
 
@@ -59,6 +63,27 @@ useHead(() => ({
 
     @include respond(sm) {
       padding: $space-6;
+    }
+  }
+
+  &__footer {
+    max-width: $content-width;
+    margin: 0 auto;
+    padding: $space-4;
+    border-top: 1px solid var(--color-rule);
+    font-size: $font-size-meta;
+
+    @include respond(sm) {
+      padding: $space-4 $space-6;
+    }
+  }
+
+  &__footer-link {
+    color: var(--color-muted);
+
+    &:hover,
+    &:focus-visible {
+      color: var(--color-fg);
     }
   }
 }

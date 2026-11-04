@@ -51,6 +51,7 @@ const operation = (route: MountRoute) => {
   const responses = Object.fromEntries(Object.entries(meta?.responses ?? {}).map(([status, given]) => [status, response(status, given)]));
   return {
     summary: meta?.summary ?? `${route.method.toUpperCase()} ${route.path}`,
+    ...(meta?.description ? { description: meta.description } : {}),
     ...(meta?.tags ? { tags: meta.tags } : {}),
     ...(parameters.length ? { parameters } : {}),
     ...(meta?.requestBody ? { requestBody: { required: true, content: { 'application/json': { schema: meta.requestBody } } } } : {}),

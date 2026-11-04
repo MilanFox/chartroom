@@ -7,7 +7,7 @@ import { VERB_ROUTES } from '../../cli/src/chartroom';
 type OpenApiDocument = {
   openapi: string
   servers: { url: string }[]
-  paths: Record<string, Record<string, { summary: string }>>
+  paths: Record<string, Record<string, { summary: string, tags?: string[], description?: string }>>
   components: { schemas: Record<string, { properties: Record<string, { enum?: string[] }> }>, securitySchemes: Record<string, unknown> }
   security: Record<string, string[]>[]
 };
@@ -82,6 +82,24 @@ describe('the OpenAPI document', () => {
     const documented = VERB_ROUTES.filter(({ method, path }) => document.paths[path]?.[method]?.summary);
 
     expect(documented).toEqual(VERB_ROUTES);
+  });
+
+  it('gives every api operation a written summary and a tag', async () => {
+    const document = await apiDocument();
+
+    const undescribed = Object.entries(document.paths).flatMap(([path, operations]) =>
+      Object.entries(operations)
+        .filter(([method, { summary, tags }]) => summary === `${method.toUpperCase()} ${path.replace(/\{(\w+)\}/g, ':$1')}` || !tags?.length)
+        .map(([method]) => `${method.toUpperCase()} ${path}`));
+
+    expect(undescribed).toEqual([]);
+  });
+
+  it('has its reference page served as HTML without a session', async () => {
+    const page = await server.fetch('/api/docs', { redirect: 'manual' });
+
+    expect(page.status).toBe(200);
+    expect(page.headers.get('content-type')).toMatch(/text\/html/);
   });
 
   it('adds the UI-only routes under the ui server', async () => {

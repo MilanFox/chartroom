@@ -20,6 +20,7 @@ export type JsonSchema = Record<string, unknown>;
 export interface OperationMeta {
   summary: string
   tags: string[]
+  description?: string
   parameters?: { name: string, in: 'path' | 'query' | 'header', required?: boolean, schema: JsonSchema, description?: string }[]
   requestBody?: JsonSchema
   responses: Record<string, { description: string, schema?: JsonSchema, contentType?: string }>
@@ -98,6 +99,7 @@ export const routeTable: TableRoute[] = [
     openapi: {
       summary: 'Edit issue fields',
       tags: ['issues'],
+      description: 'Without If-Match the last write wins. With it, a stale version is a conflict whose message names who last wrote and when.',
       parameters: [
         ISSUE_NUMBER_PARAM,
         { name: 'If-Match', in: 'header', schema: { type: 'string' }, description: 'The expected version, quotes optional; stale is conflict with field version' },
@@ -129,6 +131,7 @@ export const routeTable: TableRoute[] = [
     openapi: {
       summary: 'Claim an issue for the caller',
       tags: ['issues'],
+      description: 'Assigns the issue to the calling Token holder, signalling that it is being worked. An issue claimed by someone else cannot be claimed.',
       parameters: [ISSUE_NUMBER_PARAM],
       responses: {
         200: { description: 'Document', schema: DOCUMENT_SCHEMA },
@@ -183,6 +186,7 @@ export const routeTable: TableRoute[] = [
     openapi: {
       summary: 'Append text under a body section',
       tags: ['issues'],
+      description: 'Atomic and safe to run alongside other writers: ignores If-Match and bumps version. The section runs to the next heading of the same or higher level; text goes after its last non-blank line. A missing section is never created.',
       parameters: [ISSUE_NUMBER_PARAM],
       requestBody: { type: 'object', properties: { section: { type: 'string', description: 'Heading text, any ATX level, first match wins' }, text: { type: 'string' } }, required: ['section', 'text'] },
       responses: {
@@ -399,6 +403,7 @@ export const routeTable: TableRoute[] = [
     openapi: {
       summary: `The generated Adapter file ${file}, in this Instance's words`,
       tags: ['instance'],
+      description: 'Part of the Adapter, the docs that teach an agent skillset to use this tracker. Display names come from this Instance\'s settings.',
       responses: { 200: { description: 'Markdown', contentType: 'text/markdown', schema: { type: 'string' } } },
     },
   })),
