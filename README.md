@@ -20,37 +20,36 @@ docker compose up -d
 
 ## First run
 
-`init` ends by printing this list with your URL filled in.
+`init` ends by printing these steps with your URL filled in.
 
 1. Open the Instance, `http://localhost:3000` by default, and sign in with your viewer password.
 2. Elevate with the admin password.
-3. Follow the setup checklist on the admin page and create the first Token holder. Its secret is shown once.
-4. In your project repo, write the Adapter files for your agents:
+3. Create the first Token holder from the setup checklist on the admin page. Its secret is shown once. Project name, Effort word and Environments are optional.
 
-   ```sh
-   export CHARTROOM_URL=http://localhost:3000
-   export CHARTROOM_TOKEN=<secret>
-   npx -y chartroom-cli@latest adapter --write docs/agents
-   ```
+## Connect your agents
+
+Install the CLI (`npm install -g chartroom-cli@0`), run `/setup-matt-pocock-skills` with **Other** as the issue tracker, put `CHARTROOM_URL` and `CHARTROOM_TOKEN` in the repo's untracked `.env`, then `chartroom adapter --write docs/agents`.
+Step by step, with a first run and troubleshooting: [Connect your agents](docs/connect-agents.md).
 
 ## CLI
 
-`npm install -g chartroom-cli@latest` for the `chart` binary, or prefix each command with `npx -y chartroom-cli@latest` instead of `chart`. On an Instance older than the latest major, use `@<major>`; the CLI names it when they differ. Output is JSON.
+`npm install -g chartroom-cli@latest` puts `chartroom` on your `PATH`; `npx -y chartroom-cli@latest` in front of a command works without installing. On an Instance older than the latest major, use `@<major>`; the CLI names it when they differ. Output is JSON.
 
 | Command | Does |
 | --- | --- |
-| `chart issue list --view frontier` | Unblocked open work |
-| `chart issue view 12` | One issue |
-| `chart issue create --kind ticket --title "…" --parent 3` | New ticket under an Effort, map or spec |
-| `chart issue claim 12` | Assign yourself |
-| `chart issue close 12 --comment "Shipped in #21"` | Close with a comment |
-| `chart effort list` | All Efforts |
-| `chart adapter --write docs/agents` | Write the Adapter files |
+| `chartroom issue list --view frontier` | Unblocked open work |
+| `chartroom issue view 12` | One issue |
+| `chartroom issue create --kind ticket --title "…" --parent 3` | New ticket under an Effort, map or spec |
+| `chartroom issue claim 12` | Assign yourself |
+| `chartroom issue close 12 --comment "Shipped in #21"` | Close with a comment |
+| `chartroom effort list` | All Efforts |
+| `chartroom adapter --write docs/agents` | Write the Adapter files |
 
 Every command: [CLI reference](cli/README.md).
 
 ## Docs
 
+- [Connect your agents](docs/connect-agents.md): end-to-end setup with the skills
 - [Operating an Instance](docs/operating.md): environment variables, TLS, Snapshots, upgrade, rollback, uninstall
 - API reference: `<your Instance>/api/docs`
 - [Release notes](https://github.com/MilanFox/chartroom/releases)
