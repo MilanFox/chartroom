@@ -48,9 +48,9 @@ Run these in your project repo.
   Chartroom at http://localhost:3000; run chartroom adapter --write docs/agents
   ```
 
-- Keep the default triage labels.
+- If it asks about triage labels (only when the `triage` skill is installed), keep the defaults.
 
-The skill writes the `## Agent skills` block into `CLAUDE.md` (or `AGENTS.md`) and `docs/agents/domain.md`.
+The skill writes the `## Agent skills` block into `CLAUDE.md` (or `AGENTS.md`), `docs/agents/domain.md`, a placeholder `docs/agents/issue-tracker.md` and, with `triage` installed, `docs/agents/triage-labels.md`.
 
 **b. Put the URL and secret in `.env`.**
 
@@ -69,7 +69,7 @@ chartroom adapter --write docs/agents
 
 This replaces the skill's `docs/agents/issue-tracker.md` and `docs/agents/triage-labels.md` with versions for your Instance. Commit them.
 
-Re-run it after you change the Effort word, the triage Display labels or the Label groups on the admin page.
+Re-run it after you change the Effort's Display label, the triage Display labels or the Label groups on the admin page.
 
 ## 6. Let Claude Code run it without prompting (optional)
 
@@ -117,7 +117,7 @@ This prints the Token holder you act as. Then do a first real run in Claude Code
 | `unreachable` | Wrong `CHARTROOM_URL` or port, or the container is down | `docker compose ps` in the Instance folder; `docker compose up -d` |
 | A stderr line saying the Instance and the CLI versions differ | The CLI's major doesn't match the Instance's | Install the major it names: `npm install -g chartroom-cli@<major>` |
 | The agent still writes files under `.scratch/` | The Adapter files weren't written or committed, or the `## Agent skills` block in `CLAUDE.md` still points at local markdown | Re-run step 5c and commit; fix the block to point at `docs/agents/issue-tracker.md` |
-| The agent uses an old Effort word or triage label name | The Adapter files predate a settings change | `chartroom adapter --write docs/agents` and commit |
+| The agent uses an old Effort or triage Display label | The Adapter files predate a settings change | `chartroom adapter --write docs/agents` and commit |
 
 ## 10. Uninstall
 

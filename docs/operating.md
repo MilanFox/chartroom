@@ -92,10 +92,11 @@ The first boot creates nothing but the seeded Label groups: no Token holder, no 
 4. In the project repo, run `/setup-matt-pocock-skills` with **Other** as the issue tracker, then, with `CHARTROOM_URL` and `CHARTROOM_TOKEN` set in the environment or the repo's untracked `.env`:
 
    ```sh
-   npx -y chartroom-cli@<major> adapter --write docs/agents
+   npm install -g chartroom-cli@<major>
+   chartroom adapter --write docs/agents
    ```
 
-   `<major>` is the Instance's major version, `0` while it is `0.x`. The Adapter files replace the skill's `issue-tracker.md` and `triage-labels.md`. Re-run it after changing settings.
+   `<major>` is the Instance's major version, `0` while it is `0.x`; without a global install, prefix the command with `npx -y chartroom-cli@<major>`. The Adapter files replace the skill's `issue-tracker.md` and `triage-labels.md`. Re-run it after changing settings.
 
 ## Uninstall
 
