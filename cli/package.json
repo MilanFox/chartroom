@@ -1,6 +1,6 @@
 {
   "name": "chartroom-cli",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "The Chartroom CLI: every tracker operation from the shell",
   "keywords": [
     "chartroom",
