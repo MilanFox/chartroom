@@ -405,7 +405,7 @@ watch(adminGroups, (groups) => {
 }, { immediate: true });
 
 const report = (failure: unknown, { key, fields, group }: { key: string, fields: Record<string, string>, group: string }) => {
-  const issues = adoptionConflictOf(failure);
+  const issues = memberClashOf(failure);
   if (issues) {
     feedback.value[key] = { message: format(strings.value.admin.labels.errors.conflict, { group }), failed: true, issues };
     return;

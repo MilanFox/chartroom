@@ -1,4 +1,4 @@
-import type { ApiErrorBody } from '~/types/api';
+import { errorBodyOf } from '~/utils/api-error';
 
 export interface VersionConflict {
   holder: string | null
@@ -6,7 +6,7 @@ export interface VersionConflict {
 }
 
 const conflictMessage = (failure: unknown, field: string | undefined) => {
-  const error = (failure as { data?: Partial<ApiErrorBody> } | null)?.data?.error;
+  const error = errorBodyOf(failure)?.error;
   return error?.code === 'conflict' && error.field === field ? error.message : null;
 };
 
@@ -22,7 +22,7 @@ export const claimConflictOf = (failure: unknown) => {
   return message === null ? null : { holder: message.match(/held by (\S+)$/)?.[1] ?? null };
 };
 
-export const adoptionConflictOf = (failure: unknown) => {
-  const message = conflictMessage(failure, undefined);
+export const memberClashOf = (failure: unknown) => {
+  const message = conflictMessage(failure, 'labels');
   return message === null ? null : [...message.matchAll(/#(\d+)/g)].map(match => Number(match[1]));
 };

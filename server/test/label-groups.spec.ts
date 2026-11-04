@@ -169,7 +169,7 @@ describe('admin-defined Label groups', () => {
 
     const clash = await admin.json('POST', '/label-groups/stage/labels', { body: { id: 'stage-wip' } });
 
-    expect(clash).toMatchObject({ status: 409, body: { error: { code: 'conflict' } } });
+    expect(clash).toMatchObject({ status: 409, body: { error: { code: 'conflict', field: 'labels' } } });
     expect(clash.body.error.message).toContain(`#${three.number}`);
     expect(clash.body.error.message).not.toContain(`#${one.number}`);
     expect((await groupsListed()).find(group => group.id === 'stage')).toEqual(groupBefore);
@@ -188,7 +188,7 @@ describe('admin-defined Label groups', () => {
 
     const clash = await admin.json('POST', '/label-groups', { body: { id: 'area', labels: [{ id: 'area-api' }, { id: 'area-ui' }] } });
 
-    expect(clash).toMatchObject({ status: 409, body: { error: { code: 'conflict' } } });
+    expect(clash).toMatchObject({ status: 409, body: { error: { code: 'conflict', field: 'labels' } } });
     expect(clash.body.error.message).toContain(`#${both.number}`);
     expect(clash.body.error.message).not.toContain(`#${single.number}`);
     expect((await groupsListed()).map(group => group.id)).not.toContain('area');
