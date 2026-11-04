@@ -197,6 +197,24 @@ export interface FreeFormLabel {
   count: number
 }
 
+export interface LabelGroupMemberInput {
+  id: string
+  displayLabel: string | null
+}
+
+export interface LabelGroupInput {
+  id: string
+  displayName: string | null
+  labels: LabelGroupMemberInput[]
+}
+
+export interface Snapshot {
+  name: string
+  kind: 'pre-migrate' | 'manual'
+  takenAt: string
+  size: number
+}
+
 export type ChangeField = 'title' | 'body' | 'parent' | 'name' | 'testInstructions' | 'state' | 'assignee' | 'comment' | 'label' | 'blocker' | 'link';
 
 export interface IssueChange {

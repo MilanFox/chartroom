@@ -96,10 +96,11 @@ const { strings, format } = useStrings();
 const baseId = useId();
 const editing = ref<number | null>(null);
 const adding = ref<'environment' | 'pointer' | null>(null);
-const confirming = ref<string | null>(null);
 const error = ref('');
 
 const { locked, prompting, close, lockedControl } = useElevationGate();
+
+const { confirming, confirm, keep, focusById } = useInlineConfirm({ baseId, triggerPrefix: `${baseId}-delete-` });
 
 const groups = computed(() => {
   const pointers = admin.pointers ?? [];
@@ -115,21 +116,6 @@ const groups = computed(() => {
   if (!unbound.length) return environments;
   return [...environments, { key: 'any', environment: null, name: strings.value.admin.environments.anyEnvironment, url: null, notes: null, pointers: unbound }];
 });
-
-const focusById = async (id: string) => {
-  await nextTick();
-  document.getElementById(id)?.focus();
-};
-
-const confirm = (key: string) => {
-  confirming.value = key;
-  focusById(`${baseId}-confirm-button-${key}`);
-};
-
-const keep = (key: string) => {
-  confirming.value = null;
-  focusById(`${baseId}-delete-${key}`);
-};
 
 const stopEditing = (id: number) => {
   editing.value = null;

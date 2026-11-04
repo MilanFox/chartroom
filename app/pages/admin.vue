@@ -23,16 +23,16 @@
 
       <AdminHolders />
 
+      <AdminLabels />
+
+      <AdminSnapshots />
+
       <AdminAbout />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import type { AdminSectionId } from '~/utils/paths';
-
-const PAGE_SECTIONS: AdminSectionId[] = ['settings', 'environments', 'holders', 'about'];
-
 const route = useRoute();
 const router = useRouter();
 const session = useSessionStore();
@@ -47,7 +47,7 @@ await useAsyncData('admin', async () => {
 
 const showChecklist = ref(admin.firstRun === true);
 
-const sections = computed(() => PAGE_SECTIONS.map(id => ({ id, label: strings.value.shell.adminSections[id] })));
+const sections = computed(() => ADMIN_SECTION_IDS.map(id => ({ id, label: strings.value.shell.adminSections[id] })));
 
 const elevationLabel = computed(() => (session.adminUntil ? format(strings.value.shell.adminUntil, { time: clockTime(session.adminUntil) }) : null));
 
