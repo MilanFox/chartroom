@@ -82,7 +82,7 @@ export const decisionTickets = (map: number, rows: IssueRow[], { query, states }
 
 export const EMPTY_STATUS_COUNTS: Readonly<Record<IssueStatus, number>> = { open: 0, claimed: 0, blocked: 0, closed: 0 };
 
-export const countByStatus = (rows: IssueRow[]) => {
+export const countByStatus = (rows: Pick<IssueRow, 'status'>[]) => {
   const counts = { ...EMPTY_STATUS_COUNTS };
   for (const row of rows) counts[row.status] += 1;
   return counts;

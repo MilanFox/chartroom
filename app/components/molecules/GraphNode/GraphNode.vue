@@ -4,7 +4,7 @@
     class="graph-node"
     :class="[`graph-node--${row.status}`, { 'graph-node--marked': mark }]"
     :transform="`translate(${x},${y})`"
-    :aria-label="format(strings.issue.graph.node, { number: row.number, title: row.title })"
+    :aria-label="accessibleName"
     @click="follow"
   >
     <g :clip-path="`url(#${clipId})`">
@@ -42,7 +42,7 @@
         rx="4"
       />
 
-      <text class="graph-node__mark-text" :x="width - MARK_WIDTH / 2 - 6" y="17.5" text-anchor="middle">{{ mark }}</text>
+      <text class="graph-node__mark-text" :x="width - MARK_WIDTH / 2 - 6" y="18" text-anchor="middle">{{ mark }}</text>
     </template>
   </a>
 </template>
@@ -55,12 +55,22 @@ const props = defineProps<GraphNodeProps>();
 const BAR_WIDTH = 4;
 const RADIUS = 8;
 const TEXT_X = 14;
-const MARK_WIDTH = 64;
+const MARK_WIDTH = 76;
 const TITLE_CHARACTERS = 25;
 
 const { strings, format } = useStrings();
 
 const truncatedTitle = computed(() => (props.row.title.length > TITLE_CHARACTERS ? `${props.row.title.slice(0, TITLE_CHARACTERS - 1).trimEnd()}…` : props.row.title));
+
+const accessibleName = computed(() => {
+  const { graph } = strings.value.issue;
+  return [
+    format(graph.node, { number: props.row.number, title: props.row.title }),
+    format(graph.nodeStates[props.row.status], { slug: props.row.assignee ?? '' }),
+    ...(props.mark ? [props.mark] : []),
+    ...(props.blockers.length ? [format(graph.nodeBlockedBy, { numbers: props.blockers.map(number => format(graph.nodeNumber, { number })).join(graph.nodeSeparator) })] : []),
+  ].join(graph.nodeSeparator);
+});
 
 const follow = (event: MouseEvent) => {
   if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -104,9 +114,8 @@ const follow = (event: MouseEvent) => {
 
   &__mark-text {
     fill: var(--color-frontier);
-    font-size: 10px;
+    font-size: $font-size-meta;
     font-weight: 700;
-    letter-spacing: 0.04em;
     text-transform: uppercase;
   }
 

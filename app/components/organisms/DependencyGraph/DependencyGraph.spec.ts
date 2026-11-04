@@ -50,22 +50,27 @@ describe('DependencyGraph', () => {
     localStorage.clear();
   });
 
-  it('opens on an open map with the progress header and every child as a link to its page', async () => {
+  it('opens on an open map with the progress header and every child as a link naming its number, title, state, mark and open blockers', async () => {
     const wrapper = await mountGraph({ kind: 'map' });
 
     expect(wrapper.find('button[aria-expanded]').attributes('aria-expanded')).toBe('true');
     expect(wrapper.text()).toContain('1 of 4 closed · frontier 1 · claimed 1 · blocked 1');
-    expect(nodeLabels(wrapper).sort()).toEqual(['#31 Name the product', '#32 Data model', '#33 HTTP API shape', '#34 Inspect the starter']);
-    expect(wrapper.find('a[aria-label="#33 HTTP API shape"]').attributes('href')).toBe('/issues/33');
+    expect(nodeLabels(wrapper).sort()).toEqual([
+      '#31 Name the product, closed',
+      '#32 Data model, claimed by @claude-a',
+      '#33 HTTP API shape, blocked, blocked by #32',
+      '#34 Inspect the starter, open, frontier',
+    ]);
+    expect(wrapper.find('a[aria-label^="#33 HTTP API shape"]').attributes('href')).toBe('/issues/33');
   });
 
   it('marks the Frontier, names the holder of a claim and shows type glyphs on a map', async () => {
     const wrapper = await mountGraph({ kind: 'map' });
 
-    expect(wrapper.find('a[aria-label="#34 Inspect the starter"]').text()).toContain('frontier');
-    expect(wrapper.find('a[aria-label="#34 Inspect the starter"]').text()).toContain('🔎');
-    expect(wrapper.find('a[aria-label="#33 HTTP API shape"]').text()).not.toContain('frontier');
-    expect(wrapper.find('a[aria-label="#32 Data model"]').text()).toContain('@claude-a');
+    expect(wrapper.find('a[aria-label^="#34 Inspect the starter"]').text()).toContain('frontier');
+    expect(wrapper.find('a[aria-label^="#34 Inspect the starter"]').text()).toContain('🔎');
+    expect(wrapper.find('a[aria-label^="#33 HTTP API shape"]').text()).not.toContain('frontier');
+    expect(wrapper.find('a[aria-label^="#32 Data model"]').text()).toContain('@claude-a');
   });
 
   it('starts collapsed on a spec, labels its open unblocked tickets takeable and shows no glyphs', async () => {
@@ -73,8 +78,9 @@ describe('DependencyGraph', () => {
 
     expect(wrapper.find('button[aria-expanded]').attributes('aria-expanded')).toBe('false');
     expect(wrapper.text()).toContain('takeable 1');
-    expect(wrapper.find('a[aria-label="#34 Inspect the starter"]').text()).toContain('takeable');
-    expect(wrapper.find('a[aria-label="#34 Inspect the starter"]').text()).not.toContain('🔎');
+    expect(wrapper.find('a[aria-label^="#34 Inspect the starter"]').text()).toContain('takeable');
+    expect(wrapper.find('a[aria-label^="#34 Inspect the starter"]').attributes('aria-label')).toBe('#34 Inspect the starter, open, takeable');
+    expect(wrapper.find('a[aria-label^="#34 Inspect the starter"]').text()).not.toContain('🔎');
   });
 
   it('hides closed tickets on request and says how many it hides', async () => {
@@ -85,7 +91,10 @@ describe('DependencyGraph', () => {
     await toggle.trigger('click');
 
     expect(toggle.attributes('aria-checked')).toBe('true');
-    expect(nodeLabels(wrapper)).not.toContain('#31 Name the product');
-    expect(nodeLabels(wrapper)).toHaveLength(3);
+    expect(nodeLabels(wrapper).sort()).toEqual([
+      '#32 Data model, claimed by @claude-a',
+      '#33 HTTP API shape, blocked, blocked by #32',
+      '#34 Inspect the starter, open, frontier',
+    ]);
   });
 });

@@ -1,4 +1,5 @@
 import type { IssueRow } from '~/types/api';
+import { countByStatus } from './dashboard';
 
 export interface GraphTicket {
   number: number
@@ -115,14 +116,8 @@ export const layoutGraph = (tickets: GraphTicket[]) => {
   return { columns, edges, width, height, nodeWidth: NODE_WIDTH, nodeHeight: NODE_HEIGHT };
 };
 
-export const graphProgress = (rows: Pick<IssueRow, 'number' | 'status'>[]) => {
-  const countOf = (status: IssueRow['status']) => rows.filter(row => row.status === status).length;
-  return {
-    total: rows.length,
-    closed: countOf('closed'),
-    claimed: countOf('claimed'),
-    blocked: countOf('blocked'),
-    open: countOf('open'),
-    frontier: rows.filter(row => row.status === 'open').map(row => row.number),
-  };
-};
+export const graphProgress = (rows: Pick<IssueRow, 'number' | 'status'>[]) => ({
+  total: rows.length,
+  ...countByStatus(rows),
+  frontier: rows.filter(row => row.status === 'open').map(row => row.number),
+});

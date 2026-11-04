@@ -303,7 +303,15 @@
         "wayfinder:prototype": "🧪",
         "wayfinder:grilling": "💬",
         "wayfinder:task": "☑"
-      }
+      },
+      "nodeStates": {
+        "open": "open",
+        "claimed": "claimed by @{slug}",
+        "blocked": "blocked",
+        "closed": "closed"
+      },
+      "nodeBlockedBy": "blocked by {numbers}",
+      "nodeSeparator": ", "
     }
   },
   "workbench": {

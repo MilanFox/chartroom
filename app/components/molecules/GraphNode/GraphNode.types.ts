@@ -9,4 +9,5 @@ export interface GraphNodeProps {
   clipId: string
   glyph: string | null
   mark: string | null
+  blockers: number[]
 }

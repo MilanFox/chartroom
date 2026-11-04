@@ -79,6 +79,7 @@
             :clip-id="clipId"
             :glyph="glyphOf(node.row)"
             :mark="frontier.has(node.row.number) ? mark : null"
+            :blockers="node.blockers"
             @mouseenter="highlighted = node.row.number"
             @mouseleave="highlighted = null"
             @focus="highlighted = node.row.number"
@@ -115,7 +116,7 @@ const openBlockers = computed(() => new Set(shownRows.value.filter(row => row.st
 const layout = computed(() => layoutGraph(shownRows.value.map(row => ({ number: row.number, blockedBy: row.blockedBy.map(blocker => blocker.number) }))));
 const nodes = computed(() => {
   const rowOf = new Map(shownRows.value.map(row => [row.number, row]));
-  return layout.value.columns.flat().flatMap(slot => (slot.ticket === null ? [] : [{ row: rowOf.get(slot.ticket)!, x: slot.x, y: slot.y }]));
+  return layout.value.columns.flat().flatMap(slot => (slot.ticket === null ? [] : [{ row: rowOf.get(slot.ticket)!, x: slot.x, y: slot.y, blockers: layout.value.edges.filter(edge => edge.to === slot.ticket && openBlockers.value.has(edge.from)).map(edge => edge.from) }]));
 });
 
 const glyphOf = (row: IssueRow) => {
