@@ -29,6 +29,16 @@ describe('AdminSettings', () => {
     remove();
   });
 
+  it('describes the Effort word field with where the word comes from', async () => {
+    useSessionStore().me = viewerSession;
+    useInstanceStore().instance = fresh;
+    const wrapper = await mountSuspended(AdminSettings);
+
+    const field = wrapper.get('input[name="singular"]');
+    const descriptions = field.attributes('aria-describedby')!.split(' ').map(id => wrapper.get(`[id="${id}"]`).text());
+    expect(descriptions).toContain('An Effort is what Matt Pocock\'s skills call one unit of work (a map, its specs and their tickets); we kept his name, but you can change it to whatever your team says.');
+  });
+
   it('keeps a locked field focusable under its label with a lock mark, and typing into it opens the password prompt under that field', async () => {
     useSessionStore().me = viewerSession;
     useInstanceStore().instance = { projectName: 'Chartroom', effortName: { singular: 'Effort', plural: 'Efforts' }, triageLabels: {}, version: '0.1.0', updateAvailable: null, openIssues: 0 };

@@ -54,6 +54,7 @@ const runtimeEntries = computed(() => {
     { label: labels.trustProxy, value: onOff(runtime.trustProxy) },
     { label: labels.port, value: String(runtime.port) },
     { label: labels.updateCheck, value: onOff(runtime.updateCheck) },
+    { label: labels.projectName, value: runtime.projectName ?? labels.unset },
   ];
 });
 </script>

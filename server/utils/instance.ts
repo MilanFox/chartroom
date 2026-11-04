@@ -5,6 +5,8 @@ const SETTINGS_ROW = 1;
 const DEFAULT_PROJECT_NAME = 'Chartroom';
 const DEFAULT_EFFORT_NAME = 'Effort';
 
+const defaultProjectName = () => useDeploymentConfig().projectName ?? DEFAULT_PROJECT_NAME;
+
 const storedSettings = () => useStore().select().from(instanceSettings).where(eq(instanceSettings.id, SETTINGS_ROW)).get() ?? null;
 
 export const triageLabels = () => Object.fromEntries(
@@ -17,7 +19,7 @@ export const instanceSettingsOf = () => {
   const stored = storedSettings();
   const singular = stored?.effortSingular ?? DEFAULT_EFFORT_NAME;
   return {
-    projectName: stored?.projectName ?? DEFAULT_PROJECT_NAME,
+    projectName: stored?.projectName ?? defaultProjectName(),
     effortName: { singular, plural: stored?.effortPlural ?? `${singular}s` },
     triageLabels: triageLabels(),
   };
@@ -36,7 +38,7 @@ export const writeInstanceSettings = (patch: SettingsPatch, actor: string) => {
   const current = storedSettings();
   const row = {
     id: SETTINGS_ROW,
-    projectName: patch.projectName ?? current?.projectName ?? DEFAULT_PROJECT_NAME,
+    projectName: patch.projectName ?? current?.projectName ?? defaultProjectName(),
     effortSingular: patch.effortName?.singular ?? current?.effortSingular ?? DEFAULT_EFFORT_NAME,
     effortPlural: patch.effortName ? patch.effortName.plural : current?.effortPlural ?? null,
     updatedAt: nowIso(),

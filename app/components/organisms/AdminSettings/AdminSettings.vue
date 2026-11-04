@@ -83,7 +83,7 @@ const nameFields = computed(() => {
   const labels = strings.value.admin.settings;
   return [
     { key: 'projectName', error: 'projectName', label: labels.projectName, hint: '' },
-    { key: 'singular', error: 'effortName.singular', label: labels.effortSingular, hint: '' },
+    { key: 'singular', error: 'effortName.singular', label: labels.effortSingular, hint: labels.effortHint },
     { key: 'plural', error: 'effortName.plural', label: labels.effortPlural, hint: labels.pluralHint },
   ] as const;
 });

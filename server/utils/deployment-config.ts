@@ -11,6 +11,7 @@ export interface DeploymentConfig {
   releaseUrl: string
   dataDir: string
   elevationSeconds: number
+  projectName: string | null
 }
 
 export class MissingVariableError extends Error {
@@ -36,6 +37,7 @@ export const readDeploymentConfig = (env: NodeJS.ProcessEnv = process.env): Depl
     releaseUrl: optional('RELEASE_URL') ?? GITHUB_LATEST_RELEASE_URL,
     dataDir: optional('DATA_DIR') ?? '/data',
     elevationSeconds: Number(optional('ELEVATION_SECONDS') ?? 3600),
+    projectName: optional('PROJECT_NAME')?.trim() || null,
   };
 };
 

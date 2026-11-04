@@ -185,6 +185,7 @@ export interface RuntimeSettings {
   trustProxy: boolean
   port: number
   updateCheck: boolean
+  projectName: string | null
 }
 
 export interface SettingsInput {

@@ -38,8 +38,8 @@ const settingsWrite = async (event: H3Event, principal: Principal) => {
 };
 
 const runtimeRead = () => {
-  const { baseUrl, trustProxy, port, updateCheck } = useDeploymentConfig();
-  return { baseUrl, trustProxy, port, updateCheck };
+  const { baseUrl, trustProxy, port, updateCheck, projectName } = useDeploymentConfig();
+  return { baseUrl, trustProxy, port, updateCheck, projectName };
 };
 
 const setupRead = () => ({ firstRun: listHolders().length === 0 });
@@ -140,8 +140,8 @@ export const instanceAdminRoutes: MountRoute[] = [
           description: 'Runtime settings from environment variables',
           schema: {
             type: 'object',
-            properties: { baseUrl: { type: ['string', 'null'], description: 'Null: derived from each request' }, trustProxy: { type: 'boolean' }, port: { type: 'integer' }, updateCheck: { type: 'boolean' } },
-            required: ['baseUrl', 'trustProxy', 'port', 'updateCheck'],
+            properties: { baseUrl: { type: ['string', 'null'], description: 'Null: derived from each request' }, trustProxy: { type: 'boolean' }, port: { type: 'integer' }, updateCheck: { type: 'boolean' }, projectName: { type: ['string', 'null'], description: 'Project name until one is saved in the settings; null: none' } },
+            required: ['baseUrl', 'trustProxy', 'port', 'updateCheck', 'projectName'],
           },
         },
       },

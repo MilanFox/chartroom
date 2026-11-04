@@ -1,5 +1,7 @@
 import { mountSuspended } from '@nuxt/test-utils/runtime';
+import type { VueWrapper } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
+import { useAdminStore } from '~/stores/admin';
 import { useInstanceStore } from '~/stores/instance';
 import { useSessionStore } from '~/stores/session';
 import { viewerSession } from '~/test/issue-fixture';
@@ -37,5 +39,19 @@ describe('AdminAbout', () => {
 
     expect(wrapper.find(`a[href="${RELEASE_URL}"]`).exists()).toBe(false);
     expect(wrapper.text()).not.toContain('available');
+  });
+
+  it('lists the project name from the environment among the runtime settings, or none', async () => {
+    useSessionStore().me = viewerSession;
+    withNewerRelease();
+    const runtime = { baseUrl: null, trustProxy: false, port: 3000, updateCheck: true };
+    const valueOf = (wrapper: VueWrapper) =>
+      wrapper.findAll('.admin-about__value').find(entry => entry.get('dt').text() === 'Project name until saved in Settings')?.get('dd').text();
+
+    useAdminStore().runtimeSettings = { ...runtime, projectName: 'acme-shop' };
+    expect(valueOf(await mountSuspended(AdminAbout))).toBe('acme-shop');
+
+    useAdminStore().runtimeSettings = { ...runtime, projectName: null };
+    expect(valueOf(await mountSuspended(AdminAbout))).toBe('None');
   });
 });

@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { apiClient, holderSecret, uiClient } from './clients';
-import { TEST_PASSWORDS, useTestServer } from './harness';
+import { TEST_PASSWORDS, bootServer, useTestServer } from './harness';
 import type { LaunchedServer } from './harness';
 import { MANIFEST_MAJOR, MANIFEST_VERSION } from './manifest-version';
 
@@ -345,7 +345,7 @@ describe('the admin page reads', () => {
 
     expect(await viewer.json('GET', '/runtime')).toEqual({
       status: 200,
-      body: { baseUrl: null, trustProxy: false, port: server.port, updateCheck: true },
+      body: { baseUrl: null, trustProxy: false, port: server.port, updateCheck: true, projectName: null },
     });
     expect(await viewer.json('PATCH', '/runtime', { body: { port: 1 } })).toMatchObject({ status: 404 });
   });
@@ -361,5 +361,43 @@ describe('the admin page reads', () => {
     const viewer = uiClient(server);
     await viewer.login(TEST_PASSWORDS.CHARTROOM_VIEWER_PASSWORD);
     expect(await viewer.json('GET', '/setup')).toEqual({ status: 200, body: { firstRun: false } });
+  });
+});
+
+describe('a project name from CHARTROOM_PROJECT_NAME', () => {
+  it('names the Instance and shows in the runtime settings until an Admin saves a name, which then wins', async () => {
+    const server = await bootServer({ env: { CHARTROOM_PROJECT_NAME: 'acme-shop' } });
+    const viewer = uiClient(server);
+    await viewer.login(TEST_PASSWORDS.CHARTROOM_VIEWER_PASSWORD);
+
+    expect((await viewer.json('GET', '/instance')).body).toMatchObject({ projectName: 'acme-shop' });
+    expect((await viewer.json('GET', '/runtime')).body).toMatchObject({ projectName: 'acme-shop' });
+
+    const admin = await elevatedViewer(server);
+    await admin.json('PATCH', '/instance', { body: { projectName: 'Acme Shop' } });
+    expect((await viewer.json('GET', '/instance')).body).toMatchObject({ projectName: 'Acme Shop' });
+    await server.stop();
+  });
+
+  it('is read at each boot, so removing it falls back to the built-in default', async () => {
+    const first = await bootServer({ env: { CHARTROOM_PROJECT_NAME: 'acme-shop' } });
+    await first.kill();
+
+    const second = await bootServer({ dataDir: first.dataDir });
+    const viewer = uiClient(second);
+    await viewer.login(TEST_PASSWORDS.CHARTROOM_VIEWER_PASSWORD);
+
+    expect((await viewer.json('GET', '/instance')).body).toMatchObject({ projectName: 'Chartroom' });
+    expect((await viewer.json('GET', '/runtime')).body).toMatchObject({ projectName: null });
+    await second.stop();
+  });
+
+  it('counts as unset when blank', async () => {
+    const server = await bootServer({ env: { CHARTROOM_PROJECT_NAME: '   ' } });
+    const viewer = uiClient(server);
+    await viewer.login(TEST_PASSWORDS.CHARTROOM_VIEWER_PASSWORD);
+
+    expect((await viewer.json('GET', '/instance')).body).toMatchObject({ projectName: 'Chartroom' });
+    await server.stop();
   });
 });

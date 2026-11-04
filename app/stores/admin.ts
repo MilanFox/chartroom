@@ -19,7 +19,6 @@ export const useAdminStore = defineStore('admin', () => {
   const holders = ref<RosterHolder[] | null>(null);
   const runtimeSettings = ref<RuntimeSettings | null>(null);
   const firstRun = ref<boolean | null>(null);
-  const settingsSaved = ref(false);
   const snapshots = ref<Snapshot[] | null>(null);
 
   const unlessForbidden = <T>(read: Promise<T>) => read.catch((error) => {
@@ -58,7 +57,6 @@ export const useAdminStore = defineStore('admin', () => {
 
   const saveSettings = async (settings: SettingsInput) => {
     await uiFetch('/instance', { method: 'PATCH', body: { ...settings } });
-    settingsSaved.value = true;
     await instanceStore.load();
   };
 
@@ -126,7 +124,6 @@ export const useAdminStore = defineStore('admin', () => {
     holders,
     runtimeSettings,
     firstRun,
-    settingsSaved,
     snapshots,
     load,
     saveSettings,

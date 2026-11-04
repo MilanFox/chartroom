@@ -13,24 +13,30 @@ const CLI_ROOT = join(REPO_ROOT, 'cli');
 
 const execFileAsync = promisify(execFile);
 
+const PASSWORDS = ['admin-pw', 'admin-pw', 'viewer-pw', 'viewer-pw'];
+
 const freshDir = () => mkdtempSync(join(tmpdir(), 'chartroom-init-'));
 
 interface Terminal {
   answers: (string | null)[]
   startExitCode?: number
+  isTTY?: boolean
+  columns?: number
+  env?: Record<string, string>
 }
 
 const chartroom = async (argv: string[], version = '7.3.1', terminal?: Terminal) => {
+  const { isTTY, columns, env = {} } = terminal ?? {};
   let stdout = '';
   let stderr = '';
   const questions: { question: string, hidden: boolean }[] = [];
   const startedIn: string[] = [];
   const code = await runCli({
     argv,
-    env: {},
+    env,
     stdin: Readable.from(['']),
-    stdout: { write: (chunk: string) => (stdout += chunk, true) },
-    stderr: { write: (chunk: string) => (stderr += chunk, true) },
+    stdout: { write: (chunk: string) => (stdout += chunk, true), isTTY, columns },
+    stderr: { write: (chunk: string) => (stderr += chunk, true), isTTY, columns },
     version,
     ...terminal && {
       ask: async (question: string, options?: { hidden?: boolean }) => {
@@ -44,9 +50,16 @@ const chartroom = async (argv: string[], version = '7.3.1', terminal?: Terminal)
   return { code, stdout, stderr, questions, startedIn };
 };
 
+// eslint-disable-next-line no-control-regex -- matches the escape sequences the CLI writes
+const stripAnsi = (text: string) => text.replace(/\u001b\[[0-9;]*m/g, '');
+
 const GENERATED_PASSWORD = /^[A-Za-z0-9_-]{24,}$/;
 
 const passwordOf = (envText: string, name: string) => envText.match(new RegExp(`^${name}=(.*)$`, 'm'))![1]!;
+
+const asExample = (envText: string) => envText
+  .replace(/^(CHARTROOM_(ADMIN|VIEWER)_PASSWORD=).*$/gm, '$1')
+  .replace(/^CHARTROOM_PROJECT_NAME=.*$/m, '# CHARTROOM_PROJECT_NAME=');
 
 describe('chartroom init', () => {
   it('writes compose.yaml as compose.example.yaml pinned to the CLI version, without CHARTROOM_URL or a token', async () => {
@@ -70,7 +83,7 @@ describe('chartroom init', () => {
 
     const env = readFileSync(join(dir, '.env'), 'utf8');
     const passwords = [dir, other].flatMap(target => ['CHARTROOM_ADMIN_PASSWORD', 'CHARTROOM_VIEWER_PASSWORD'].map(name => passwordOf(readFileSync(join(target, '.env'), 'utf8'), name)));
-    expect(env.replace(/^(CHARTROOM_(ADMIN|VIEWER)_PASSWORD=).*$/gm, '$1')).toBe(readFileSync(join(REPO_ROOT, '.env.example'), 'utf8'));
+    expect(asExample(env)).toBe(readFileSync(join(REPO_ROOT, '.env.example'), 'utf8'));
     for (const password of passwords) expect(password).toMatch(GENERATED_PASSWORD);
     expect(new Set(passwords).size).toBe(4);
     expect(statSync(join(dir, '.env')).mode & 0o777).toBe(0o600);
@@ -96,19 +109,19 @@ describe('chartroom init', () => {
 
     expect(result).toMatchObject({
       code: 0, stderr: '', stdout: [
-        `Wrote compose.yaml and .env to ${dir}. The passwords are in ${dir}/.env.`,
+        `✔ Wrote compose.yaml and .env to ${dir}`,
         '',
         'First start:',
         `1. cd ${dir} && docker compose up -d`,
-        '2. Open http://localhost:3000',
-        `3. Sign in with the viewer password (in ${dir}/.env)`,
-        '4. Admin menu → "Enter admin password…" → elevate with the admin password',
-        '5. Follow "First-run setup" on the admin page: project name, Effort word, Environments, create the first Token holder — copy its secret, it is shown once',
-        '6. In your project repo:',
-        '   export CHARTROOM_URL=http://localhost:3000',
-        '   export CHARTROOM_TOKEN=<the holder\'s secret>',
-        '   npx -y chartroom-cli@7 adapter --write docs/agents',
+        `2. Open http://localhost:3000 and sign in with the viewer password (in ${dir}/.env)`,
+        `3. Admin → "Enter admin password…" → elevate with the admin password (in ${dir}/.env)`,
+        '4. Token holders → create one and copy its secret, it is shown once',
+        '5. In your project repo, run:',
+        '  export CHARTROOM_URL=http://localhost:3000',
+        '  export CHARTROOM_TOKEN=<the secret>',
+        '  npx -y chartroom-cli@7 adapter --write docs/agents',
         '',
+        'Project name, Effort word and Environments are optional; change them any time on the admin page.',
         'More: https://github.com/MilanFox/chartroom/blob/main/docs/operating.md',
         '',
       ].join('\n')
@@ -148,6 +161,23 @@ describe('chartroom init', () => {
     }
   });
 
+  it('writes the raw folder name as the project name, single-quoted when it needs quoting', async () => {
+    const parent = freshDir();
+    const named = [
+      ['acme-shop', 'acme-shop'],
+      ['team_room.v2', 'team_room.v2'],
+      ['My Chartroom!', '\'My Chartroom!\''],
+      ['a#b$c "d', '\'a#b$c "d\''],
+      ['it\'s', '\'its\''],
+    ];
+
+    for (const [directory, written] of named) {
+      await chartroom(['init', join(parent, directory!)]);
+
+      expect(readFileSync(join(parent, directory!, '.env'), 'utf8'), directory).toContain(`\nCHARTROOM_PROJECT_NAME=${written}\n`);
+    }
+  });
+
   it('is listed in the usage', async () => {
     expect((await chartroom(['frobnicate'])).stderr).toContain('\n  init [dir]\n');
   });
@@ -164,9 +194,62 @@ describe('chartroom init', () => {
     }
   });
 
-  describe('in a terminal', () => {
-    const PASSWORDS = ['admin-pw', 'admin-pw', 'viewer-pw', 'viewer-pw'];
+  describe('on a terminal screen', () => {
+    const LONG_URL = 'https://chartroom.example.com/a/rather/long/path/that/cannot/fit/on/one/row';
 
+    it('boxes the checklist no wider than the terminal, capped at 80, with the commands unframed below it', async () => {
+      for (const columns of [40, 60, 80, 200, undefined]) {
+        const dir = freshDir();
+
+        const result = await chartroom(['init', dir], '7.3.1', { answers: [...PASSWORDS, LONG_URL, '', '', '', ''], isTTY: true, columns });
+
+        const lines = stripAnsi(result.stdout).split('\n');
+        const top = lines.findIndex(line => line.startsWith('╭─ First start '));
+        const bottom = lines.findIndex(line => line.startsWith('╰'));
+        const box = lines.slice(top, bottom + 1);
+        const width = Math.min(columns ?? 80, 80);
+        expect(top, String(columns)).toBeGreaterThan(0);
+        for (const line of box) expect([...line].length, `${columns}: ${line}`).toBe(width);
+        expect(box[0]!.endsWith('╮')).toBe(true);
+        for (const line of box.slice(1, -1)) expect(line, String(columns)).toMatch(/^│ .* │$/);
+        const boxText = box.slice(1, -1).map(line => line.slice(2, -2).trim()).join(' ');
+        expect(boxText.replaceAll(' ', ''), String(columns)).toContain(LONG_URL);
+        expect(boxText, String(columns)).toContain('5. In your project repo, run:');
+        expect(boxText, String(columns)).not.toContain('export');
+        expect(lines.slice(bottom + 1).filter(line => line.startsWith('  ')), String(columns)).toEqual([
+          `  export CHARTROOM_URL=${LONG_URL}`,
+          '  export CHARTROOM_TOKEN=<the secret>',
+          '  npx -y chartroom-cli@7 adapter --write docs/agents',
+        ]);
+      }
+    });
+
+    it('colours the step headers, the ready line and the commands', async () => {
+      const dir = freshDir();
+
+      const result = await chartroom(['init', dir], '7.3.1', { answers: [...PASSWORDS, '', '', '', '', 'y'], isTTY: true, columns: 80 });
+
+      expect(result.stderr).toContain('\n\u001b[36m◆\u001b[0m \u001b[1mAdmin password\u001b[0m \u001b[2m(1/7)\u001b[0m\n');
+      expect(result.stdout.split('\n')[0]).toBe(`\u001b[32m✔\u001b[0m \u001b[1mChartroom is running in ${dir}\u001b[0m`);
+      expect(result.stdout).toContain('\n  \u001b[36mexport CHARTROOM_URL=http://localhost:3000\u001b[0m\n');
+    });
+
+    it('writes plain text without a box when NO_COLOR is set or the stream is not a terminal', async () => {
+      const dir = freshDir();
+      const answers = () => [...PASSWORDS, '', '', '', '', ''];
+
+      const plain = await chartroom(['init', dir], '7.3.1', { answers: answers() });
+      const noColor = await chartroom(['init', freshDir()], '7.3.1', { answers: answers(), isTTY: true, columns: 80, env: { NO_COLOR: '1' } });
+
+      for (const result of [plain, noColor]) {
+        expect(`${result.stdout}${result.stderr}`).not.toContain('\u001b');
+        expect(result.stdout).not.toContain('╭');
+        expect(result.stdout).toContain('\nFirst start:\n1. cd ');
+      }
+    });
+  });
+
+  describe('in a terminal', () => {
     it('walks seven steps and writes the chosen passwords, public URL, port and update choice', async () => {
       const dir = freshDir();
 
@@ -177,20 +260,20 @@ describe('chartroom init', () => {
       expect(readFileSync(join(dir, '.env'), 'utf8')).toBe(example
         .replace('CHARTROOM_ADMIN_PASSWORD=', 'CHARTROOM_ADMIN_PASSWORD=\'typed-admin\'')
         .replace('CHARTROOM_VIEWER_PASSWORD=', 'CHARTROOM_VIEWER_PASSWORD=\'typed-viewer\'')
+        .replace('# CHARTROOM_PROJECT_NAME=', `CHARTROOM_PROJECT_NAME=${basename(dir)}`)
         .replace('# CHARTROOM_BASE_URL=', 'CHARTROOM_BASE_URL=https://chart.example.com')
         .replace('# CHARTROOM_UPDATE_CHECK=true', 'CHARTROOM_UPDATE_CHECK=false'));
       expect(readFileSync(join(dir, 'compose.yaml'), 'utf8')).toContain('      - "127.0.0.1:8080:3000"\n');
       expect(result.questions.map(({ hidden }) => hidden)).toEqual([true, true, true, true, false, false, false, false, false]);
       expect(result.questions.map(({ question }) => question).filter((_, index) => index < 4)).toEqual(['Admin password: ', 'Repeat: ', 'Viewer password: ', 'Repeat: ']);
-      expect([...result.stderr.matchAll(/^Step (\d) of 7 — /gm)].map(([, step]) => step)).toEqual(['1', '2', '3', '4', '5', '6', '7']);
+      expect([...result.stderr.matchAll(/^◆ [A-Z][A-Za-z ]+ \((\d)\/7\)$/gm)].map(([, step]) => step)).toEqual(['1', '2', '3', '4', '5', '6', '7']);
       expect(result.stderr).not.toContain('typed-admin');
       expect(result.stderr).not.toContain('typed-viewer');
       expect(result.stderr).toContain('Admin password: set\nViewer password: set\n');
-      expect(result.stdout).toContain('2. Open https://chart.example.com\n   Put a TLS reverse proxy in front: https://github.com/MilanFox/chartroom/blob/main/docs/operating.md#tls-at-the-reverse-proxy\n');
-      expect(result.stdout).toContain('   export CHARTROOM_URL=https://chart.example.com\n');
+      expect(result.stdout).toContain('2. Open https://chart.example.com and sign in with your viewer password\n   Put a TLS reverse proxy in front: https://github.com/MilanFox/chartroom/blob/main/docs/operating.md#tls-at-the-reverse-proxy\n');
+      expect(result.stdout).toContain('\n  export CHARTROOM_URL=https://chart.example.com\n');
       expect(result.stdout).not.toContain('typed-');
-      expect(result.stdout).toContain(`Wrote compose.yaml and .env to ${dir}.\n\nFirst start:\n`);
-      expect(result.stdout).toContain('\n3. Sign in with your viewer password\n');
+      expect(result.stdout).toMatch(new RegExp(`^✔ Wrote compose\\.yaml and \\.env to ${dir}\\n\\nFirst start:\\n`));
       expect(result.stdout).not.toContain(join(dir, '.env'));
       expect(result.startedIn).toEqual([]);
     });
@@ -225,12 +308,13 @@ describe('chartroom init', () => {
 
       const env = readFileSync(join(dir, '.env'), 'utf8');
       expect(result.code).toBe(0);
-      expect(env.replace(/^(CHARTROOM_(ADMIN|VIEWER)_PASSWORD=).*$/gm, '$1')).toBe(readFileSync(join(REPO_ROOT, '.env.example'), 'utf8'));
+      expect(asExample(env)).toBe(readFileSync(join(REPO_ROOT, '.env.example'), 'utf8'));
       expect(readFileSync(join(dir, 'compose.yaml'), 'utf8')).toBe(readFileSync(join(plain, 'compose.yaml'), 'utf8').replace(`container_name: ${basename(plain)}`, `container_name: ${basename(dir)}`));
       expect(result.stdout).toBe(nonInteractive.stdout
         .replaceAll(plain, dir)
-        .replace(` The passwords are in ${dir}/.env.`, '')
-        .replace(`Sign in with the viewer password (in ${dir}/.env)`, 'Sign in with your viewer password'));
+        .replace(`sign in with the viewer password (in ${dir}/.env)`, 'sign in with your viewer password')
+        .replace(` with the admin password (in ${dir}/.env)`, ''));
+      expect(result.stdout).toContain('\n3. Admin → "Enter admin password…" → elevate\n');
       expect(result.startedIn).toEqual([]);
     });
 
@@ -247,7 +331,7 @@ describe('chartroom init', () => {
       expect(passwordOf(env, 'CHARTROOM_VIEWER_PASSWORD')).toBe('\'other\'');
       expect(env).toContain('\n# CHARTROOM_BASE_URL=\n');
       expect(readFileSync(join(dir, 'compose.yaml'), 'utf8')).toContain('"127.0.0.1:3001:3000"');
-      expect(result.stdout).toContain('2. Open http://localhost:3001\n3. ');
+      expect(result.stdout).toContain('2. Open http://localhost:3001 and sign in');
     });
 
     it('single-quotes chosen passwords and re-asks one holding a single quote or a control character', async () => {
@@ -311,8 +395,9 @@ describe('chartroom init', () => {
 
       expect(result).toMatchObject({ code: 0, startedIn: [dir] });
       expect(result.stdout).not.toContain('docker compose up -d');
-      expect(result.stdout).toContain('\n1. Open http://localhost:3000\n2. Sign in with your viewer password\n');
-      expect(result.stdout).toContain('\n5. In your project repo:\n');
+      expect(result.stdout).toMatch(new RegExp(`^✔ Chartroom is running in ${dir}\\n`));
+      expect(result.stdout).toContain('\n1. Open http://localhost:3000 and sign in with your viewer password\n2. Admin');
+      expect(result.stdout).toContain('\n4. In your project repo, run:\n');
     });
 
     it('a failed start exits with its code and keeps the docker step in the checklist', async () => {
@@ -322,6 +407,7 @@ describe('chartroom init', () => {
 
       expect(result.code).toBe(3);
       expect(result.stdout).toContain(`\n1. cd ${dir} && docker compose up -d\n`);
+      expect(result.stdout).toMatch(/^✔ Wrote compose\.yaml/);
     });
   });
 });

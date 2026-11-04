@@ -21,6 +21,7 @@ The container refuses to start without either password and names the missing var
 | `CHARTROOM_TRUST_PROXY` | `false` | `true` reads `X-Forwarded-For` and `X-Forwarded-Proto` from the reverse proxy. The compose example sets it. |
 | `CHARTROOM_PORT` | `3000` | Port the server listens on inside the container. |
 | `CHARTROOM_UPDATE_CHECK` | `true` | `false` stops the check for a newer release at boot and every 24 h. |
+| `CHARTROOM_PROJECT_NAME` | none | Project name shown until an Admin saves one in Settings; the saved name then wins. The first save on the Settings card stores the name shown at that moment. `init` writes the folder name. |
 | `CHARTROOM_DATA_DIR` | `/data` | Development and tests only, not for production. Keep it out of `.env`. |
 | `CHARTROOM_ELEVATION_SECONDS` | `3600` | Development and tests only, not for production. Keep it out of `.env`. |
 | `CHARTROOM_RELEASE_URL` | GitHub latest-release API | Development and tests only, not for production. Points the update check at a stub. Keep it out of `.env`. |
@@ -87,7 +88,7 @@ The first boot creates nothing but the seeded Label groups: no Token holder, no 
 
 1. Open the Instance and log in with the viewer password.
 2. Elevate with the admin password.
-3. Follow the setup checklist on the admin page: name the project, pick the Effort's Display label, add Environments, create the first Token holder. Its secret is shown once.
+3. Create the first Token holder from the setup checklist on the admin page. Its secret is shown once. The project name, the Effort's Display label and Environments are optional and can change any time.
 4. In the project repo, with `CHARTROOM_URL` and `CHARTROOM_TOKEN` set to the Instance URL and that secret:
 
    ```sh
