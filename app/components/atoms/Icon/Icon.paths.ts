@@ -9,4 +9,5 @@ export const ICON_PATHS = {
   'arrow-up': 'M12 19V5M6 11l6-6 6 6',
   'arrow-down': 'M12 5v14M6 13l6 6 6-6',
   'pencil': 'M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4',
+  'grip': 'M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01',
 } as const;

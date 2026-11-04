@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { claimConflictOf, versionConflictOf } from './conflict';
+import { adoptionConflictOf, claimConflictOf, versionConflictOf } from './conflict';
 
 const apiFailure = (code: string, message: string, field?: string) => ({ data: { error: { code, message, ...(field ? { field } : {}) } } });
 
@@ -32,5 +32,17 @@ describe('claimConflictOf', () => {
 
   it('is null for any other failure', () => {
     expect(claimConflictOf(apiFailure('invalid', 'issue #12 is closed', 'state'))).toBeNull();
+  });
+});
+
+describe('adoptionConflictOf', () => {
+  it('lists the issues that would carry two members of the group', () => {
+    expect(adoptionConflictOf(apiFailure('conflict', '#3, #12 would carry two members of priority'))).toEqual([3, 12]);
+  });
+
+  it('is null for a taken id or any other failure', () => {
+    expect(adoptionConflictOf(apiFailure('conflict', 'label group priority already exists', 'id'))).toBeNull();
+    expect(adoptionConflictOf(apiFailure('invalid', 'number is a built-in sort or filter key', 'id'))).toBeNull();
+    expect(adoptionConflictOf(new Error('offline'))).toBeNull();
   });
 });

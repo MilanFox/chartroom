@@ -141,7 +141,6 @@ const baseId = useId();
 const notice = useTemplateRef<HTMLElement>('notice');
 const issued = ref<HolderSecret | null>(null);
 const copyMessage = ref('');
-const confirming = ref<string | null>(null);
 const error = ref('');
 const slug = ref('');
 const displayName = ref('');
@@ -150,14 +149,11 @@ const creating = ref(false);
 
 const { locked, prompting, close, lockedControl } = useElevationGate();
 
+const { confirming, confirm, keep, focusById } = useInlineConfirm({ baseId, triggerPrefix: `${baseId}-revoke-` });
+
 const lastUsedOf = (holder: RosterHolder) => {
   if (holder.lastUsedAt === undefined) return strings.value.admin.holders.unknown;
   return holder.lastUsedAt ? formatTimestamp(holder.lastUsedAt) : strings.value.admin.holders.never;
-};
-
-const focusById = async (id: string) => {
-  await nextTick();
-  document.getElementById(id)?.focus();
 };
 
 const show = async (secret: HolderSecret) => {
@@ -180,16 +176,6 @@ const copySecret = async () => {
   catch {
     copyMessage.value = strings.value.admin.holders.copyFailed;
   }
-};
-
-const confirm = (target: string) => {
-  confirming.value = target;
-  focusById(`${baseId}-confirm-button-${target}`);
-};
-
-const keep = (target: string) => {
-  confirming.value = null;
-  focusById(`${baseId}-revoke-${target}`);
 };
 
 const rotate = async (target: string) => {

@@ -3,6 +3,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { apiFailure } from '~/test/issue-fixture';
 import { useInstanceStore } from './instance';
+import { useLabelGroupsStore } from './label-groups';
 import { useAdminStore } from './admin';
 
 const unregister: (() => void)[] = [];
@@ -15,7 +16,15 @@ const staging = { id: 1, name: 'Staging', url: 'https://staging.example.test', n
 const runtimeSettings = { baseUrl: null, trustProxy: false, port: 3000, updateCheck: true };
 const instance = (projectName: string) => ({ projectName, effortName: { singular: 'Effort', plural: 'Efforts' }, triageLabels: {}, version: '0.1.0', updateAvailable: null, openIssues: 0 });
 
-const readsFor = ({ pointers, holders }: { pointers: () => unknown, holders: () => unknown }) => {
+const seeded = { id: 'triage-category', displayName: 'Category', seeded: true, exclusive: true, labels: [{ id: 'bug', displayLabel: 'Bug' }] };
+const priority = (labels: { id: string, displayLabel: string }[]) => ({ id: 'priority', displayName: 'Priority', seeded: false, exclusive: true, labels });
+const effortGroup = { id: 'effort-size', displayName: 'Effort size', seeded: false, exclusive: true, labels: [] };
+const manualSnapshot = { name: 'manual-20261104-091500', kind: 'manual', takenAt: '2026-11-04T09:15:00.000Z', size: 40960 };
+
+const readsFor = ({ pointers, holders, snapshots = forbidden }: { pointers: () => unknown, holders: () => unknown, snapshots?: () => unknown }) => {
+  endpoint('/ui/labels', { method: 'GET', handler: () => [seeded] });
+  endpoint('/ui/labels/free-form', { method: 'GET', handler: () => [{ label: 'urgent', count: 2 }] });
+  endpoint('/ui/snapshots', { method: 'GET', handler: snapshots });
   endpoint('/ui/environments', { method: 'GET', handler: () => [staging] });
   endpoint('/ui/credential-pointers', { method: 'GET', handler: pointers });
   endpoint('/ui/holders', { method: 'GET', handler: holders });
@@ -43,6 +52,9 @@ describe('useAdminStore', () => {
     expect(admin.holders).toBeNull();
     expect(admin.runtimeSettings).toEqual(runtimeSettings);
     expect(admin.firstRun).toBe(true);
+    expect(admin.snapshots).toBeNull();
+    expect(useLabelGroupsStore().labelGroups).toEqual([seeded]);
+    expect(useLabelGroupsStore().freeFormLabels).toEqual([{ label: 'urgent', count: 2 }]);
   });
 
   it('saves the settings and refreshes the instance store so the shell speaks the new name', async () => {
@@ -102,5 +114,96 @@ describe('useAdminStore', () => {
 
     expect(created.secret).toBe('chr_alice_secret');
     expect(admin.holders).toEqual([{ slug: 'alice', displayName: null, revoked: false }]);
+  });
+
+  it('creating a Label group refreshes the shared groups and the free-form list, so sidebar and Workbench offer it at once', async () => {
+    const sent: unknown[] = [];
+    let groups: unknown[] = [seeded];
+    let freeForm = [{ label: 'high', count: 1 }];
+    endpoint('/ui/labels', { method: 'GET', handler: () => groups });
+    endpoint('/ui/labels/free-form', { method: 'GET', handler: () => freeForm });
+    endpoint('/ui/label-groups', {
+      method: 'POST', handler: async (event) => {
+        sent.push(await requestJson(event));
+        groups = [seeded, priority([{ id: 'high', displayLabel: 'high' }])];
+        freeForm = [];
+        return {};
+      },
+    });
+    const admin = useAdminStore();
+
+    await admin.createLabelGroup({ id: 'priority', displayName: 'Priority', labels: [{ id: 'high', displayLabel: null }] });
+
+    expect(sent).toEqual([{ id: 'priority', displayName: 'Priority', labels: [{ id: 'high', displayLabel: null }] }]);
+    expect(useLabelGroupsStore().labelGroups.map(group => group.id)).toEqual(['triage-category', 'priority']);
+    expect(useLabelGroupsStore().freeFormLabels).toEqual([]);
+  });
+
+  it('moving a member down sends the group\'s new member order', async () => {
+    const sent: unknown[] = [];
+    endpoint('/ui/labels', { method: 'GET', handler: () => [seeded, priority([{ id: 'high', displayLabel: 'High' }, { id: 'low', displayLabel: 'Low' }])] });
+    endpoint('/ui/labels/free-form', { method: 'GET', handler: () => [] });
+    endpoint('/ui/label-groups/priority/labels/order', {
+      method: 'PUT', handler: async (event) => {
+        sent.push(await requestJson(event));
+        return {};
+      },
+    });
+    const admin = useAdminStore();
+    await useLabelGroupsStore().load();
+
+    await admin.moveGroupMember('priority', 'high', 1);
+
+    expect(sent).toEqual([{ labels: ['low', 'high'] }]);
+  });
+
+  it('moving an admin group up reorders only the admin groups; the seeded ones stay first', async () => {
+    const sent: unknown[] = [];
+    endpoint('/ui/labels', { method: 'GET', handler: () => [seeded, priority([]), effortGroup] });
+    endpoint('/ui/labels/free-form', { method: 'GET', handler: () => [] });
+    endpoint('/ui/label-groups/order', {
+      method: 'PUT', handler: async (event) => {
+        sent.push(await requestJson(event));
+        return [];
+      },
+    });
+    const admin = useAdminStore();
+    await useLabelGroupsStore().load();
+
+    await admin.moveLabelGroup('effort-size', -1);
+
+    expect(sent).toEqual([{ groups: ['effort-size', 'priority'] }]);
+  });
+
+  it('taking a Snapshot rereads the list, newest first', async () => {
+    let snapshots: unknown[] = [];
+    endpoint('/ui/snapshots', { method: 'GET', handler: () => snapshots });
+    endpoint('/ui/snapshots', {
+      method: 'POST', handler: () => {
+        snapshots = [manualSnapshot];
+        return manualSnapshot;
+      },
+    });
+    const admin = useAdminStore();
+
+    await admin.takeSnapshot();
+
+    expect(admin.snapshots).toEqual([manualSnapshot]);
+  });
+
+  it('deleting a manual Snapshot rereads the list', async () => {
+    let snapshots: unknown[] = [manualSnapshot];
+    endpoint('/ui/snapshots', { method: 'GET', handler: () => snapshots });
+    endpoint(`/ui/snapshots/${manualSnapshot.name}`, {
+      method: 'DELETE', handler: () => {
+        snapshots = [];
+        return noContent();
+      },
+    });
+    const admin = useAdminStore();
+
+    await admin.deleteSnapshot(manualSnapshot.name);
+
+    expect(admin.snapshots).toEqual([]);
   });
 });
