@@ -81,48 +81,19 @@
     <p role="status" class="admin-holders__error">{{ error }}</p>
 
     <form class="admin-holders__create" novalidate @submit.prevent="create">
-      <div class="admin-holders__field">
-        <label :for="`${baseId}-slug`" class="admin-holders__label">{{ strings.admin.holders.slug }}<Icon v-if="locked" name="lock" :size="12" class="admin-holders__lock" /></label>
+      <LockedField
+        :id="`${baseId}-slug`"
+        v-model="slug"
+        name="slug"
+        :label="strings.admin.holders.slug"
+        :hint="strings.admin.holders.slugHint"
+        :error="slugError"
+        autocapitalize="off"
+        spellcheck="false"
+        @input="slugError = ''"
+      />
 
-        <input
-          :id="`${baseId}-slug`"
-          v-model="slug"
-          name="slug"
-          class="admin-holders__input"
-          autocomplete="off"
-          autocapitalize="off"
-          spellcheck="false"
-          :readonly="locked"
-          :aria-disabled="locked ? 'true' : undefined"
-          :aria-invalid="Boolean(slugError)"
-          :aria-describedby="`${baseId}-slug-hint ${baseId}-slug-error`"
-          v-on="lockedControl('slug')"
-          @input="slugError = ''"
-        />
-
-        <p :id="`${baseId}-slug-hint`" class="admin-holders__hint">{{ strings.admin.holders.slugHint }}</p>
-
-        <p :id="`${baseId}-slug-error`" role="status" class="admin-holders__error">{{ slugError }}</p>
-
-        <ElevationPrompt v-if="prompting === 'slug'" @elevated="close" @cancel="close" />
-      </div>
-
-      <div class="admin-holders__field">
-        <label :for="`${baseId}-display-name`" class="admin-holders__label">{{ strings.admin.holders.displayNameOptional }}<Icon v-if="locked" name="lock" :size="12" class="admin-holders__lock" /></label>
-
-        <input
-          :id="`${baseId}-display-name`"
-          v-model="displayName"
-          name="displayName"
-          class="admin-holders__input"
-          autocomplete="off"
-          :readonly="locked"
-          :aria-disabled="locked ? 'true' : undefined"
-          v-on="lockedControl('displayName')"
-        />
-
-        <ElevationPrompt v-if="prompting === 'displayName'" @elevated="close" @cancel="close" />
-      </div>
+      <LockedField v-model="displayName" name="displayName" :label="strings.admin.holders.displayNameOptional" />
 
       <div class="admin-holders__submit">
         <AdminAction :label="creating ? strings.admin.holders.creating : strings.admin.holders.create" type="submit" variant="primary" />
@@ -147,7 +118,7 @@ const displayName = ref('');
 const slugError = ref('');
 const creating = ref(false);
 
-const { locked, prompting, close, lockedControl } = useElevationGate();
+const { locked } = useElevationGate();
 
 const { confirming, confirm, keep, focusById } = useInlineConfirm({ baseId, triggerPrefix: `${baseId}-revoke-` });
 
@@ -376,37 +347,6 @@ const create = async () => {
     @include respond(sm) {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
-  }
-
-  &__field {
-    display: flex;
-    flex-direction: column;
-  }
-
-  &__label {
-    margin-bottom: $space-1;
-    color: var(--color-muted);
-    font-size: $font-size-meta;
-  }
-
-  &__input {
-    @include text-field;
-
-    &:read-only {
-      border-color: var(--color-rule);
-      background: var(--color-surface-alt);
-      color: var(--color-muted);
-    }
-  }
-
-  &__lock {
-    margin-left: $space-1;
-  }
-
-  &__hint {
-    margin: $space-1 0 0;
-    color: var(--color-muted);
-    font-size: $font-size-meta;
   }
 
   &__submit {

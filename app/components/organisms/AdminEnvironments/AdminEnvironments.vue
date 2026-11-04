@@ -35,26 +35,17 @@
 
             <span class="admin-environments__where">{{ pointer.whereToFind }}</span>
 
-            <span class="admin-environments__environment">
-              <select
-                :value="pointer.environment ?? ''"
-                class="admin-environments__select"
-                :aria-label="format(strings.admin.environments.pointerEnvironment, { label: pointer.label })"
-                :aria-disabled="locked ? 'true' : undefined"
-                v-on="lockedControl(`pointer-${pointer.id}`)"
-                @change="rebind(pointer, $event.target as HTMLSelectElement)"
-              >
-                <option value="">{{ strings.admin.environments.anyEnvironment }}</option>
+            <LockedSelect
+              :value="String(pointer.environment ?? '')"
+              :label="format(strings.admin.environments.pointerEnvironment, { label: pointer.label })"
+              @change="rebind(pointer, $event)"
+            >
+              <option value="">{{ strings.admin.environments.anyEnvironment }}</option>
 
-                <option v-for="option in environmentsStore.environments" :key="option.id" :value="option.id">{{ option.name }}</option>
-              </select>
-
-              <Icon v-if="locked" name="lock" :size="12" />
-            </span>
+              <option v-for="option in environmentsStore.environments" :key="option.id" :value="option.id">{{ option.name }}</option>
+            </LockedSelect>
 
             <AdminAction :id="`${baseId}-delete-pointer-${pointer.id}`" :label="strings.admin.environments.delete" variant="danger" @run="confirm(`pointer-${pointer.id}`)" />
-
-            <ElevationPrompt v-if="prompting === `pointer-${pointer.id}`" @elevated="close" @cancel="close" />
 
             <div v-if="confirming === `pointer-${pointer.id}`" role="group" class="admin-environments__confirm" :aria-labelledby="`${baseId}-confirm-pointer-${pointer.id}`">
               <span :id="`${baseId}-confirm-pointer-${pointer.id}`">{{ format(strings.admin.environments.confirmDeletePointer, { label: pointer.label }) }}</span>
@@ -98,8 +89,6 @@ const editing = ref<number | null>(null);
 const adding = ref<'environment' | 'pointer' | null>(null);
 const error = ref('');
 
-const { locked, prompting, close, lockedControl } = useElevationGate();
-
 const { confirming, confirm, keep, focusById } = useInlineConfirm({ baseId, triggerPrefix: `${baseId}-delete-` });
 
 const groups = computed(() => environmentGroups(environmentsStore.environments, environmentsStore.pointers ?? [], strings.value.admin.environments.anyEnvironment));
@@ -138,12 +127,8 @@ const removePointer = async (id: number) => {
   focusById(`${baseId}-add-pointer`);
 };
 
-const rebind = (pointer: CredentialPointer, select: HTMLSelectElement) => {
-  if (locked.value) {
-    select.value = String(pointer.environment ?? '');
-    return;
-  }
-  run(() => environmentsStore.updatePointer(pointer.id, { environment: select.value ? Number(select.value) : null }), strings.value.admin.environments.errors.failed);
+const rebind = (pointer: CredentialPointer, environment: string) => {
+  run(() => environmentsStore.updatePointer(pointer.id, { environment: environment ? Number(environment) : null }), strings.value.admin.environments.errors.failed);
 };
 </script>
 
@@ -205,6 +190,7 @@ const rebind = (pointer: CredentialPointer, select: HTMLSelectElement) => {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     align-items: center;
+    grid-auto-flow: row dense;
     gap: $space-1 $space-3;
     padding: $space-2 0;
     border-top: 1px dashed var(--color-rule);
@@ -234,26 +220,6 @@ const rebind = (pointer: CredentialPointer, select: HTMLSelectElement) => {
 
   &__muted {
     margin: $space-2 0 0;
-  }
-
-  &__environment {
-    display: flex;
-    align-items: center;
-    gap: $space-1;
-    min-width: 0;
-    color: var(--color-muted);
-  }
-
-  &__select {
-    @include text-field;
-    flex: 1 1 auto;
-    min-width: 0;
-
-    &[aria-disabled='true'] {
-      border-color: var(--color-rule);
-      background: var(--color-surface-alt);
-      color: var(--color-muted);
-    }
   }
 
   &__confirm {
