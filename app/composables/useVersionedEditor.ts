@@ -5,7 +5,7 @@ export type VersionedTextField = 'title' | 'body' | 'name' | 'testInstructions';
 
 const CLEARABLE_FIELDS: VersionedTextField[] = ['name', 'testInstructions'];
 
-export const useVersionedEditor = (issue: () => IssueDocument, field: VersionedTextField) => {
+export const useVersionedEditor = (issue: () => IssueDocument, field: VersionedTextField, returnFocus?: Ref<HTMLElement | null>) => {
   const issuesStore = useIssuesStore();
   const editing = ref(false);
   const draft = ref('');
@@ -14,6 +14,12 @@ export const useVersionedEditor = (issue: () => IssueDocument, field: VersionedT
   const failed = ref(false);
   const failure = shallowRef<unknown>(null);
   const conflict = ref<VersionConflict | null>(null);
+
+  watch(editing, async (isEditing) => {
+    if (isEditing) return;
+    await nextTick();
+    returnFocus?.value?.focus();
+  });
 
   const open = () => {
     draft.value = issue()[field] ?? '';

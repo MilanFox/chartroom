@@ -27,17 +27,11 @@
       </button>
     </div>
 
-    <TextEditor
+    <VersionedTextEditor
       v-if="editor.editing"
-      v-model="editor.draft"
+      :editor="editor"
       class="issue-header__editor"
       :label="strings.issue.title.label"
-      :saving="editor.saving"
-      :failed="editor.failed"
-      :conflict="editor.conflict"
-      @save="editor.save"
-      @cancel="editor.cancel"
-      @reload="editor.reload"
     />
 
     <p class="issue-header__meta">
@@ -59,15 +53,9 @@ const props = defineProps<IssueHeaderProps>();
 
 const session = useSessionStore();
 const { strings, format } = useStrings();
-const editor = reactive(useVersionedEditor(() => props.issue, 'title'));
 const editButton = useTemplateRef<HTMLButtonElement>('editButton');
+const editor = reactive(useVersionedEditor(() => props.issue, 'title', editButton));
 const wayfinderType = computed(() => wayfinderTypeOf(props.issue.labels));
-
-watch(() => editor.editing, async (editing) => {
-  if (editing) return;
-  await nextTick();
-  editButton.value?.focus();
-});
 </script>
 
 <style lang="scss" scoped>

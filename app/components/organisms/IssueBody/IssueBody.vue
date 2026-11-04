@@ -1,16 +1,10 @@
 <template>
   <section class="issue-body" :aria-label="strings.issue.body.label">
-    <TextEditor
+    <VersionedTextEditor
       v-if="editor.editing"
-      v-model="editor.draft"
+      :editor="editor"
       multiline
       :label="strings.issue.body.label"
-      :saving="editor.saving"
-      :failed="editor.failed"
-      :conflict="editor.conflict"
-      @save="editor.save"
-      @cancel="editor.cancel"
-      @reload="editor.reload"
     />
 
     <template v-else>
@@ -39,14 +33,8 @@ const props = defineProps<IssueBodyProps>();
 
 const session = useSessionStore();
 const { strings } = useStrings();
-const editor = reactive(useVersionedEditor(() => props.issue, 'body'));
 const editButton = useTemplateRef<HTMLButtonElement>('editButton');
-
-watch(() => editor.editing, async (editing) => {
-  if (editing) return;
-  await nextTick();
-  editButton.value?.focus();
-});
+const editor = reactive(useVersionedEditor(() => props.issue, 'body', editButton));
 </script>
 
 <style lang="scss" scoped>

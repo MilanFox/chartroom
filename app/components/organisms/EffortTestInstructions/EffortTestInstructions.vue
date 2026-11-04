@@ -1,16 +1,10 @@
 <template>
   <DisclosureSection :heading="strings.dashboard.testInstructions.heading">
-    <TextEditor
+    <VersionedTextEditor
       v-if="editor.editing"
-      v-model="editor.draft"
+      :editor="editor"
       multiline
       :label="strings.dashboard.testInstructions.label"
-      :saving="editor.saving"
-      :failed="editor.failed"
-      :conflict="editor.conflict"
-      @save="editor.save"
-      @cancel="editor.cancel"
-      @reload="editor.reload"
     />
 
     <div v-else class="effort-test-instructions">
@@ -39,14 +33,8 @@ const props = defineProps<EffortTestInstructionsProps>();
 
 const session = useSessionStore();
 const { strings } = useStrings();
-const editor = reactive(useVersionedEditor(() => props.effort, 'testInstructions'));
 const editButton = useTemplateRef<HTMLButtonElement>('editButton');
-
-watch(() => editor.editing, async (editing) => {
-  if (editing) return;
-  await nextTick();
-  editButton.value?.focus();
-});
+const editor = reactive(useVersionedEditor(() => props.effort, 'testInstructions', editButton));
 </script>
 
 <style lang="scss" scoped>
