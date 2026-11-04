@@ -8,7 +8,7 @@ import { LABEL_GROUP_SCHEMA, labelGroupList } from './handlers/labels';
 import { LINK_CREATE_SCHEMA, LINK_FIELDS_SCHEMA, LINK_ID_PARAM, LINK_SCHEMA, linkHandlers } from './handlers/links';
 import { ENVIRONMENT_SCHEMA, environmentList, POINTER_SCHEMA, pointerList } from './handlers/environments';
 import { adapterFile, INSTANCE_SCHEMA, instanceRead } from './handlers/instance';
-import { ME_SCHEMA, me } from './handlers/me';
+import { API_ME_SCHEMA, me } from './handlers/me';
 
 export type RouteMethod = 'get' | 'post' | 'put' | 'patch' | 'delete';
 
@@ -41,7 +41,7 @@ export const routeTable: TableRoute[] = [
     openapi: {
       summary: 'The calling principal',
       tags: ['auth'],
-      responses: { 200: { description: 'Me', schema: ME_SCHEMA } },
+      responses: { 200: { description: 'Me', schema: API_ME_SCHEMA } },
     },
   },
   {
