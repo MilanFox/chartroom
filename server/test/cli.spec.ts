@@ -288,7 +288,7 @@ describe('the CLI', () => {
     const rootManifest = JSON.parse(readFileSync(join(CLI_ROOT, '..', 'package.json'), 'utf8'));
     const compiled = readFileSync(join(CLI_ROOT, manifest.bin.chartroom), 'utf8');
 
-    expect(manifest).toMatchObject({ name: 'chartroom', version: rootManifest.version, type: 'module', bin: { chartroom: 'dist/chartroom.js', chart: 'dist/chartroom.js' }, files: ['dist'] });
+    expect(manifest).toMatchObject({ name: 'chartroom-cli', version: rootManifest.version, type: 'module', bin: { 'chartroom-cli': 'dist/chartroom.js', 'chartroom': 'dist/chartroom.js', 'chart': 'dist/chartroom.js' }, files: ['dist'] });
     expect(manifest.dependencies).toBeUndefined();
     expect(readdirSync(join(CLI_ROOT, 'dist'))).toEqual(['chartroom.js']);
     expect(compiled.startsWith('#!/usr/bin/env node\n')).toBe(true);

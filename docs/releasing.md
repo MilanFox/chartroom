@@ -30,7 +30,7 @@ The `Release` workflow (`.github/workflows/release.yml`) runs on `v*` tags only;
 | Gate: `npm ci`, lint, typecheck, tests | any of them fails |
 | Smoke: build the amd64 image, start it, read `GET /health` | `version` differs from the tag |
 | Image: build `linux/amd64` and `linux/arm64`, push to `ghcr.io/milanfox/chartroom` | |
-| npm: build and publish `chartroom` from `cli/` with provenance | |
+| npm: build and publish `chartroom-cli` from `cli/` through trusted publishing, with provenance | skipped when the version is already on npm |
 | GitHub Release: notes from `scripts/release-notes.ts` | |
 
 One tag, one number: `vX.Y.Z` becomes the image tags `X.Y.Z`, `X.Y` and `X`, the npm version and the version `GET /health` reports. The server reads it from `package.json` at build time.
@@ -50,7 +50,7 @@ Preview them before tagging: `node scripts/release-notes.ts HEAD`.
 
 | What | Where |
 | --- | --- |
-| `NPM_TOKEN` | Actions secret: an npm automation token allowed to publish `chartroom` |
+| npm Trusted Publisher | `chartroom-cli` package settings on npmjs.com: GitHub Actions, `MilanFox/chartroom`, workflow `release.yml`; no token is stored |
 | GHCR package visibility | public, linked to `MilanFox/chartroom`; the image label `org.opencontainers.image.source` links it on the first push |
 
 ## Versioning

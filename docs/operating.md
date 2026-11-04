@@ -91,7 +91,7 @@ The first boot creates nothing but the seeded Label groups: no Token holder, no 
 4. In the project repo, with `CHARTROOM_URL` and `CHARTROOM_TOKEN` set to the Instance URL and that secret:
 
    ```sh
-   npx -y chartroom@<major> adapter --write docs/agents
+   npx -y chartroom-cli@<major> adapter --write docs/agents
    ```
 
    `<major>` is the Instance's major version, `0` while it is `0.x`. Re-run it after changing settings.

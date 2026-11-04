@@ -1,5 +1,5 @@
 {
-  "name": "chartroom",
+  "name": "chartroom-cli",
   "version": "0.1.0",
   "description": "The Chartroom CLI: every tracker operation from the shell",
   "keywords": [
@@ -21,6 +21,7 @@
     "node": ">=24"
   },
   "bin": {
+    "chartroom-cli": "dist/chartroom.js",
     "chartroom": "dist/chartroom.js",
     "chart": "dist/chartroom.js"
   },

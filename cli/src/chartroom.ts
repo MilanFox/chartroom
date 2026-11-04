@@ -286,7 +286,7 @@ const warnOnMajorMismatch = async (root: string, context: CliContext) => {
   const { version: instanceVersion } = await health.json().catch(() => ({})) as { version?: string };
   const cliVersion = context.version ?? ownVersion();
   if (typeof instanceVersion === 'string' && majorOf(instanceVersion) !== majorOf(cliVersion)) {
-    context.stderr.write(`chartroom: the instance runs ${instanceVersion} but this CLI is ${cliVersion}; use npx -y chartroom@${majorOf(instanceVersion)}\n`);
+    context.stderr.write(`chartroom: the instance runs ${instanceVersion} but this CLI is ${cliVersion}; use npx -y chartroom-cli@${majorOf(instanceVersion)}\n`);
   }
 };
 

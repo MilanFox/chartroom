@@ -6,9 +6,9 @@ Issues, maps and specs for this repo live in the Chartroom instance at **{{baseU
 
 ## Setup
 
-- Repo setup goes through `setup-matt-pocock-skills`: pick "Other" as the issue tracker and give it this paragraph: "Chartroom at `{{baseUrl}}`; run `npx -y chartroom@{{major}} adapter --write docs/agents`". Writing the CLAUDE.md block stays that skill's job.
+- Repo setup goes through `setup-matt-pocock-skills`: pick "Other" as the issue tracker and give it this paragraph: "Chartroom at `{{baseUrl}}`; run `npx -y chartroom-cli@{{major}} adapter --write docs/agents`". Writing the CLAUDE.md block stays that skill's job.
 - The CLI reads `CHARTROOM_URL` (`{{baseUrl}}`) and `CHARTROOM_TOKEN` (a Token holder secret, `chr_…`) from the environment. Put both in your shell or in the repo's untracked `.env`. `--url` and `--token` override them for one call, except on `issue link add`, where `--url` is the Link target. Nothing is stored on disk.
-- Run it as `npx -y chartroom@{{major}} <command>`; the major must match the server (the CLI warns on stderr when it does not). `chartroom` and `chart` are the same binary.
+- Run it as `npx -y chartroom-cli@{{major}} <command>`; the major must match the server (the CLI warns on stderr when it does not). `chartroom` and `chart` are the same binary.
 - Verify with `chartroom me`: it prints the holder you act as. Every claim, comment and Link is attributed to that holder.
 - Every command prints the API's JSON on stdout. Errors are `{ "error": { "code", "message", "field"? } }` on stderr with exit 1; usage errors exit 2. Codes: `not-found`, `conflict`, `invalid`, `forbidden`, `unauthenticated`, `rate-limited`, `unreachable`.
 - Markdown bodies: pass `--body "…"` for one line, `--body-file <path>` for a file, or `--body-file -` to read stdin (heredoc). The same for `--comment-file`.

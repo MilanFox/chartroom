@@ -7,10 +7,10 @@ Every Chartroom tracker operation from the shell. One verb per API route; output
 No install needed. Run it with the major version of your Instance, `0` while it is `0.x`:
 
 ```sh
-npx -y chartroom@<major> me
+npx -y chartroom-cli@<major> me
 ```
 
-Installed globally (`npm install -g chartroom@<major>`), the binary is `chartroom` with the alias `chart`. The examples below use `chart`. Node 24 or newer.
+Installed globally (`npm install -g chartroom-cli@<major>`), the binary is `chartroom` with the alias `chart`. The examples below use `chart`. Node 24 or newer.
 
 ## Auth
 
@@ -90,7 +90,7 @@ export CHARTROOM_TOKEN=<secret>
 | `1` | The API's error envelope on stderr, or `unreachable` when the Instance cannot be reached. |
 | `2` | Usage error; the usage list follows on stderr. |
 
-When the Instance's major version differs from the CLI's, one line on stderr names the right `npx -y chartroom@<major>`, then the call proceeds.
+When the Instance's major version differs from the CLI's, one line on stderr names the right `npx -y chartroom-cli@<major>`, then the call proceeds.
 
 ## API reference
 
