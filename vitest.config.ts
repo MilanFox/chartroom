@@ -1,4 +1,5 @@
 import { defineVitestProject } from '@nuxt/test-utils/config';
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig(async () => ({
@@ -23,6 +24,7 @@ export default defineConfig(async () => ({
         },
       },
       {
+        resolve: { alias: { '#shared': fileURLToPath(new URL('./shared', import.meta.url)) } },
         test: {
           name: 'server-unit',
           environment: 'node',
