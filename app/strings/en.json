@@ -1,0 +1,110 @@
+{
+  "names": {
+    "project": "Chartroom",
+    "effort": "Effort",
+    "efforts": "Efforts"
+  },
+  "shell": {
+    "skipToContent": "Skip to content",
+    "pageTitle": "{title} · {project}",
+    "mainNav": "Main",
+    "effortPicker": "{effort}",
+    "effortMenu": "{efforts}",
+    "noEfforts": "No {efforts} yet",
+    "openCount": "{count} open",
+    "issues": "Issues",
+    "admin": "Admin",
+    "adminSections": {
+      "settings": "Settings",
+      "environments": "Environments & credentials",
+      "holders": "Token holders",
+      "labels": "Labels",
+      "snapshots": "Snapshots",
+      "about": "About"
+    },
+    "updateAvailable": "Update {version} available",
+    "enterAdminPassword": "Enter admin password…",
+    "adminUntil": "Admin until {time}",
+    "drop": "Drop",
+    "viewerChip": "Viewer · read-only",
+    "sessionMenu": "Signed in as {who}",
+    "viewer": "Viewer (read-only)",
+    "holder": "{name} (@{slug})",
+    "logOut": "Log out",
+    "openMenu": "Menu",
+    "closeMenu": "Close menu",
+    "phoneMenu": "Navigation"
+  },
+  "breadcrumb": {
+    "label": "Breadcrumb",
+    "issues": "Issues",
+    "efforts": "{efforts}",
+    "map": "Map: {title}",
+    "spec": "Spec: {title}",
+    "issue": "#{number}",
+    "collapsed": "…"
+  },
+  "login": {
+    "heading": "Sign in",
+    "field": "Viewer password or Token holder secret",
+    "hint": "The viewer password opens a read-only session; a Token holder secret signs you in as that holder.",
+    "submit": "Sign in",
+    "submitting": "Signing in…",
+    "errors": {
+      "empty": "Enter the viewer password or a Token holder secret.",
+      "unauthenticated": "That password or secret was not recognised.",
+      "rate-limited": "Too many failed attempts. Wait a minute, then try again.",
+      "unknown": "Signing in failed. Try again."
+    }
+  },
+  "efforts": {
+    "title": "{efforts}",
+    "search": "Search {efforts}",
+    "searchPlaceholder": "Search #n, title or slug",
+    "tags": "Filter by tag",
+    "showClosed": "Show closed ({count})",
+    "shown": "{shown} of {total} {efforts} shown",
+    "caption": "{efforts}, sortable by the column header buttons",
+    "columns": {
+      "number": "#",
+      "name": "Name",
+      "state": "State",
+      "tags": "Tags",
+      "rollup": "Roll-up",
+      "createdBy": "Created by"
+    },
+    "number": "#{number}",
+    "holder": "@{slug}",
+    "gist": {
+      "open": "{count} open",
+      "frontier": "frontier {count}",
+      "tickets": "{closed}/{total} tickets closed",
+      "separator": " · "
+    },
+    "empty": "No {efforts} yet.",
+    "noMatches": "No {efforts} match the search and filters.",
+    "new": {
+      "open": "New {effort}",
+      "heading": "New {effort}",
+      "title": "Title",
+      "slug": "Slug",
+      "slugHint": "Optional. Lowercase letters, digits and single dashes, e.g. agent-tracker.",
+      "create": "Create {effort}",
+      "creating": "Creating…",
+      "cancel": "Cancel",
+      "created": "Created {effort} #{number}.",
+      "errors": {
+        "title": "Enter a title.",
+        "slugShape": "That is not a valid slug.",
+        "slugTaken": "Another {effort} already uses that slug.",
+        "unknown": "Creating the {effort} failed. Try again."
+      }
+    }
+  },
+  "states": {
+    "open": "Open",
+    "claimed": "Claimed",
+    "blocked": "Blocked",
+    "closed": "Closed"
+  }
+}

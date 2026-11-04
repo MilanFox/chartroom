@@ -1,3 +1,0 @@
-// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
-
-exports[`DemoButton > matches its snapshot 1`] = `"<button data-v-f08088eb="" class="demo-button demo-button--size-md demo-button--variant-primary">Click me</button>"`;

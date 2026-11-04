@@ -48,6 +48,13 @@
   background: transparent;
 }
 
+@mixin elevation-chip {
+  @include pill;
+  background: var(--color-tint-blocked);
+  color: var(--color-state-blocked);
+  font-weight: 600;
+}
+
 @mixin card {
   border: 1px solid var(--color-rule);
   border-radius: $radius;
@@ -121,4 +128,36 @@
   &:focus-visible {
     background: var(--color-tint-accent);
   }
+}
+
+@mixin text-field {
+  height: $control-height;
+  padding: 0 $space-3;
+  border: 1px solid var(--color-muted);
+  border-radius: $radius-control;
+  background: var(--color-surface);
+  color: var(--color-fg);
+  font: inherit;
+
+  &[aria-invalid='true'] {
+    border-color: var(--color-state-blocked);
+  }
+}
+
+@mixin error-line {
+  color: var(--color-state-blocked);
+  font-size: $font-size-base;
+  font-weight: 500;
+}
+
+@mixin visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
