@@ -191,11 +191,25 @@ const VERBS: Verb[] = [
 
 const routesOf = (verb: Verb) => [verb.path, ...verb.extraFiles ?? []];
 
-export const VERB_ROUTES = VERBS.flatMap(verb => routesOf(verb).map(path => ({ command: verb.words.join(' '), method: verb.method, path })));
-
 const ownFlags = (verb: Verb): ParseArgsOptionsConfig => ({ ...verb.flags, ...verb.paged ? PAGING_FLAGS : {} });
 
 const verbOptions = (verb: Verb): ParseArgsOptionsConfig => ({ ...GLOBAL_FLAGS, ...ownFlags(verb) });
+
+const SENTINEL = 'sentinel';
+
+const bodyFieldsOf = async (verb: Verb) => {
+  const flags = new Proxy({}, { get: (_, name) => name === 'no-parent' ? undefined : [SENTINEL] }) as Flags;
+  return verb.body ? Object.keys(await verb.body({ flags, text: async () => SENTINEL })) : [];
+};
+
+export const VERB_ROUTES = await Promise.all(VERBS.flatMap(verb => routesOf(verb).map(async path => ({
+  command: verb.words.join(' '),
+  method: verb.method,
+  path,
+  query: [...verb.query ?? [], ...verb.paged ? PAGE_QUERY : []],
+  bodyFields: await bodyFieldsOf(verb),
+  flags: Object.keys(verbOptions(verb)),
+}))));
 
 const usageLine = (verb: Verb) => [
   ...verb.words,

@@ -3,11 +3,12 @@ import { apiClient, uiClient } from './clients';
 import { TEST_PASSWORDS, useTestServer } from './harness';
 import { ERROR_CODES } from '../utils/errors';
 import { VERB_ROUTES } from '../../cli/src/chartroom';
+import { ADAPTER_FILES } from '../utils/adapter';
 
 type OpenApiDocument = {
   openapi: string
   servers: { url: string }[]
-  paths: Record<string, Record<string, { summary: string, tags?: string[], description?: string }>>
+  paths: Record<string, Record<string, { summary: string, tags?: string[], description?: string, parameters?: { name: string, in: string }[], requestBody?: { content: Record<string, { schema: { properties: Record<string, unknown> } }> } }>>
   components: { schemas: Record<string, { properties: Record<string, { enum?: string[] }> }>, securitySchemes: Record<string, unknown> }
   security: Record<string, string[]>[]
 };
@@ -82,6 +83,28 @@ describe('the OpenAPI document', () => {
     const documented = VERB_ROUTES.filter(({ method, path }) => document.paths[path]?.[method]?.summary);
 
     expect(documented).toEqual(VERB_ROUTES);
+  });
+
+  it('matches every CLI verb route to the query names and body fields of its operation', async () => {
+    const document = await apiDocument();
+
+    const drift = VERB_ROUTES.flatMap(({ method, path, query, bodyFields }) => {
+      const operation = document.paths[path]![method]!;
+      const documentedQuery = (operation.parameters ?? []).filter(parameter => parameter.in === 'query').map(parameter => parameter.name);
+      const documentedBody = Object.keys(operation.requestBody?.content['application/json']?.schema.properties ?? {});
+      return [
+        ...[...query].sort().join() === [...documentedQuery].sort().join() ? [] : [`${method} ${path} query ${query} vs ${documentedQuery}`],
+        ...bodyFields.every(field => documentedBody.includes(field)) ? [] : [`${method} ${path} body ${bodyFields} vs ${documentedBody}`],
+      ];
+    });
+
+    expect(drift).toEqual([]);
+  });
+
+  it('maps the adapter verb to every adapter file', () => {
+    const adapterPaths = VERB_ROUTES.filter(({ command }) => command === 'adapter').map(({ path }) => path);
+
+    expect(adapterPaths).toEqual(ADAPTER_FILES.map(file => `/instance/adapter/${file}`));
   });
 
   it('gives every api operation a written summary and a tag', async () => {
