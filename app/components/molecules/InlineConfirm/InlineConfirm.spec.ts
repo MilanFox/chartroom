@@ -26,11 +26,11 @@ describe('InlineConfirm', () => {
     expect(wrapper.emitted('keep')).toHaveLength(1);
   });
 
-  it('shows the error line only when the caller supplies one', async () => {
+  it('keeps an empty live region until the caller supplies an error', async () => {
     const without = await mountSuspended(InlineConfirm, { props });
     const wrapper = await mountSuspended(InlineConfirm, { props: { ...props, error: 'Could not delete' } });
 
-    expect(without.find('[role="status"]').exists()).toBe(false);
+    expect(without.get('[role="status"]').text()).toBe('');
     expect(wrapper.get('[role="status"]').text()).toBe('Could not delete');
   });
 });

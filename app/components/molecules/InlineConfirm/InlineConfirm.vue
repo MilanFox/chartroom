@@ -6,7 +6,7 @@
 
     <button type="button" class="inline-confirm__keep" @click="emit('keep')">{{ keepLabel }}</button>
 
-    <p v-if="error !== undefined" role="status" class="inline-confirm__error">{{ error }}</p>
+    <p role="status" class="inline-confirm__error">{{ error }}</p>
   </div>
 </template>
 
@@ -50,7 +50,7 @@ onMounted(() => confirmButton.value?.focus());
     font-size: $font-size-meta;
 
     &:empty {
-      display: none;
+      @include visually-hidden;
     }
   }
 }
