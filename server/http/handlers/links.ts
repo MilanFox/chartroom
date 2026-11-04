@@ -1,7 +1,7 @@
 import type { H3Event } from 'h3';
 import type { JsonObject } from '../../utils/body';
 import type { LinkFields } from '../../utils/links';
-import type { Principal } from '../../utils/principal';
+import type { Caller } from '../../utils/caller';
 import { LINK_FIELDS, toLink } from '../representations';
 import { issueNumberParam, linkIdParam } from './params';
 
@@ -21,21 +21,21 @@ const linkList = (event: H3Event) => {
   return pageOf(rows, limit, link => [link.id]);
 };
 
-const linkCreate = async (event: H3Event, principal: Principal) => {
+const linkCreate = async (event: H3Event, caller: Caller) => {
   const number = issueNumberParam(event);
   const body = await readJsonObject(event);
   const input = { role: oneOf(body.role, 'role', LINK_ROLES), type: oneOf(body.type, 'type', LINK_TYPES), url: absoluteUrl(body), title: requireText(body, 'title') };
   setResponseStatus(event, 201);
-  return toLink(createLink(number, input, principal));
+  return toLink(createLink(number, input, caller));
 };
 
-const linkEdit = async (event: H3Event, principal: Principal) => {
+const linkEdit = async (event: H3Event, caller: Caller) => {
   const ref = { issue: issueNumberParam(event), id: linkIdParam(event) };
-  return toLink(patchLink(ref, linkFields(await readJsonObject(event)), principal));
+  return toLink(patchLink(ref, linkFields(await readJsonObject(event)), caller));
 };
 
-const linkRemove = (event: H3Event, principal: Principal) => {
-  deleteLink({ issue: issueNumberParam(event), id: linkIdParam(event) }, principal);
+const linkRemove = (event: H3Event, caller: Caller) => {
+  deleteLink({ issue: issueNumberParam(event), id: linkIdParam(event) }, caller);
   return sendNoContent(event);
 };
 

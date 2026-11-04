@@ -1,5 +1,5 @@
 import type { H3Event } from 'h3';
-import type { Principal } from '../../utils/principal';
+import type { Caller } from '../../utils/caller';
 import { ME_SCHEMA, uiMe } from '../handlers/me';
 import type { MountRoute } from '../mount';
 
@@ -19,16 +19,16 @@ const login = async (event: H3Event) => {
   const token = createSession(holder?.slug ?? null);
   setSessionCookie(event, token);
   const session = findSession(token)!;
-  return uiMe(sessionPrincipal(session, holder));
+  return uiMe(sessionCaller(session, holder));
 };
 
-const logout = (event: H3Event, principal: Principal) => {
-  deleteSession(principal.sessionId!);
+const logout = (event: H3Event, caller: Caller) => {
+  deleteSession(caller.sessionId!);
   deleteCookie(event, SESSION_COOKIE, { path: '/' });
   return sendNoContent(event);
 };
 
-const elevate = async (event: H3Event, principal: Principal) => {
+const elevate = async (event: H3Event, caller: Caller) => {
   const ip = clientIp(event);
   assertNotLimited(ip);
   const password = requireString(await readJsonObject(event), 'password');
@@ -36,14 +36,14 @@ const elevate = async (event: H3Event, principal: Principal) => {
     recordAuthFailure(ip);
     throw unauthenticated('admin password not recognised');
   }
-  const adminUntil = isElevated(principal) ? principal.adminUntil : isoAfterSeconds(useDeploymentConfig().elevationSeconds);
-  elevateSession(principal.sessionId!, adminUntil!);
-  return uiMe({ ...principal, adminUntil });
+  const adminUntil = isElevated(caller) ? caller.adminUntil : isoAfterSeconds(useDeploymentConfig().elevationSeconds);
+  elevateSession(caller.sessionId!, adminUntil!);
+  return uiMe({ ...caller, adminUntil });
 };
 
-const drop = (_event: H3Event, principal: Principal) => {
-  dropElevation(principal.sessionId!);
-  return uiMe({ ...principal, adminUntil: null });
+const drop = (_event: H3Event, caller: Caller) => {
+  dropElevation(caller.sessionId!);
+  return uiMe({ ...caller, adminUntil: null });
 };
 
 export const authRoutes: MountRoute[] = [

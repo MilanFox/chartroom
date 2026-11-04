@@ -2,7 +2,7 @@ import type { H3Event } from 'h3';
 import type { HolderRecord } from './holders';
 import type { SessionRecord } from './sessions';
 
-export interface Principal {
+export interface Caller {
   origin: 'api' | 'ui'
   slug: string | null
   displayName: string | null
@@ -11,11 +11,11 @@ export interface Principal {
   sessionId: string | null
 }
 
-export const isElevated = (principal: Principal) => principal.adminUntil !== null && principal.adminUntil > nowIso();
+export const isElevated = (caller: Caller) => caller.adminUntil !== null && caller.adminUntil > nowIso();
 
-export const actorSlug = (principal: Principal) => principal.slug ?? 'admin';
+export const actorSlug = (caller: Caller) => caller.slug ?? 'admin';
 
-export const sessionPrincipal = (session: SessionRecord, holder: HolderRecord | null): Principal => ({
+export const sessionCaller = (session: SessionRecord, holder: HolderRecord | null): Caller => ({
   origin: 'ui',
   slug: holder?.slug ?? null,
   displayName: holder?.displayName ?? null,
@@ -24,7 +24,7 @@ export const sessionPrincipal = (session: SessionRecord, holder: HolderRecord | 
   sessionId: session.id,
 });
 
-export const resolveBearerPrincipal = (event: H3Event): Principal => {
+export const resolveBearerCaller = (event: H3Event): Caller => {
   const ip = clientIp(event);
   assertNotLimited(ip);
   const authorization = getRequestHeader(event, 'authorization') ?? '';
@@ -36,7 +36,7 @@ export const resolveBearerPrincipal = (event: H3Event): Principal => {
   return { origin: 'api', slug: holder.slug, displayName: holder.displayName, viewer: false, adminUntil: null, sessionId: null };
 };
 
-export const resolveSessionPrincipal = (event: H3Event): Principal => {
+export const resolveSessionCaller = (event: H3Event): Caller => {
   const token = getCookie(event, SESSION_COOKIE);
   const session = token ? findSession(token) : null;
   if (!session) throw unauthenticated('a valid session is required');
@@ -46,5 +46,5 @@ export const resolveSessionPrincipal = (event: H3Event): Principal => {
     throw unauthenticated('a valid session is required');
   }
   setSessionCookie(event, token!);
-  return sessionPrincipal(session, holder);
+  return sessionCaller(session, holder);
 };

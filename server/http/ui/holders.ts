@@ -1,23 +1,23 @@
 import type { H3Event } from 'h3';
-import type { Principal } from '../../utils/principal';
+import type { Caller } from '../../utils/caller';
 import { textParam } from '../handlers/params';
 import type { MountRoute } from '../mount';
 import { fullHolder, HOLDER_SCHEMA, HOLDER_WITH_SECRET_SCHEMA } from '../representations';
 
-const create = async (event: H3Event, principal: Principal) => {
+const create = async (event: H3Event, caller: Caller) => {
   const body = await readJsonObject(event);
   const input = { slug: requireString(body, 'slug'), displayName: optionalString(body, 'displayName') };
-  const { holder, secret } = createHolder(input, actorSlug(principal));
+  const { holder, secret } = createHolder(input, actorSlug(caller));
   setResponseStatus(event, 201);
   return { ...fullHolder(holder), secret };
 };
 
-const rotate = (event: H3Event, principal: Principal) => {
-  const { holder, secret } = rotateHolder(textParam(event, 'slug'), actorSlug(principal));
+const rotate = (event: H3Event, caller: Caller) => {
+  const { holder, secret } = rotateHolder(textParam(event, 'slug'), actorSlug(caller));
   return { ...fullHolder(holder), secret };
 };
 
-const revoke = (event: H3Event, principal: Principal) => fullHolder(revokeHolder(textParam(event, 'slug'), actorSlug(principal)));
+const revoke = (event: H3Event, caller: Caller) => fullHolder(revokeHolder(textParam(event, 'slug'), actorSlug(caller)));
 
 const NO_SUCH_HOLDER = { description: 'No such holder' };
 

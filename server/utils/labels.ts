@@ -1,7 +1,7 @@
 import { and, asc, count, desc, eq, inArray, ne, notInArray, sql } from 'drizzle-orm';
 import { issueLabels, issues, labelGroupMembers, labelGroups } from '../db/schema';
 import type { FieldWrite } from './changes';
-import type { Principal } from './principal';
+import type { Caller } from './caller';
 import type { Store } from './store';
 
 export const labelsByIssue = (numbers: number[]) => {
@@ -77,14 +77,14 @@ export const applyLabel = (tx: Store, issue: number, label: string): FieldWrite[
   return [...siblings.map(sibling => ({ field: 'label' as const, before: sibling, after: null })), { field: 'label', before: null, after: label }];
 };
 
-export const addLabel = (number: number, label: string, principal: Principal) =>
-  recordIssueWrite(number, principal, (tx) => {
+export const addLabel = (number: number, label: string, caller: Caller) =>
+  recordIssueWrite(number, caller, (tx) => {
     const writes = applyLabel(tx, number, label);
     return writes.length > 0 ? writes : null;
   });
 
-export const removeLabel = (number: number, label: string, principal: Principal) =>
-  recordIssueWrite(number, principal, (tx) => {
+export const removeLabel = (number: number, label: string, caller: Caller) =>
+  recordIssueWrite(number, caller, (tx) => {
     const { changes: removed } = tx.delete(issueLabels).where(labelOn(number, label)).run();
     return removed === 0 ? null : [{ field: 'label', before: label, after: null }];
   });

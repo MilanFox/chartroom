@@ -1,5 +1,5 @@
 import type { H3Event } from 'h3';
-import type { Principal } from '../utils/principal';
+import type { Caller } from '../utils/caller';
 import { holderRoster } from './handlers/holders';
 import { CHANGE_SCHEMA, COMMENT_SCHEMA, DOCUMENT_SCHEMA, EFFORT_DOCUMENT_SCHEMA, EFFORT_PAGE_SCHEMA, ENVIRONMENT_SCHEMA, ISSUE_PAGE_SCHEMA, LINK_SCHEMA, POINTER_SCHEMA } from './representations';
 import { BLOCKER_NUMBER_PARAM, ISSUE_NUMBER_PARAM, LABEL_PARAM, PAGING_PARAMS, pageSchema } from './schemas';
@@ -31,7 +31,7 @@ export interface OperationMeta {
 export interface TableRoute {
   method: RouteMethod
   path: string
-  handler: Handler<[H3Event, Principal]>
+  handler: Handler<[H3Event, Caller]>
   openapi: OperationMeta
 }
 
@@ -41,7 +41,7 @@ export const routeTable: TableRoute[] = [
     path: '/me',
     handler: me,
     openapi: {
-      summary: 'The calling principal',
+      summary: 'The caller',
       tags: ['auth'],
       responses: { 200: { description: 'Me', schema: API_ME_SCHEMA } },
     },

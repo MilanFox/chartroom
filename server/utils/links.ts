@@ -1,6 +1,6 @@
 import { and, asc, eq, gt } from 'drizzle-orm';
 import { links } from '../db/schema';
-import type { Principal } from './principal';
+import type { Caller } from './caller';
 import type { LinkRole, LinkType } from '#shared/domain';
 
 export type LinkRecord = typeof links.$inferSelect;
@@ -41,13 +41,13 @@ export const listLinks = (issue: number, { after, limit }: LinkQuery): LinkRecor
   return useStore().select().from(links).where(and(...conditions)).orderBy(asc(links.id)).limit(limit).all();
 };
 
-export const createLink = (issue: number, input: NewLink, principal: Principal) => {
+export const createLink = (issue: number, input: NewLink, caller: Caller) => {
   requireIssue(issue);
   if (useStore().select().from(links).where(and(eq(links.issue, issue), eq(links.url, input.url))).get()) {
     throw conflict(`issue #${issue} already links ${input.url}`, 'url');
   }
   let createdId = 0;
-  recordIssueWrite(issue, principal, (tx, { actor, origin, at }) => {
+  recordIssueWrite(issue, caller, (tx, { actor, origin, at }) => {
     const { id } = tx.insert(links).values({ ...input, issue, addedBy: actor, origin, createdAt: at }).returning({ id: links.id }).get();
     createdId = id;
     return [{ field: 'link', before: null, after: loggedLink({ id, ...input }) }];
@@ -64,20 +64,20 @@ const requireLink = ({ issue, id }: LinkRef) => {
   return link;
 };
 
-export const patchLink = (ref: LinkRef, fields: LinkFields, principal: Principal) => {
+export const patchLink = (ref: LinkRef, fields: LinkFields, caller: Caller) => {
   const link = requireLink(ref);
   const values = Object.fromEntries(Object.entries(fields).filter(([field, value]) => value !== undefined && value !== link[field as keyof LinkFields]));
   if (Object.keys(values).length === 0) return link;
-  recordIssueWrite(ref.issue, principal, (tx) => {
+  recordIssueWrite(ref.issue, caller, (tx) => {
     tx.update(links).set(values).where(eq(links.id, ref.id)).run();
     return [];
   });
   return useStore().select().from(links).where(eq(links.id, ref.id)).get()!;
 };
 
-export const deleteLink = (ref: LinkRef, principal: Principal) => {
+export const deleteLink = (ref: LinkRef, caller: Caller) => {
   const link = requireLink(ref);
-  recordIssueWrite(ref.issue, principal, (tx) => {
+  recordIssueWrite(ref.issue, caller, (tx) => {
     tx.delete(links).where(eq(links.id, ref.id)).run();
     return [{ field: 'link', before: loggedLink(link), after: null }];
   });

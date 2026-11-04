@@ -1,5 +1,5 @@
 import type { H3Event } from 'h3';
-import type { Principal } from '../../utils/principal';
+import type { Caller } from '../../utils/caller';
 import { toComment } from '../representations';
 import { commentIdParam, issueNumberParam } from './params';
 
@@ -11,22 +11,22 @@ const commentList = (event: H3Event) => {
   return pageOf(rows, limit, comment => [comment.id]);
 };
 
-const commentCreate = async (event: H3Event, principal: Principal) => {
+const commentCreate = async (event: H3Event, caller: Caller) => {
   const number = issueNumberParam(event);
   const body = requireText(await readJsonObject(event), 'body');
   setResponseStatus(event, 201);
-  return toComment(event, createComment(number, body, principal));
+  return toComment(event, createComment(number, body, caller));
 };
 
-const commentEdit = async (event: H3Event, principal: Principal) => {
+const commentEdit = async (event: H3Event, caller: Caller) => {
   const number = issueNumberParam(event);
   const id = commentIdParam(event);
   const body = requireText(await readJsonObject(event), 'body');
-  return toComment(event, patchComment({ issue: number, id }, body, principal));
+  return toComment(event, patchComment({ issue: number, id }, body, caller));
 };
 
-const commentRemove = (event: H3Event, principal: Principal) => {
-  deleteComment({ issue: issueNumberParam(event), id: commentIdParam(event) }, principal);
+const commentRemove = (event: H3Event, caller: Caller) => {
+  deleteComment({ issue: issueNumberParam(event), id: commentIdParam(event) }, caller);
   return sendNoContent(event);
 };
 

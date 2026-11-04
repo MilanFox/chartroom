@@ -2,7 +2,7 @@ import type { H3Event } from 'h3';
 import type { JsonObject } from '../../utils/body';
 import type { EnvironmentFields, EnvironmentRecord, PointerFields, PointerRecord } from '../../utils/environments';
 import type { SettingsPatch } from '../../utils/instance';
-import type { Principal } from '../../utils/principal';
+import type { Caller } from '../../utils/caller';
 import { ENVIRONMENT_SCHEMA, POINTER_SCHEMA, toEnvironment, toPointer } from '../representations';
 import { SETTINGS_PROPERTIES } from '../handlers/instance';
 import { numericParam } from '../handlers/params';
@@ -30,7 +30,7 @@ const settingsPatch = (body: JsonObject): SettingsPatch => ({
   ...('triageLabels' in body ? { triageLabels: triageLabelsOf(body) } : {}),
 });
 
-const settingsWrite = async (event: H3Event, principal: Principal) => writeInstanceSettings(settingsPatch(await readJsonObject(event)), actorSlug(principal));
+const settingsWrite = async (event: H3Event, caller: Caller) => writeInstanceSettings(settingsPatch(await readJsonObject(event)), actorSlug(caller));
 
 const runtimeRead = () => {
   const { baseUrl, trustProxy, port, updateCheck, projectName } = useDeploymentConfig();
@@ -71,16 +71,16 @@ const adminEnvironment = (environment: EnvironmentRecord) => ({ ...toEnvironment
 
 const adminPointer = (pointer: PointerRecord) => ({ ...toPointer(pointer), updatedAt: pointer.updatedAt, updatedBy: pointer.updatedBy });
 
-const environmentCreate = async (event: H3Event, principal: Principal) => {
+const environmentCreate = async (event: H3Event, caller: Caller) => {
   const body = await readJsonObject(event);
   const fields = { name: requireText(body, 'name'), url: absoluteUrl(body), notes: secretFreeNotes(body) };
   setResponseStatus(event, 201);
-  return adminEnvironment(createEnvironment(fields, actorSlug(principal)));
+  return adminEnvironment(createEnvironment(fields, actorSlug(caller)));
 };
 
-const environmentUpdate = async (event: H3Event, principal: Principal) => {
+const environmentUpdate = async (event: H3Event, caller: Caller) => {
   const id = idParam(event);
-  return adminEnvironment(updateEnvironment(id, environmentFields(await readJsonObject(event)), actorSlug(principal)));
+  return adminEnvironment(updateEnvironment(id, environmentFields(await readJsonObject(event)), actorSlug(caller)));
 };
 
 const environmentDelete = (event: H3Event) => {
@@ -88,16 +88,16 @@ const environmentDelete = (event: H3Event) => {
   return sendNoContent(event);
 };
 
-const pointerCreate = async (event: H3Event, principal: Principal) => {
+const pointerCreate = async (event: H3Event, caller: Caller) => {
   const body = await readJsonObject(event);
   const fields = { label: requireText(body, 'label'), accountName: secretFreeText(body, 'accountName'), whereToFind: secretFreeText(body, 'whereToFind'), environment: environmentId(body) };
   setResponseStatus(event, 201);
-  return adminPointer(createPointer(fields, actorSlug(principal)));
+  return adminPointer(createPointer(fields, actorSlug(caller)));
 };
 
-const pointerUpdate = async (event: H3Event, principal: Principal) => {
+const pointerUpdate = async (event: H3Event, caller: Caller) => {
   const id = idParam(event);
-  return adminPointer(updatePointer(id, pointerFields(await readJsonObject(event)), actorSlug(principal)));
+  return adminPointer(updatePointer(id, pointerFields(await readJsonObject(event)), actorSlug(caller)));
 };
 
 const pointerDelete = (event: H3Event) => {

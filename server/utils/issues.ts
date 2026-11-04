@@ -7,7 +7,7 @@ import type { BlockerRef } from './blockers';
 import type { FieldWrite, LoggedValue } from './changes';
 import { conflict, invalid, notFound } from './errors';
 import { blockedCondition, mapFrontierCondition } from './frontier';
-import type { Principal } from './principal';
+import type { Caller } from './caller';
 import type { Store } from './store';
 import type { IssueState, IssueStatus, IssueView, Kind } from '#shared/domain';
 import { ISSUE_STATES, ISSUE_VIEWS, KINDS, PARENT_RULES, UNASSIGNED } from '#shared/domain';
@@ -265,13 +265,13 @@ const describeLastWrite = (issue: IssueRecord) => {
   return last ? { lastWrittenBy: last.actor, lastWrittenAt: last.at } : { lastWrittenBy: issue.createdBy, lastWrittenAt: issue.createdAt };
 };
 
-export const createIssue = (input: NewIssue, principal: Principal) => {
+export const createIssue = (input: NewIssue, caller: Caller) => {
   const parent = input.parent ?? null;
   assertEffortOnlyFields(input.kind, input);
   assertParentAllowed(input.kind, parent, null);
   assertNameFree(input.name, null);
   requireBlockers(input.blockedBy ?? []);
-  const { actor, origin, at } = stampFor(principal);
+  const { actor, origin, at } = stampFor(caller);
   const number = useStore().transaction((tx) => {
     const created = tx.insert(issues).values({
       kind: input.kind,
@@ -297,7 +297,7 @@ const pendingWrites = (issue: IssueRecord, fields: IssueFields): FieldWrite[] =>
     .filter(field => fields[field] !== undefined && fields[field] !== issue[field])
     .map(field => ({ field, before: issue[field], after: fields[field] as LoggedValue }));
 
-export const patchIssue = (number: number, { fields, expectedVersion }: PatchRequest, principal: Principal) => {
+export const patchIssue = (number: number, { fields, expectedVersion }: PatchRequest, caller: Caller) => {
   const issue = requireIssue(number);
   if (isSet(expectedVersion) && expectedVersion !== issue.version) {
     const { lastWrittenBy, lastWrittenAt } = describeLastWrite(issue);
@@ -309,7 +309,7 @@ export const patchIssue = (number: number, { fields, expectedVersion }: PatchReq
   if (fields.name !== undefined) assertNameFree(fields.name, number);
   const writes = pendingWrites(issue, fields);
   if (writes.length === 0) return issue;
-  const stamp = stampFor(principal);
+  const stamp = stampFor(caller);
   useStore().transaction((tx) => {
     const values = Object.fromEntries(writes.map(write => [write.field, write.after]));
     tx.update(issues).set({ ...values, updatedAt: stamp.at, version: issue.version + 1 }).where(eq(issues.number, number)).run();
@@ -318,60 +318,60 @@ export const patchIssue = (number: number, { fields, expectedVersion }: PatchReq
   return requireIssue(number);
 };
 
-const writeField = (number: number, write: FieldWrite, principal: Principal) => {
-  recordIssueWrite(number, principal, (tx) => {
+const writeField = (number: number, write: FieldWrite, caller: Caller) => {
+  recordIssueWrite(number, caller, (tx) => {
     tx.update(issues).set({ [write.field]: write.after }).where(eq(issues.number, number)).run();
     return [write];
   });
   return requireIssue(number);
 };
 
-export const claimIssue = (number: number, principal: Principal) => {
+export const claimIssue = (number: number, caller: Caller) => {
   const issue = requireIssue(number);
-  const actor = actorSlug(principal);
+  const actor = actorSlug(caller);
   if (issue.state === 'closed') throw invalid(`issue #${number} is closed`, 'state');
   if (issue.assignee === actor) return issue;
   if (issue.assignee !== null) throw conflict(`issue #${number} is held by ${issue.assignee}`, 'assignee', { assignee: issue.assignee });
-  return writeField(number, { field: 'assignee', before: null, after: actor }, principal);
+  return writeField(number, { field: 'assignee', before: null, after: actor }, caller);
 };
 
-export const unassignIssue = (number: number, principal: Principal) => {
+export const unassignIssue = (number: number, caller: Caller) => {
   const issue = requireIssue(number);
   if (issue.assignee === null) return issue;
-  return writeField(number, { field: 'assignee', before: issue.assignee, after: null }, principal);
+  return writeField(number, { field: 'assignee', before: issue.assignee, after: null }, caller);
 };
 
-export const closeIssue = (number: number, comment: string | null, principal: Principal) => {
+export const closeIssue = (number: number, comment: string | null, caller: Caller) => {
   if (requireIssue(number).state === 'closed') throw invalid(`issue #${number} is already closed`, 'state');
-  recordIssueWrite(number, principal, (tx, stamp) => {
-    if (comment !== null) insertComment(tx, { issue: number, body: comment, at: stamp.at, resolution: true }, principal);
+  recordIssueWrite(number, caller, (tx, stamp) => {
+    if (comment !== null) insertComment(tx, { issue: number, body: comment, at: stamp.at, resolution: true }, caller);
     tx.update(issues).set({ state: 'closed', closedAt: stamp.at }).where(eq(issues.number, number)).run();
     return [{ field: 'state', before: 'open', after: 'closed' }];
   });
   return requireIssue(number);
 };
 
-export const reopenIssue = (number: number, principal: Principal) => {
+export const reopenIssue = (number: number, caller: Caller) => {
   const issue = requireIssue(number);
   if (issue.state === 'open') return issue;
-  return writeField(number, { field: 'state', before: 'closed', after: 'open' }, principal);
+  return writeField(number, { field: 'state', before: 'closed', after: 'open' }, caller);
 };
 
-export const appendToIssue = (number: number, { section, text }: AppendRequest, principal: Principal) => {
+export const appendToIssue = (number: number, { section, text }: AppendRequest, caller: Caller) => {
   const issue = requireIssue(number);
   const body = insertUnderSection(issue.body, section, text);
-  recordIssueWrite(number, principal, (tx) => {
+  recordIssueWrite(number, caller, (tx) => {
     tx.update(issues).set({ body, version: issue.version + 1 }).where(eq(issues.number, number)).run();
     return [{ field: 'body', before: issue.body, after: body }];
   });
   return requireIssue(number);
 };
 
-export const deleteIssue = (number: number, principal: Principal) => {
+export const deleteIssue = (number: number, caller: Caller) => {
   const issue = requireIssue(number);
   const { children } = useStore().select({ children: count() }).from(issues).where(eq(issues.parent, number)).get()!;
   if (children > 0) throw conflict(`issue #${number} still has ${children} ${children === 1 ? 'child' : 'children'}`);
-  const stamp = stampFor(principal);
+  const stamp = stampFor(caller);
   useStore().transaction((tx) => {
     const blocked = blocksOf(number);
     tx.delete(issues).where(eq(issues.number, number)).run();

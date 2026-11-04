@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3';
 import type { JsonObject } from '../../utils/body';
-import type { Principal } from '../../utils/principal';
+import type { Caller } from '../../utils/caller';
 import { LABEL_GROUP_SCHEMA } from '../handlers/labels';
 import { textParam } from '../handlers/params';
 import type { MountRoute } from '../mount';
@@ -18,48 +18,48 @@ const membersOf = (body: JsonObject) => {
   });
 };
 
-const groupCreate = async (event: H3Event, principal: Principal) => {
+const groupCreate = async (event: H3Event, caller: Caller) => {
   const body = await readJsonObject(event);
   const input = { id: requireString(body, 'id'), displayName: optionalText(body, 'displayName'), labels: membersOf(body) };
   setResponseStatus(event, 201);
-  return createLabelGroup(input, actorSlug(principal));
+  return createLabelGroup(input, actorSlug(caller));
 };
 
 const groupParam = (event: H3Event) => textParam(event, 'id');
 
-const groupRename = async (event: H3Event, principal: Principal) => {
+const groupRename = async (event: H3Event, caller: Caller) => {
   const groupId = groupParam(event);
-  return renameLabelGroup(groupId, requireText(await readJsonObject(event), 'displayName'), actorSlug(principal));
+  return renameLabelGroup(groupId, requireText(await readJsonObject(event), 'displayName'), actorSlug(caller));
 };
 
-const groupReorder = async (event: H3Event, principal: Principal) => reorderLabelGroups(stringArray(await readJsonObject(event), 'groups'), actorSlug(principal));
+const groupReorder = async (event: H3Event, caller: Caller) => reorderLabelGroups(stringArray(await readJsonObject(event), 'groups'), actorSlug(caller));
 
 const groupDelete = (event: H3Event) => {
   deleteLabelGroup(groupParam(event));
   return sendNoContent(event);
 };
 
-const memberAdd = async (event: H3Event, principal: Principal) => {
+const memberAdd = async (event: H3Event, caller: Caller) => {
   const groupId = groupParam(event);
   const member = memberOf(await readJsonObject(event));
   setResponseStatus(event, 201);
-  return addGroupMember(groupId, member, actorSlug(principal));
+  return addGroupMember(groupId, member, actorSlug(caller));
 };
 
 const memberParam = (event: H3Event) => textParam(event, 'label');
 
-const memberRename = async (event: H3Event, principal: Principal) => {
+const memberRename = async (event: H3Event, caller: Caller) => {
   const groupId = groupParam(event);
   const memberId = memberParam(event);
-  return renameGroupMember(groupId, { id: memberId, displayLabel: requireText(await readJsonObject(event), 'displayLabel') }, actorSlug(principal));
+  return renameGroupMember(groupId, { id: memberId, displayLabel: requireText(await readJsonObject(event), 'displayLabel') }, actorSlug(caller));
 };
 
-const memberReorder = async (event: H3Event, principal: Principal) => {
+const memberReorder = async (event: H3Event, caller: Caller) => {
   const groupId = groupParam(event);
-  return reorderGroupMembers(groupId, stringArray(await readJsonObject(event), 'labels'), actorSlug(principal));
+  return reorderGroupMembers(groupId, stringArray(await readJsonObject(event), 'labels'), actorSlug(caller));
 };
 
-const memberRemove = (event: H3Event, principal: Principal) => removeGroupMember(groupParam(event), memberParam(event), actorSlug(principal));
+const memberRemove = (event: H3Event, caller: Caller) => removeGroupMember(groupParam(event), memberParam(event), actorSlug(caller));
 
 const ADMIN_LABEL_GROUP_SCHEMA = { type: 'object', properties: { ...LABEL_GROUP_SCHEMA.properties, updatedAt: { type: ['string', 'null'] }, updatedBy: { type: ['string', 'null'] } } };
 const ADMIN_LABEL_GROUP = { description: 'The admin Label group', schema: ADMIN_LABEL_GROUP_SCHEMA };

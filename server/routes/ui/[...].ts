@@ -7,6 +7,6 @@ import { snapshotAdminRoutes } from '../../http/ui/snapshots';
 
 export default createMount({
   origin: 'ui',
-  resolvePrincipal: resolveSessionPrincipal,
+  resolveCaller: resolveSessionCaller,
   extraRoutes: [...authRoutes, ...holderAdminRoutes, ...instanceAdminRoutes, ...labelGroupAdminRoutes, ...snapshotAdminRoutes],
 });

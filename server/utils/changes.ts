@@ -1,5 +1,5 @@
 import { changes } from '../db/schema';
-import type { Principal } from './principal';
+import type { Caller } from './caller';
 import type { Handler } from '../http/table';
 import type { Store } from './store';
 import type { ChangeField } from '#shared/domain';
@@ -8,7 +8,7 @@ export type LoggedValue = string | number | null;
 
 export interface WriteStamp {
   actor: string
-  origin: Principal['origin']
+  origin: Caller['origin']
   at: string
 }
 
@@ -22,7 +22,7 @@ export interface FieldWrite {
   after: LoggedValue
 }
 
-export const stampFor = (principal: Principal): WriteStamp => ({ actor: actorSlug(principal), origin: principal.origin, at: nowIso() });
+export const stampFor = (caller: Caller): WriteStamp => ({ actor: actorSlug(caller), origin: caller.origin, at: nowIso() });
 
 const asLogged = (value: LoggedValue) => (value === null ? null : String(value));
 
@@ -43,9 +43,9 @@ export const recordWrites = (tx: Store, context: ChangeContext, writes: FieldWri
   touchIssue(tx, context.issue, context.at);
 };
 
-export const recordIssueWrite = (number: number, principal: Principal, mutate: Handler<[Store, WriteStamp], FieldWrite[] | null>) => {
+export const recordIssueWrite = (number: number, caller: Caller, mutate: Handler<[Store, WriteStamp], FieldWrite[] | null>) => {
   requireIssue(number);
-  const stamp = stampFor(principal);
+  const stamp = stampFor(caller);
   useStore().transaction((tx) => {
     const writes = mutate(tx, stamp);
     if (writes) recordWrites(tx, { ...stamp, issue: number }, writes);

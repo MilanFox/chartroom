@@ -2,7 +2,7 @@ import type { H3Event } from 'h3';
 import type { JsonObject } from '../../utils/body';
 import type { Query } from '../../utils/paging';
 import type { IssueCursor, IssueFields, IssueQuery } from '../../utils/issues';
-import type { Principal } from '../../utils/principal';
+import type { Caller } from '../../utils/caller';
 import { toDocument, toRows } from '../representations';
 import type { toRow } from '../representations';
 import { nullable, stringList } from '../schemas';
@@ -42,67 +42,67 @@ const expectedVersionFrom = (event: H3Event) => {
   return version;
 };
 
-const issueCreate = async (event: H3Event, principal: Principal) => {
+const issueCreate = async (event: H3Event, caller: Caller) => {
   const body = await readJsonObject(event);
   const kind = requireString(body, 'kind');
   if (!isKind(kind)) throw invalid(`kind must be one of ${KINDS.join(', ')}`, 'kind');
   const fields = fieldsFrom(body);
-  const issue = createIssue({ ...fields, kind, title: requireString(body, 'title'), labels: labelsField(body), blockedBy: blockedByField(body) }, principal);
+  const issue = createIssue({ ...fields, kind, title: requireString(body, 'title'), labels: labelsField(body), blockedBy: blockedByField(body) }, caller);
   setResponseStatus(event, 201);
   return toDocument(event, issue);
 };
 
 const issueRead = (event: H3Event) => toDocument(event, requireIssue(issueNumberParam(event)));
 
-const issueEdit = async (event: H3Event, principal: Principal) => {
+const issueEdit = async (event: H3Event, caller: Caller) => {
   const number = issueNumberParam(event);
   const expectedVersion = expectedVersionFrom(event);
   const fields = fieldsFrom(await readJsonObject(event));
-  return toDocument(event, patchIssue(number, { fields, expectedVersion }, principal));
+  return toDocument(event, patchIssue(number, { fields, expectedVersion }, caller));
 };
 
-const issueRemove = (event: H3Event, principal: Principal) => {
-  deleteIssue(issueNumberParam(event), principal);
+const issueRemove = (event: H3Event, caller: Caller) => {
+  deleteIssue(issueNumberParam(event), caller);
   return sendNoContent(event);
 };
 
-const issueAppend = async (event: H3Event, principal: Principal) => {
+const issueAppend = async (event: H3Event, caller: Caller) => {
   const number = issueNumberParam(event);
   const body = await readJsonObject(event);
   const request = { section: requireString(body, 'section'), text: requireString(body, 'text') };
-  return toDocument(event, appendToIssue(number, request, principal));
+  return toDocument(event, appendToIssue(number, request, caller));
 };
 
-const issueClaim = (event: H3Event, principal: Principal) => toDocument(event, claimIssue(issueNumberParam(event), principal));
+const issueClaim = (event: H3Event, caller: Caller) => toDocument(event, claimIssue(issueNumberParam(event), caller));
 
-const issueUnassign = (event: H3Event, principal: Principal) => toDocument(event, unassignIssue(issueNumberParam(event), principal));
+const issueUnassign = (event: H3Event, caller: Caller) => toDocument(event, unassignIssue(issueNumberParam(event), caller));
 
-const issueClose = async (event: H3Event, principal: Principal) => {
+const issueClose = async (event: H3Event, caller: Caller) => {
   const number = issueNumberParam(event);
   const body = await readJsonObject(event);
   const comment = body.comment === undefined ? null : requireText(body, 'comment');
-  return toDocument(event, closeIssue(number, comment, principal));
+  return toDocument(event, closeIssue(number, comment, caller));
 };
 
-const issueReopen = (event: H3Event, principal: Principal) => toDocument(event, reopenIssue(issueNumberParam(event), principal));
+const issueReopen = (event: H3Event, caller: Caller) => toDocument(event, reopenIssue(issueNumberParam(event), caller));
 
-const labelAdd = (event: H3Event, principal: Principal) => {
-  addLabel(issueNumberParam(event), labelParam(event), principal);
+const labelAdd = (event: H3Event, caller: Caller) => {
+  addLabel(issueNumberParam(event), labelParam(event), caller);
   return sendNoContent(event);
 };
 
-const labelRemove = (event: H3Event, principal: Principal) => {
-  removeLabel(issueNumberParam(event), labelParam(event), principal);
+const labelRemove = (event: H3Event, caller: Caller) => {
+  removeLabel(issueNumberParam(event), labelParam(event), caller);
   return sendNoContent(event);
 };
 
-const blockerAdd = (event: H3Event, principal: Principal) => {
-  addBlocker(issueNumberParam(event), blockerNumberParam(event), principal);
+const blockerAdd = (event: H3Event, caller: Caller) => {
+  addBlocker(issueNumberParam(event), blockerNumberParam(event), caller);
   return sendNoContent(event);
 };
 
-const blockerRemove = (event: H3Event, principal: Principal) => {
-  removeBlocker(issueNumberParam(event), blockerNumberParam(event), principal);
+const blockerRemove = (event: H3Event, caller: Caller) => {
+  removeBlocker(issueNumberParam(event), blockerNumberParam(event), caller);
   return sendNoContent(event);
 };
 
@@ -141,9 +141,9 @@ const missingParam = (query: Query) => queryStrings(query, 'missing').map((group
   return group;
 });
 
-const viewParam = (query: Query, principal: Principal) => {
+const viewParam = (query: Query, caller: Caller) => {
   const view = queryOneOf(query, 'view', ISSUE_VIEWS);
-  if (view === 'mine' && principal.slug === null) throw invalid('view mine needs a Token holder', 'view');
+  if (view === 'mine' && caller.slug === null) throw invalid('view mine needs a Token holder', 'view');
   return view;
 };
 
@@ -164,7 +164,7 @@ const sortKeyOf = (sort: string) => {
   return (row: ReturnType<typeof toRow>) => soleMemberPositionAmong(sort, row.labels);
 };
 
-const issueList = (event: H3Event, principal: Principal) => {
+const issueList = (event: H3Event, caller: Caller) => {
   const query = getQuery(event);
   const limit = pageLimit(query);
   const sort = sortParam(query);
@@ -179,8 +179,8 @@ const issueList = (event: H3Event, principal: Principal) => {
     labels: labelsParam(query),
     assignee: assigneeParam(query),
     missing: missingParam(query),
-    view: viewParam(query, principal),
-    holder: principal.slug,
+    view: viewParam(query, caller),
+    holder: caller.slug,
     sort,
     order: queryOneOf(query, 'order', SORT_ORDERS) ?? 'asc',
     after: sortCursor<IssueCursor['key']>(query, sort, key => isCursorKeyFor(sort, key)),
