@@ -50,8 +50,14 @@ const UNQUOTABLE = /['\u0000-\u001f\u007f]/;
 
 const UNQUOTABLE_REASON = 'Must not contain \' or control characters.';
 
+const titleOf = (folderName: string) => folderName
+  .replace(/[-_\s]+/g, ' ')
+  .trim()
+  .replace(/(^| )(\S)/g, (_, gap: string, initial: string) => gap + initial.toUpperCase());
+
 const projectNameOf = (dir: string) => {
-  const name = basename(resolvePath(dir));
+  const folderName = basename(resolvePath(dir));
+  const name = titleOf(folderName) || folderName;
   return /^[\w.-]+$/.test(name) ? name : `'${name.replace(new RegExp(UNQUOTABLE, 'g'), '')}'`;
 };
 
@@ -62,7 +68,7 @@ CHARTROOM_ADMIN_PASSWORD=${passwordsChosen ? `'${adminPassword}'` : adminPasswor
 # Required. Shared read-only login for the UI.
 CHARTROOM_VIEWER_PASSWORD=${passwordsChosen ? `'${viewerPassword}'` : viewerPassword}
 
-# Optional, default none. Project name shown until one is saved in Settings; init writes the folder name.
+# Optional, default none. Project name shown until one is saved in Settings; init writes the folder name formatted as a title.
 CHARTROOM_PROJECT_NAME=${projectNameOf(dir)}
 # Optional, default derived from the request. Public URL used in absolute links, e.g. https://chartroom.example.com
 ${baseUrl ? `CHARTROOM_BASE_URL=${baseUrl}` : '# CHARTROOM_BASE_URL='}

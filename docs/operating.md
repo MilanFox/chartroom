@@ -21,7 +21,7 @@ The container refuses to start without either password and names the missing var
 | `CHARTROOM_TRUST_PROXY` | `false` | `true` reads `X-Forwarded-For` and `X-Forwarded-Proto` from the reverse proxy. The compose example sets it. |
 | `CHARTROOM_PORT` | `3000` | Port the server listens on inside the container. |
 | `CHARTROOM_UPDATE_CHECK` | `true` | `false` stops the check for a newer release at boot and every 24 h. |
-| `CHARTROOM_PROJECT_NAME` | none | Project name shown until an Admin saves one in Settings; the saved name then wins. The first save on the Settings card stores the name shown at that moment. `init` writes the folder name. |
+| `CHARTROOM_PROJECT_NAME` | none | Project name shown until an Admin saves one in Settings; the saved name then wins. The first save on the Settings card stores the name shown at that moment. `init` writes the folder name formatted as a title. |
 | `CHARTROOM_DATA_DIR` | `/data` | Development and tests only, not for production. Keep it out of `.env`. |
 | `CHARTROOM_ELEVATION_SECONDS` | `3600` | Development and tests only, not for production. Keep it out of `.env`. |
 | `CHARTROOM_RELEASE_URL` | GitHub latest-release API | Development and tests only, not for production. Points the update check at a stub. Keep it out of `.env`. |

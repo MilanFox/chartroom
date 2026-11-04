@@ -81,6 +81,8 @@
     <p role="status" class="admin-holders__error">{{ action.error }}</p>
 
     <form class="admin-holders__create" novalidate @submit.prevent="create">
+      <LockedField v-model="displayName" name="displayName" :label="strings.admin.holders.displayNameOptional" />
+
       <LockedField
         :id="`${baseId}-slug`"
         v-model="slug"
@@ -92,8 +94,6 @@
         spellcheck="false"
         @input="slugError = ''"
       />
-
-      <LockedField v-model="displayName" name="displayName" :label="strings.admin.holders.displayNameOptional" />
 
       <div class="admin-holders__submit">
         <AdminAction :label="action.busy ? strings.admin.holders.creating : strings.admin.holders.create" type="submit" variant="primary" />
@@ -112,8 +112,8 @@ const baseId = useId();
 const notice = useTemplateRef<HTMLElement>('notice');
 const issued = ref<HolderSecret | null>(null);
 const copyMessage = ref('');
-const slug = ref('');
 const displayName = ref('');
+const slug = useDerivedSlug(displayName);
 const slugError = ref('');
 const action = reactive(useAction());
 

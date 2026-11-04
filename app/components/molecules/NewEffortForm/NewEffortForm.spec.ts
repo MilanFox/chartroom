@@ -26,6 +26,23 @@ describe('NewEffortForm', () => {
     expect(wrapper.emitted('created')).toBeUndefined();
   });
 
+  it('derives the slug from the title until the slug is edited, and again once it is cleared', async () => {
+    const wrapper = await mountSuspended(NewEffortForm);
+    const title = wrapper.get('input[name="title"]');
+    const slug = wrapper.get<HTMLInputElement>('input[name="slug"]');
+
+    await title.setValue('  Agent tracker!! v2 ');
+    expect(slug.element.value).toBe('agent-tracker-v2');
+
+    await slug.setValue('tracker');
+    await title.setValue('Agent tracker v3');
+    expect(slug.element.value).toBe('tracker');
+
+    await slug.setValue('');
+    await title.setValue('Docs site');
+    expect(slug.element.value).toBe('docs-site');
+  });
+
   it('creates the Effort, leaving the slug out when blank, and hands its number back', async () => {
     const sent: unknown[] = [];
     endpoint('/ui/issues', {

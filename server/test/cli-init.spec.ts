@@ -183,14 +183,17 @@ describe('chartroom init', () => {
     }
   });
 
-  it('writes the raw folder name as the project name, single-quoted when it needs quoting', async () => {
+  it('writes the folder name formatted as a title as the project name, single-quoted when it needs quoting', async () => {
     const parent = freshDir();
     const named = [
-      ['acme-shop', 'acme-shop'],
-      ['team_room.v2', 'team_room.v2'],
+      ['acme-shop', '\'Acme Shop\''],
+      ['team_room.v2', '\'Team Room.v2\''],
+      ['myApp', 'MyApp'],
+      ['  spaced--out__name ', '\'Spaced Out Name\''],
       ['My Chartroom!', '\'My Chartroom!\''],
-      ['a#b$c "d', '\'a#b$c "d\''],
-      ['it\'s', '\'its\''],
+      ['a#b$c "d', '\'A#b$c "d\''],
+      ['it\'s', '\'Its\''],
+      ['___', '___'],
     ];
 
     for (const [directory, written] of named) {
@@ -290,7 +293,7 @@ describe('chartroom init', () => {
 
   describe('in a terminal', () => {
     it('walks seven steps and writes the chosen passwords, public URL, port and update choice', async () => {
-      const dir = freshDir();
+      const dir = join(freshDir(), 'acme-shop');
 
       const result = await chartroom(['init', dir], '7.3.1', { answers: ['typed-admin', 'typed-admin', 'typed-viewer', 'typed-viewer', 'https://chart.example.com', '8080', 'n', 'y', 'n'] });
 
@@ -299,7 +302,7 @@ describe('chartroom init', () => {
       expect(readFileSync(join(dir, '.env'), 'utf8')).toBe(example
         .replace('CHARTROOM_ADMIN_PASSWORD=', 'CHARTROOM_ADMIN_PASSWORD=\'typed-admin\'')
         .replace('CHARTROOM_VIEWER_PASSWORD=', 'CHARTROOM_VIEWER_PASSWORD=\'typed-viewer\'')
-        .replace('# CHARTROOM_PROJECT_NAME=', `CHARTROOM_PROJECT_NAME=${basename(dir)}`)
+        .replace('# CHARTROOM_PROJECT_NAME=', 'CHARTROOM_PROJECT_NAME=\'Acme Shop\'')
         .replace('# CHARTROOM_BASE_URL=', 'CHARTROOM_BASE_URL=https://chart.example.com')
         .replace('# CHARTROOM_UPDATE_CHECK=true', 'CHARTROOM_UPDATE_CHECK=false'));
       expect(readFileSync(join(dir, 'compose.yaml'), 'utf8')).toContain('      - "127.0.0.1:8080:3000"\n');
