@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { formatString, resolveStrings } from './strings';
 
 const catalog = {
-  names: { project: 'Chartroom', effort: 'Effort', efforts: 'Efforts' },
+  names: { project: 'Chartroom', product: 'Chartroom', effort: 'Effort', efforts: 'Efforts' },
   shell: { picker: 'Pick an {effort}', home: '{project} home', list: 'All {efforts}', count: '{count} open' },
 };
 
@@ -21,7 +21,7 @@ describe('resolveStrings', () => {
     expect(strings.shell.picker).toBe('Pick an Initiative');
     expect(strings.shell.home).toBe('Acme home');
     expect(strings.shell.list).toBe('All Initiatives');
-    expect(strings.names).toEqual({ project: 'Acme', effort: 'Initiative', efforts: 'Initiatives' });
+    expect(strings.names).toEqual({ project: 'Acme', product: 'Chartroom', effort: 'Initiative', efforts: 'Initiatives' });
   });
 
   it('leaves runtime placeholders for formatString', () => {
