@@ -18,6 +18,14 @@
       </li>
     </ol>
 
+    <p class="first-run__optional">
+      <template v-for="(part, index) in optionalParts" :key="index">
+        <a v-if="part.section" :href="`#${part.section}`" class="first-run__link">{{ part.text }}</a>
+
+        <template v-else>{{ part.text }}</template>
+      </template>
+    </p>
+
     <template v-if="locked">
       <button ref="opener" type="button" class="first-run__elevate" :aria-expanded="prompting" @click="prompting = !prompting">
         {{ strings.admin.firstRun.enterPassword }}<Icon name="lock" :size="12" class="first-run__lock" />
@@ -29,10 +37,11 @@
 </template>
 
 <script setup lang="ts">
-import catalog from '~/strings/en.json';
+import type { AdminSectionId } from '~/utils/paths';
+
+const OPTIONAL_SECTIONS: Record<string, AdminSectionId> = { projectLink: 'settings', effortLink: 'settings', environmentsLink: 'environments' };
 
 const session = useSessionStore();
-const instanceStore = useInstanceStore();
 const admin = useAdminStore();
 const { strings } = useStrings();
 const headingId = useId();
@@ -41,13 +50,14 @@ const prompting = ref(false);
 
 const locked = computed(() => !session.adminUntil);
 
-const steps = computed(() => firstRunChecklist({
-  names: instanceStore.instance,
-  defaults: catalog.names,
-  environments: admin.environments.length,
-  holders: admin.holders?.length ?? 0,
-  settingsSaved: admin.settingsSaved,
-}));
+const steps = computed(() => firstRunChecklist({ holders: admin.holders?.length ?? 0 }));
+
+const optionalParts = computed(() => {
+  const { optional, optionalLinks } = strings.value.admin.firstRun;
+  return optional.split(/\{(\w+Link)\}/).map((part, index) => (index % 2
+    ? { text: optionalLinks[part as keyof typeof optionalLinks], section: OPTIONAL_SECTIONS[part] }
+    : { text: part, section: undefined }));
+});
 
 const cancel = async () => {
   prompting.value = false;
@@ -85,6 +95,12 @@ const cancel = async () => {
 
   &__link {
     color: var(--color-accent);
+  }
+
+  &__optional {
+    margin: 0 0 $space-3;
+    color: var(--color-muted);
+    font-size: $font-size-meta;
   }
 
   &__step--done &__link {

@@ -75,7 +75,6 @@ describe('useAdminStore', () => {
 
     expect(sent).toEqual([settings]);
     expect(useInstanceStore().instance?.projectName).toBe('Acme Tracker');
-    expect(admin.settingsSaved).toBe(true);
   });
 
   it('deleting an Environment rereads the pointers, which come back unbound', async () => {

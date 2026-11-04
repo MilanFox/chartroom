@@ -545,10 +545,13 @@
       "heading": "First-run setup",
       "hint": "enter the admin password to start",
       "steps": {
-        "project": "Name the project",
-        "effort": "Pick the Effort word",
-        "environments": "Add Environments",
         "holder": "Create the first Token holder"
+      },
+      "optional": "Optional: {projectLink}, {effortLink} and {environmentsLink} — change them any time.",
+      "optionalLinks": {
+        "projectLink": "project name",
+        "effortLink": "Effort word",
+        "environmentsLink": "Environments"
       },
       "done": "done",
       "enterPassword": "Enter admin password"
@@ -559,6 +562,7 @@
       "effortSingular": "Effort word, singular",
       "effortPlural": "Plural",
       "pluralHint": "Blank: the singular plus s",
+      "effortHint": "An Effort is what Matt Pocock's skills call one unit of work: a map, its specs and their tickets. We kept his name; rename it to whatever your team says.",
       "triageHeading": "Triage display labels",
       "save": "Save settings",
       "saving": "Saving…",
@@ -712,6 +716,8 @@
       "trustProxy": "Proxy trust",
       "port": "Port",
       "updateCheck": "Update check",
+      "projectName": "Project name until saved in Settings",
+      "unset": "None",
       "on": "On",
       "off": "Off",
       "adapter": "Adapter files",
