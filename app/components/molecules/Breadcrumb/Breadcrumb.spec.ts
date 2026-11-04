@@ -12,4 +12,10 @@ describe('Breadcrumb', () => {
     expect(wrapper.findAll('a').map(link => link.attributes('href'))).toEqual(['/issues', '/efforts/agent-tracker']);
     expect(wrapper.get('[aria-current="page"]').text()).toBe('#12');
   });
+
+  it('renders nothing when the trail is only the current page', async () => {
+    const wrapper = await mountSuspended(Breadcrumb, { props: { crumbs: [{ label: 'Efforts' }] } });
+
+    expect(wrapper.find('nav').exists()).toBe(false);
+  });
 });
