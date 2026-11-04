@@ -4,8 +4,8 @@ One Instance is one container, one volume and two passwords. The image serves th
 
 ## Run in minutes
 
-1. Copy `compose.example.yaml` to `compose.yaml` and `.env.example` to `.env` in an empty directory.
-2. Fill `CHARTROOM_ADMIN_PASSWORD` and `CHARTROOM_VIEWER_PASSWORD` in `.env`.
+1. `npx -y chartroom-cli@<major> init my-chartroom` asks for the passwords, public URL and port, then writes `compose.yaml` and `.env` into the folder `my-chartroom`, created if missing; any name works. Without Node: copy `compose.example.yaml` to `compose.yaml` and `.env.example` to `.env`, then fill `CHARTROOM_ADMIN_PASSWORD` and `CHARTROOM_VIEWER_PASSWORD`.
+2. `cd my-chartroom`
 3. `docker compose up -d`
 4. `docker compose ps` shows `healthy` once `GET /health` answers; the Instance listens on `127.0.0.1:3000`.
 
