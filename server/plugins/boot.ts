@@ -1,4 +1,4 @@
-import { migrateStore } from '../db/migrate';
+import { migrateStore, readMigrationState } from '../db/migrate';
 
 const fail = (message: string): never => {
   process.stderr.write(`${message}\n`);
@@ -15,10 +15,24 @@ const loadConfig = () => {
   }
 };
 
+const newerStoreMessage = (dataDir: string, imageIndex: string) => {
+  const restorable = snapshotToRestore(dataDir, imageIndex);
+  const restore = restorable
+    ? `restore the pre-migrate Snapshot ${snapshotFile(dataDir, restorable.name)}, the newest taken from schema ${imageIndex} or older`
+    : `no pre-migrate Snapshot exists in ${backupsDir(dataDir)}`;
+  return `the store at ${storeFile(dataDir)} carries migrations this image does not know; ${restore}`;
+};
+
 const boot = async (config: DeploymentConfig) => {
   const store = openStore(config.dataDir);
   process.stdout.write(`store open at ${storeFile(config.dataDir)}\n`);
-  const applied = await migrateStore(store);
+  const { unknownApplied, lastAppliedIndex, imageIndex, pending } = await readMigrationState(store);
+  if (unknownApplied) fail(newerStoreMessage(config.dataDir, imageIndex ?? ''));
+  if (pending.length && lastAppliedIndex) {
+    const snapshot = takeSnapshot(store, config.dataDir, preMigrateStem(lastAppliedIndex, useRuntimeConfig().version));
+    process.stdout.write(`pre-migrate Snapshot taken: ${snapshotFile(config.dataDir, snapshot.name)}\n`);
+  }
+  const applied = migrateStore(store, pending);
   process.stdout.write(applied.length ? `applied migrations: ${applied.join(', ')}\n` : 'schema up to date\n');
 };
 
