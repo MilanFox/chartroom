@@ -1,8 +1,3 @@
-const focusById = async (id: string) => {
-  await nextTick();
-  document.getElementById(id)?.focus();
-};
-
 export const useInlineConfirm = ({ triggerPrefix }: { triggerPrefix: string }) => {
   const confirming = ref<string | null>(null);
 
