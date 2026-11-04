@@ -2,7 +2,20 @@
   "name": "chartroom",
   "version": "0.1.0",
   "description": "The Chartroom CLI: every tracker operation from the shell",
+  "keywords": [
+    "chartroom",
+    "issue-tracker",
+    "cli",
+    "agents",
+    "tickets"
+  ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MilanFox/chartroom.git",
+    "directory": "cli"
+  },
+  "homepage": "https://github.com/MilanFox/chartroom/tree/main/cli#readme",
   "type": "module",
   "engines": {
     "node": ">=24"

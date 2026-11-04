@@ -53,13 +53,19 @@
         <h2 :id="adminHeadingId" class="phone-menu__heading">{{ strings.shell.admin }}</h2>
 
         <ul class="phone-menu__list" :aria-labelledby="adminHeadingId">
-          <li v-for="section in adminSections" :key="section.id">
-            <NuxtLink :to="section.to" class="phone-menu__link">
-              <span>{{ section.label }}</span>
+          <template v-for="section in adminSections" :key="section.id">
+            <li>
+              <NuxtLink :to="section.to" class="phone-menu__link">
+                <span>{{ section.label }}</span>
+              </NuxtLink>
+            </li>
 
-              <span v-if="section.chip" class="phone-menu__update">{{ section.chip }}</span>
-            </NuxtLink>
-          </li>
+            <li v-if="section.update">
+              <ExternalLink :href="section.update.url" class="phone-menu__link">
+                <span class="phone-menu__update">{{ section.update.label }}</span>
+              </ExternalLink>
+            </li>
+          </template>
 
           <li class="phone-menu__elevation">
             <template v-if="elevationLabel">

@@ -1,4 +1,5 @@
 const PREFIX = 'CHARTROOM_';
+const GITHUB_LATEST_RELEASE_URL = 'https://api.github.com/repos/milanfox/chartroom/releases/latest';
 
 export interface DeploymentConfig {
   adminPassword: string
@@ -7,6 +8,7 @@ export interface DeploymentConfig {
   trustProxy: boolean
   port: number
   updateCheck: boolean
+  releaseUrl: string
   dataDir: string
   elevationSeconds: number
 }
@@ -31,6 +33,7 @@ export const readDeploymentConfig = (env: NodeJS.ProcessEnv = process.env): Depl
     trustProxy: optional('TRUST_PROXY') === 'true',
     port: Number(optional('PORT') ?? 3000),
     updateCheck: optional('UPDATE_CHECK') !== 'false',
+    releaseUrl: optional('RELEASE_URL') ?? GITHUB_LATEST_RELEASE_URL,
     dataDir: optional('DATA_DIR') ?? '/data',
     elevationSeconds: Number(optional('ELEVATION_SECONDS') ?? 3600),
   };

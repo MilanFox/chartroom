@@ -39,6 +39,7 @@ const boot = async (config: DeploymentConfig) => {
 export default defineNitroPlugin((nitroApp) => {
   const config = loadConfig();
   process.env.NITRO_PORT = String(config.port);
+  startUpdateCheck(config);
   const ready = boot(config).catch(error => fail(`boot failed: ${error instanceof Error ? error.message : String(error)}`));
   nitroApp.hooks.hook('request', () => ready);
 });

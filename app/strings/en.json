@@ -22,7 +22,8 @@
       "snapshots": "Snapshots",
       "about": "About"
     },
-    "updateAvailable": "Update {version} available",
+    "updateAvailable": "v{version} available",
+    "opensInNewTab": "(opens in new tab)",
     "enterAdminPassword": "Enter admin password…",
     "adminUntil": "Admin until {time}",
     "drop": "Drop",
