@@ -111,4 +111,24 @@ describe('useIssuesStore', () => {
 
     expect(issues.parentCandidates.map(({ number }) => number)).toEqual([1, 2, 19, 25]);
   });
+
+  it('bumps its revision on writes and not on reads', async () => {
+    endpoint('/ui/issues/12', () => issue());
+    endpoint('/ui/issues/12/claim', { method: 'POST', handler: () => issue() });
+    endpoint('/ui/issues/12/labels/bug', { method: 'PUT', handler: () => ({}) });
+    endpoint('/ui/issues/12/changes', () => ({ items: [], nextCursor: null }));
+    endpoint('/ui/issues', () => ({ items: [], nextCursor: null }));
+    const issues = useIssuesStore();
+
+    await issues.load(12);
+    await issues.loadChanges(12);
+    await issues.loadChildren(12);
+    await issues.loadParentCandidates();
+    expect(issues.revision).toBe(0);
+
+    await issues.claim(12);
+    expect(issues.revision).toBe(1);
+    await issues.addLabel(12, 'bug');
+    expect(issues.revision).toBe(2);
+  });
 });

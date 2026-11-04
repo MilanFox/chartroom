@@ -92,10 +92,7 @@ const specCountsOf = (spec: number) => ({ ...EMPTY_STATUS_COUNTS, ...effort.valu
 
 const openDrawer = (issue: number) => drawerNumber.value = issue;
 
-issuesStore.$onAction(({ name, args, after }) => {
-  if (name === 'loadParentCandidates' || name === 'loadChanges' || (name === 'load' && args[0] !== number.value)) return;
-  after(() => dashboard.refresh());
-});
+watch(() => issuesStore.revision, () => dashboard.refresh());
 
 useHead(() => ({ title: effort.value ? format(strings.value.issue.pageTitle, { number: effort.value.number, title: effort.value.title }) : undefined }));
 </script>

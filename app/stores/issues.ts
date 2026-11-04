@@ -26,33 +26,40 @@ export const useIssuesStore = defineStore('issues', () => {
   const changes = ref<Record<number, IssueChange[]>>({});
   const children = ref<Record<number, IssueRow[]>>({});
   const parentCandidates = ref<ParentCandidate[]>([]);
+  const revision = ref(0);
 
   const keep = (document: IssueDocument) => {
     documents.value[document.number] = document;
     return document;
   };
 
+  const keepWritten = (document: IssueDocument) => {
+    revision.value++;
+    return keep(document);
+  };
+
   const load = async (number: number) => keep(await uiFetch<IssueDocument>(`/issues/${number}`));
 
   const writeThenReload = async (number: number, path: string, request: { method: 'POST' | 'PUT' | 'PATCH' | 'DELETE', body?: Record<string, unknown> }) => {
     await uiFetch(`/issues/${number}${path}`, request);
+    revision.value++;
     return load(number);
   };
 
   const edit = async (number: number, fields: IssueFieldEdit, version: number) =>
-    keep(await uiFetch<IssueDocument>(`/issues/${number}`, { method: 'PATCH', body: { ...fields }, headers: { 'If-Match': `"${version}"` } }));
+    keepWritten(await uiFetch<IssueDocument>(`/issues/${number}`, { method: 'PATCH', body: { ...fields }, headers: { 'If-Match': `"${version}"` } }));
 
-  const act = async (number: number, action: 'claim' | 'reopen') => keep(await uiFetch<IssueDocument>(`/issues/${number}/${action}`, { method: 'POST' }));
+  const act = async (number: number, action: 'claim' | 'reopen') => keepWritten(await uiFetch<IssueDocument>(`/issues/${number}/${action}`, { method: 'POST' }));
 
   const claim = (number: number) => act(number, 'claim');
 
   const reopen = (number: number) => act(number, 'reopen');
 
-  const unassign = async (number: number) => keep(await uiFetch<IssueDocument>(`/issues/${number}/assignee`, { method: 'DELETE' }));
+  const unassign = async (number: number) => keepWritten(await uiFetch<IssueDocument>(`/issues/${number}/assignee`, { method: 'DELETE' }));
 
   const close = async (number: number, comment: string) => {
     const body = comment.trim() ? { comment } : {};
-    return keep(await uiFetch<IssueDocument>(`/issues/${number}/close`, { method: 'POST', body }));
+    return keepWritten(await uiFetch<IssueDocument>(`/issues/${number}/close`, { method: 'POST', body }));
   };
 
   const addLabel = (number: number, label: string) => writeThenReload(number, `/labels/${encodeURIComponent(label)}`, { method: 'PUT' });
@@ -95,6 +102,7 @@ export const useIssuesStore = defineStore('issues', () => {
     changes,
     children,
     parentCandidates,
+    revision,
     load,
     loadChanges,
     loadChildren,
