@@ -1,4 +1,4 @@
-# chartroom
+# chartroom-cli
 
 Every Chartroom tracker operation from the shell. One verb per API route; output is the API's JSON, pretty-printed on stdout.
 
@@ -10,7 +10,7 @@ No install needed. Run it with the major version of your Instance, `0` while it 
 npx -y chartroom-cli@<major> me
 ```
 
-Installed globally (`npm install -g chartroom-cli@<major>`), the binary is `chartroom` with the alias `chart`. The examples below use `chart`. Node 24 or newer.
+Installed globally (`npm install -g chartroom-cli@<major>`), the binary is `chartroom` with the aliases `chart` and `chartroom-cli`. The examples below use `chart`. Node 24 or newer.
 
 ## Auth
 
