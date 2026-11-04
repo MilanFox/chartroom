@@ -28,7 +28,7 @@ docker compose up -d
 
 ## Connect your agents
 
-Install the CLI (`npm install -g chartroom-cli@0`), run `/setup-matt-pocock-skills` with **Other** as the issue tracker, put `CHARTROOM_URL` and `CHARTROOM_TOKEN` in the repo's untracked `.env`, then `chartroom adapter --write docs/agents`.
+Install the CLI (`npm install -g chartroom-cli@latest`), put `CHARTROOM_URL` and `CHARTROOM_TOKEN` in the repo's untracked `.env`, then run `/setup-matt-pocock-skills` with **Other** as the issue tracker, answering: "Chartroom at `<url>`. Run `chartroom adapter` and write each file it prints, verbatim, to the path in its marker line."
 Step by step, with a first run and troubleshooting: [Connect your agents](docs/connect-agents.md).
 
 ## CLI
@@ -51,7 +51,7 @@ Every command: [CLI reference](cli/README.md).
 
 - [Connect your agents](docs/connect-agents.md): end-to-end setup with the skills
 - [Operating an Instance](docs/operating.md): environment variables, TLS, Snapshots, upgrade, rollback, uninstall
-- API reference: `<your Instance>/api/docs`
+- HTTP API for scripts and other tools: OpenAPI at `<your Instance>/api/v1/openapi.json`; a Token holder's secret is the bearer token
 - [Release notes](https://github.com/MilanFox/chartroom/releases)
 - [MIT licence](LICENSE)
 
