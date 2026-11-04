@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { existsSync, readFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { basename, join } from 'node:path';
+import { basename, join, resolve as resolvePath } from 'node:path';
 import { parseArgs } from 'node:util';
 import type { ParseArgsOptionsConfig } from 'node:util';
 
@@ -310,16 +310,12 @@ const warnOnMajorMismatch = async (root: string, context: CliContext) => {
   }
 };
 
-interface Password {
-  value: string
-  typed: boolean
-}
-
 interface InitSettings {
   dir: string
   version: string
-  adminPassword: Password
-  viewerPassword: Password
+  adminPassword: string
+  viewerPassword: string
+  passwordsChosen: boolean
   baseUrl?: string
   port: number
   updateCheck: boolean
@@ -327,8 +323,15 @@ interface InitSettings {
 
 const OPERATING_DOC = 'https://github.com/MilanFox/chartroom/blob/main/docs/operating.md';
 
-const COMPOSE_TEMPLATE = ({ version, port }: InitSettings) => `services:
+const containerNameOf = (dir: string) => {
+  const sanitised = basename(resolvePath(dir)).replace(/[^a-zA-Z0-9_.-]/g, '-').replace(/^[^a-zA-Z0-9]+/, '');
+  if (!sanitised) return 'chartroom';
+  return /chartroom/i.test(sanitised) ? sanitised : `chartroom-${sanitised}`;
+};
+
+const COMPOSE_TEMPLATE = ({ dir, version, port }: InitSettings) => `services:
   chartroom:
+    container_name: ${containerNameOf(dir)}
     image: ghcr.io/milanfox/chartroom:${version}
     env_file: .env
     environment:
@@ -345,14 +348,12 @@ volumes:
   chartroom-data:
 `;
 
-const envPassword = ({ value, typed }: Password) => typed ? `'${value}'` : value;
-
-const ENV_TEMPLATE = ({ adminPassword, viewerPassword, baseUrl, updateCheck }: InitSettings) => `# Chartroom environment, see ${OPERATING_DOC}
+const ENV_TEMPLATE = ({ adminPassword, viewerPassword, passwordsChosen, baseUrl, updateCheck }: InitSettings) => `# Chartroom environment, see ${OPERATING_DOC}
 
 # Required. Elevates any session to Admin.
-CHARTROOM_ADMIN_PASSWORD=${envPassword(adminPassword)}
+CHARTROOM_ADMIN_PASSWORD=${passwordsChosen ? `'${adminPassword}'` : adminPassword}
 # Required. Shared read-only login for the UI.
-CHARTROOM_VIEWER_PASSWORD=${envPassword(viewerPassword)}
+CHARTROOM_VIEWER_PASSWORD=${passwordsChosen ? `'${viewerPassword}'` : viewerPassword}
 
 # Optional, default derived from the request. Public URL used in absolute links, e.g. https://chartroom.example.com
 ${baseUrl ? `CHARTROOM_BASE_URL=${baseUrl}` : '# CHARTROOM_BASE_URL='}
@@ -364,15 +365,15 @@ ${baseUrl ? `CHARTROOM_BASE_URL=${baseUrl}` : '# CHARTROOM_BASE_URL='}
 ${updateCheck ? '# CHARTROOM_UPDATE_CHECK=true' : 'CHARTROOM_UPDATE_CHECK=false'}
 `;
 
-const freshPassword = (): Password => ({ value: randomBytes(24).toString('base64url'), typed: false });
+const freshPassword = () => randomBytes(24).toString('base64url');
 
-const firstStartChecklist = ({ dir, version, baseUrl, port }: InitSettings, started: boolean) => {
+const firstStartChecklist = ({ dir, version, baseUrl, port, passwordsChosen }: InitSettings, started: boolean) => {
   const url = baseUrl ?? `http://localhost:${port}`;
   const envFile = join(dir, '.env');
   const steps = [
     ...started ? [] : [dir === '.' ? 'docker compose up -d' : `cd ${dir} && docker compose up -d`],
     `Open ${url}${url.startsWith('https:') ? `\n   Put a TLS reverse proxy in front: ${OPERATING_DOC}#tls-at-the-reverse-proxy` : ''}`,
-    `Sign in with the viewer password (in ${envFile})`,
+    passwordsChosen ? 'Sign in with your viewer password' : `Sign in with the viewer password (in ${envFile})`,
     'Admin menu → "Enter admin password…" → elevate with the admin password',
     'Follow "First-run setup" on the admin page: project name, Effort word, Environments, create the first Token holder — copy its secret, it is shown once',
     [
@@ -383,7 +384,7 @@ const firstStartChecklist = ({ dir, version, baseUrl, port }: InitSettings, star
     ].join('\n'),
   ];
   return [
-    `Wrote compose.yaml and .env to ${dir}. The passwords are in ${envFile}.`,
+    `Wrote compose.yaml and .env to ${dir}.${passwordsChosen ? '' : ` The passwords are in ${envFile}.`}`,
     '',
     'First start:',
     ...steps.map((step, index) => `${index + 1}. ${step}`),
@@ -417,10 +418,22 @@ const runWizard = async (context: CliContext, ask: NonNullable<CliContext['ask']
   };
   const confirm = (question: string, byDefault: boolean) => answer({ question }, typed => yesOrNo(typed, byDefault), 'Answer y or n.');
 
+  const choosePassword = async (name: string, mustDifferFrom?: string) => {
+    for (;;) {
+      const chosen = await answer(
+        { question: `${name} password: `, hidden: true },
+        typed => typed === '' || UNQUOTABLE.test(typed) || typed === mustDifferFrom ? undefined : typed,
+        typed => typed === '' ? 'A password is required.' : UNQUOTABLE.test(typed) ? UNQUOTABLE_REASON : 'Must differ from the admin password.',
+      );
+      if (await answer({ question: 'Repeat: ', hidden: true }, typed => typed, '') === chosen) return chosen;
+      say('The passwords do not match.');
+    }
+  };
+
   step(1, 'Admin password');
-  const adminTyped = await answer({ question: 'Admin password (Enter to generate): ', hidden: true }, typed => UNQUOTABLE.test(typed) ? undefined : typed, UNQUOTABLE_REASON);
+  const adminPassword = await choosePassword('Admin');
   step(2, 'Viewer password');
-  const viewerTyped = await answer({ question: 'Viewer password (Enter to generate): ', hidden: true }, typed => UNQUOTABLE.test(typed) || (typed !== '' && typed === adminTyped) ? undefined : typed, typed => UNQUOTABLE.test(typed) ? UNQUOTABLE_REASON : 'Must differ from the admin password.');
+  const viewerPassword = await choosePassword('Viewer', adminPassword);
   step(3, 'Public URL');
   const baseUrl = await answer({ question: 'Public URL, e.g. https://chartroom.example.com (Enter to skip): ' }, typed => typed === '' || isHttpUrl(typed) ? typed : undefined, 'Enter an http or https URL, or nothing to skip.');
   step(4, 'Host port');
@@ -429,16 +442,17 @@ const runWizard = async (context: CliContext, ask: NonNullable<CliContext['ask']
   const updateCheck = await confirm('Check daily for a newer release? [Y/n] ', true);
   const settings: InitSettings = {
     ...defaults,
-    adminPassword: adminTyped ? { value: adminTyped, typed: true } : defaults.adminPassword,
-    viewerPassword: viewerTyped ? { value: viewerTyped, typed: true } : defaults.viewerPassword,
+    adminPassword,
+    viewerPassword,
+    passwordsChosen: true,
     baseUrl: baseUrl || undefined,
     port,
     updateCheck,
   };
   step(6, 'Review');
   say(`Directory: ${settings.dir}`);
-  say(`Admin password: ${settings.adminPassword.typed ? 'set' : 'generated'}`);
-  say(`Viewer password: ${settings.viewerPassword.typed ? 'set' : 'generated'}`);
+  say('Admin password: set');
+  say('Viewer password: set');
   say(`Public URL: ${settings.baseUrl ?? 'not set'}`);
   say(`Host port: ${settings.port}`);
   say(`Update check: ${settings.updateCheck ? 'on' : 'off'}`);
@@ -466,7 +480,7 @@ const init = async (context: CliContext) => {
     context.stderr.write(`chartroom: ${taken} already exists\n`);
     return 1;
   }
-  const defaults: InitSettings = { dir, version: context.version ?? ownVersion(), adminPassword: freshPassword(), viewerPassword: freshPassword(), port: 3000, updateCheck: true };
+  const defaults: InitSettings = { dir, version: context.version ?? ownVersion(), adminPassword: freshPassword(), viewerPassword: freshPassword(), passwordsChosen: false, port: 3000, updateCheck: true };
   const { settings, start } = context.ask ? await runWizard(context, context.ask, defaults) : { settings: defaults, start: false };
   await mkdir(dir, { recursive: true });
   await writeFile(join(dir, 'compose.yaml'), COMPOSE_TEMPLATE(settings));
