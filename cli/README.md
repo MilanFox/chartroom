@@ -12,6 +12,14 @@ npx -y chartroom-cli@<major> me
 
 Installed globally (`npm install -g chartroom-cli@<major>`), the binary is `chartroom` with the aliases `chart` and `chartroom-cli`. The examples below use `chart`. Node 24 or newer.
 
+## Start an Instance
+
+```sh
+npx -y chartroom-cli@<major> init chartroom
+```
+
+Writes `compose.yaml` and `.env` into `chartroom/` (default: the current directory), then prints a first-start checklist. In a terminal it walks seven steps: passwords, public URL, host port, update check, review, start now; otherwise it generates the passwords and takes every default. Needs no `CHARTROOM_URL` or `CHARTROOM_TOKEN`, and refuses with exit `1` if either file already exists.
+
 ## Auth
 
 | Variable | Flag | Meaning |
@@ -86,7 +94,7 @@ export CHARTROOM_TOKEN=<secret>
 
 | Exit | Meaning |
 | --- | --- |
-| `0` | Success. JSON on stdout; `effort artifacts` and `adapter` print markdown. |
+| `0` | Success. JSON on stdout; `effort artifacts` and `adapter` print markdown, `init` prints its checklist as plain text. |
 | `1` | The API's error envelope on stderr, or `unreachable` when the Instance cannot be reached. |
 | `2` | Usage error; the usage list follows on stderr. |
 

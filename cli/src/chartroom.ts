@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { spawn } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
 import { basename, join } from 'node:path';
 import { parseArgs } from 'node:util';
 import type { ParseArgsOptionsConfig } from 'node:util';
@@ -43,9 +45,22 @@ export interface CliContext {
   stdout: Output
   stderr: Output
   version?: string
+  ask?: Handler<[string, AskOptions?], Promise<string | null>>
+  startInstance?: Handler<[string], Promise<number>>
+}
+
+interface AskOptions {
+  hidden?: boolean
 }
 
 class UsageError extends Error {}
+
+class InitAborted extends Error {
+  // eslint-disable-next-line no-unused-vars -- the core rule misreads parameter properties
+  constructor(message: string, readonly exitCode: number) {
+    super(message);
+  }
+}
 
 class ApiFailure extends Error {
   constructor(readonly envelope: string) {
@@ -192,6 +207,7 @@ const usage = () => [
   'Configured by CHARTROOM_URL and CHARTROOM_TOKEN; --url and --token override them, except on issue link add, where --url is the Link target.',
   'Any *-file flag reads stdin when given -.',
   '',
+  '  init [dir]',
   ...VERBS.map(verb => `  ${usageLine(verb)}`),
   '',
 ].join('\n');
@@ -218,14 +234,18 @@ const attachDashLeadingValues = (args: string[], options: ParseArgsOptionsConfig
   return attached;
 };
 
-const parseVerbArgs = (verb: Verb, argv: string[]) => {
-  const options = verbOptions(verb);
+const strictArgs = (args: string[], options: ParseArgsOptionsConfig) => {
   try {
-    return parseArgs({ args: attachDashLeadingValues(argv.slice(verb.words.length), options), options, strict: true, allowPositionals: true });
+    return parseArgs({ args, options, strict: true, allowPositionals: true });
   }
   catch (error) {
     throw new UsageError(error instanceof Error ? error.message : String(error));
   }
+};
+
+const parseVerbArgs = (verb: Verb, argv: string[]) => {
+  const options = verbOptions(verb);
+  return strictArgs(attachDashLeadingValues(argv.slice(verb.words.length), options), options);
 };
 
 const readAll = async (stream: AsyncIterable<string | Uint8Array>) => {
@@ -290,7 +310,174 @@ const warnOnMajorMismatch = async (root: string, context: CliContext) => {
   }
 };
 
+interface Password {
+  value: string
+  typed: boolean
+}
+
+interface InitSettings {
+  dir: string
+  version: string
+  adminPassword: Password
+  viewerPassword: Password
+  baseUrl?: string
+  port: number
+  updateCheck: boolean
+}
+
+const OPERATING_DOC = 'https://github.com/MilanFox/chartroom/blob/main/docs/operating.md';
+
+const COMPOSE_TEMPLATE = ({ version, port }: InitSettings) => `services:
+  chartroom:
+    image: ghcr.io/milanfox/chartroom:${version}
+    env_file: .env
+    environment:
+      # Published on loopback only, so every request arrives through the reverse proxy; trust its forwarded headers.
+      CHARTROOM_TRUST_PROXY: "true"
+    ports:
+      - "127.0.0.1:${port}:3000"
+    volumes:
+      - chartroom-data:/data
+    init: true
+    restart: unless-stopped
+
+volumes:
+  chartroom-data:
+`;
+
+const envPassword = ({ value, typed }: Password) => typed ? `'${value}'` : value;
+
+const ENV_TEMPLATE = ({ adminPassword, viewerPassword, baseUrl, updateCheck }: InitSettings) => `# Chartroom environment, see ${OPERATING_DOC}
+
+# Required. Elevates any session to Admin.
+CHARTROOM_ADMIN_PASSWORD=${envPassword(adminPassword)}
+# Required. Shared read-only login for the UI.
+CHARTROOM_VIEWER_PASSWORD=${envPassword(viewerPassword)}
+
+# Optional, default derived from the request. Public URL used in absolute links, e.g. https://chartroom.example.com
+${baseUrl ? `CHARTROOM_BASE_URL=${baseUrl}` : '# CHARTROOM_BASE_URL='}
+# Optional, default false. true reads X-Forwarded-For and X-Forwarded-Proto from the reverse proxy.
+# CHARTROOM_TRUST_PROXY=false
+# Optional, default 3000. Port the server listens on inside the container.
+# CHARTROOM_PORT=3000
+# Optional, default true. false stops the daily check for a newer release.
+${updateCheck ? '# CHARTROOM_UPDATE_CHECK=true' : 'CHARTROOM_UPDATE_CHECK=false'}
+`;
+
+const freshPassword = (): Password => ({ value: randomBytes(24).toString('base64url'), typed: false });
+
+const firstStartChecklist = ({ dir, version, baseUrl, port }: InitSettings, started: boolean) => {
+  const url = baseUrl ?? `http://localhost:${port}`;
+  const envFile = join(dir, '.env');
+  const steps = [
+    ...started ? [] : [dir === '.' ? 'docker compose up -d' : `cd ${dir} && docker compose up -d`],
+    `Open ${url}${url.startsWith('https:') ? `\n   Put a TLS reverse proxy in front: ${OPERATING_DOC}#tls-at-the-reverse-proxy` : ''}`,
+    `Sign in with the viewer password (in ${envFile})`,
+    'Admin menu → "Enter admin password…" → elevate with the admin password',
+    'Follow "First-run setup" on the admin page: project name, Effort word, Environments, create the first Token holder — copy its secret, it is shown once',
+    [
+      'In your project repo:',
+      `   export CHARTROOM_URL=${url}`,
+      '   export CHARTROOM_TOKEN=<the holder\'s secret>',
+      `   npx -y chartroom-cli@${majorOf(version)} adapter --write docs/agents`,
+    ].join('\n'),
+  ];
+  return [
+    `Wrote compose.yaml and .env to ${dir}. The passwords are in ${envFile}.`,
+    '',
+    'First start:',
+    ...steps.map((step, index) => `${index + 1}. ${step}`),
+    '',
+    `More: ${OPERATING_DOC}`,
+    '',
+  ].join('\n');
+};
+
+const yesOrNo = (typed: string, byDefault: boolean) => typed === '' ? byDefault : /^y(es)?$/i.test(typed) ? true : /^no?$/i.test(typed) ? false : undefined;
+
+const isHttpUrl = (typed: string) => URL.canParse(typed) && ['http:', 'https:'].includes(new URL(typed).protocol);
+
+// eslint-disable-next-line no-control-regex -- control characters are exactly what is rejected
+const UNQUOTABLE = /['\u0000-\u001f\u007f]/;
+
+const UNQUOTABLE_REASON = 'Must not contain \' or control characters.';
+
+const runWizard = async (context: CliContext, ask: NonNullable<CliContext['ask']>, defaults: InitSettings) => {
+  const say = (line: string) => context.stderr.write(`${line}\n`);
+  const step = (number: number, name: string) => say(`\nStep ${number} of 7 — ${name}`);
+  const answer = async <Accepted>({ question, ...options }: AskOptions & { question: string }, accept: Handler<[string], Accepted | undefined>, invalid: string | Handler<[string], string>) => {
+    for (;;) {
+      const typed = await ask(question, options);
+      if (typed === null) throw new InitAborted('input ended, nothing written', 1);
+      const kept = options.hidden ? typed : typed.trim();
+      const accepted = accept(kept);
+      if (accepted !== undefined) return accepted;
+      say(typeof invalid === 'string' ? invalid : invalid(kept));
+    }
+  };
+  const confirm = (question: string, byDefault: boolean) => answer({ question }, typed => yesOrNo(typed, byDefault), 'Answer y or n.');
+
+  step(1, 'Admin password');
+  const adminTyped = await answer({ question: 'Admin password (Enter to generate): ', hidden: true }, typed => UNQUOTABLE.test(typed) ? undefined : typed, UNQUOTABLE_REASON);
+  step(2, 'Viewer password');
+  const viewerTyped = await answer({ question: 'Viewer password (Enter to generate): ', hidden: true }, typed => UNQUOTABLE.test(typed) || (typed !== '' && typed === adminTyped) ? undefined : typed, typed => UNQUOTABLE.test(typed) ? UNQUOTABLE_REASON : 'Must differ from the admin password.');
+  step(3, 'Public URL');
+  const baseUrl = await answer({ question: 'Public URL, e.g. https://chartroom.example.com (Enter to skip): ' }, typed => typed === '' || isHttpUrl(typed) ? typed : undefined, 'Enter an http or https URL, or nothing to skip.');
+  step(4, 'Host port');
+  const port = await answer({ question: `Host port (Enter for ${defaults.port}): ` }, typed => typed === '' ? defaults.port : /^\d+$/.test(typed) && Number(typed) >= 1 && Number(typed) <= 65535 ? Number(typed) : undefined, 'Enter a port from 1 to 65535.');
+  step(5, 'Update check');
+  const updateCheck = await confirm('Check daily for a newer release? [Y/n] ', true);
+  const settings: InitSettings = {
+    ...defaults,
+    adminPassword: adminTyped ? { value: adminTyped, typed: true } : defaults.adminPassword,
+    viewerPassword: viewerTyped ? { value: viewerTyped, typed: true } : defaults.viewerPassword,
+    baseUrl: baseUrl || undefined,
+    port,
+    updateCheck,
+  };
+  step(6, 'Review');
+  say(`Directory: ${settings.dir}`);
+  say(`Admin password: ${settings.adminPassword.typed ? 'set' : 'generated'}`);
+  say(`Viewer password: ${settings.viewerPassword.typed ? 'set' : 'generated'}`);
+  say(`Public URL: ${settings.baseUrl ?? 'not set'}`);
+  say(`Host port: ${settings.port}`);
+  say(`Update check: ${settings.updateCheck ? 'on' : 'off'}`);
+  if (!await confirm('Write compose.yaml and .env? [Y/n] ', true)) throw new InitAborted('aborted, nothing written', 1);
+  step(7, 'Start now');
+  const start = await confirm('Run docker compose up -d now? [y/N] ', false);
+  return { settings, start };
+};
+
+const dockerComposeUp = (context: CliContext) => (dir: string) => new Promise<number>((resolve) => {
+  spawn('docker', ['compose', 'up', '-d'], { cwd: dir, stdio: 'inherit' })
+    .on('error', (error) => {
+      context.stderr.write(`chartroom: cannot run docker: ${error.message}\n`);
+      resolve(127);
+    })
+    .on('close', code => resolve(code ?? 1));
+});
+
+const init = async (context: CliContext) => {
+  const { positionals } = strictArgs(context.argv.slice(1), {});
+  if (positionals.length > 1) throw new UsageError('expected init [dir]');
+  const dir = positionals[0] ?? '.';
+  const taken = ['compose.yaml', '.env'].map(file => join(dir, file)).find(existsSync);
+  if (taken) {
+    context.stderr.write(`chartroom: ${taken} already exists\n`);
+    return 1;
+  }
+  const defaults: InitSettings = { dir, version: context.version ?? ownVersion(), adminPassword: freshPassword(), viewerPassword: freshPassword(), port: 3000, updateCheck: true };
+  const { settings, start } = context.ask ? await runWizard(context, context.ask, defaults) : { settings: defaults, start: false };
+  await mkdir(dir, { recursive: true });
+  await writeFile(join(dir, 'compose.yaml'), COMPOSE_TEMPLATE(settings));
+  await writeFile(join(dir, '.env'), ENV_TEMPLATE(settings), { mode: 0o600 });
+  const exitCode = start ? await (context.startInstance ?? dockerComposeUp(context))(dir) : 0;
+  context.stdout.write(firstStartChecklist(settings, start && exitCode === 0));
+  return exitCode;
+};
+
 const execute = async (context: CliContext) => {
+  if (context.argv[0] === 'init') return init(context);
   const verb = findVerb(context.argv);
   const { values: flags, positionals } = parseVerbArgs(verb, context.argv);
   const path = fillPath(verb, positionals, flags);
@@ -345,6 +532,10 @@ export const runCli = async (context: CliContext) => {
     return await execute(context);
   }
   catch (error) {
+    if (error instanceof InitAborted) {
+      context.stderr.write(`chartroom: ${error.message}\n`);
+      return error.exitCode;
+    }
     if (error instanceof ApiFailure) {
       context.stderr.write(`${error.envelope}\n`);
       return 1;
@@ -355,6 +546,65 @@ export const runCli = async (context: CliContext) => {
   }
 };
 
+const terminalAsk = (input: NodeJS.ReadStream, output: Output): NonNullable<CliContext['ask']> => {
+  let pending = '';
+  return (question, { hidden = false } = {}) => new Promise((resolve, reject) => {
+    let typed = '';
+    const settle = (finish: () => void) => {
+      input.off('data', onData);
+      input.off('end', onEnd);
+      input.setRawMode(false);
+      input.pause();
+      output.write('\n');
+      finish();
+    };
+    const consume = () => {
+      while (pending) {
+        const char = String.fromCodePoint(pending.codePointAt(0)!);
+        pending = pending.slice(char.length);
+        if (char === '\u0003') {
+          settle(() => reject(new InitAborted('interrupted, nothing written', 130)));
+          return;
+        }
+        if (char === '\u0004') {
+          settle(() => resolve(null));
+          return;
+        }
+        if (char === '\r' || char === '\n') {
+          if (char === '\r' && pending.startsWith('\n')) pending = pending.slice(1);
+          settle(() => resolve(typed));
+          return;
+        }
+        if (char === '\u001b') {
+          pending = pending.slice(/^(\[[0-?]*[ -/]*[@-~]|O.)?/.exec(pending)![0].length);
+          continue;
+        }
+        if (char === '\u007f' || char === '\b') {
+          if (typed) output.write('\b \b');
+          typed = typed.slice(0, -1);
+        }
+        else if (char >= ' ') {
+          typed += char;
+          output.write(hidden ? '*' : char);
+        }
+      }
+    };
+    const onData = (chunk: string) => {
+      pending += chunk;
+      consume();
+    };
+    const onEnd = () => settle(() => resolve(null));
+    input.setEncoding('utf8');
+    input.setRawMode(true);
+    output.write(question);
+    input.on('data', onData);
+    input.on('end', onEnd);
+    input.resume();
+    consume();
+  });
+};
+
 if (import.meta.main) {
-  process.exitCode = await runCli({ argv: process.argv.slice(2), env: process.env, stdin: process.stdin, stdout: process.stdout, stderr: process.stderr });
+  const interactive = process.stdin.isTTY && process.stdout.isTTY;
+  process.exitCode = await runCli({ argv: process.argv.slice(2), env: process.env, stdin: process.stdin, stdout: process.stdout, stderr: process.stderr, ...interactive && { ask: terminalAsk(process.stdin, process.stderr) } });
 }
