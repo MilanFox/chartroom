@@ -313,10 +313,9 @@ export const patchIssue = (number: number, { fields, expectedVersion }: PatchReq
 };
 
 const writeField = (number: number, write: FieldWrite, principal: Principal) => {
-  const stamp = stampFor(principal);
-  useStore().transaction((tx) => {
-    tx.update(issues).set({ [write.field]: write.after, updatedAt: stamp.at }).where(eq(issues.number, number)).run();
-    logChanges(tx, { ...stamp, issue: number }, [write]);
+  recordIssueWrite(number, principal, (tx) => {
+    tx.update(issues).set({ [write.field]: write.after }).where(eq(issues.number, number)).run();
+    return [write];
   });
   return requireIssue(number);
 };
@@ -336,16 +335,15 @@ export const unassignIssue = (number: number, principal: Principal) => {
   return writeField(number, { field: 'assignee', before: issue.assignee, after: null }, principal);
 };
 
-export const closeIssue = (number: number, comment: string | null, principal: Principal) =>
-  useStore().transaction((tx) => {
-    const issue = requireIssue(number);
-    if (issue.state === 'closed') throw invalid(`issue #${number} is already closed`, 'state');
-    const stamp = stampFor(principal);
+export const closeIssue = (number: number, comment: string | null, principal: Principal) => {
+  if (requireIssue(number).state === 'closed') throw invalid(`issue #${number} is already closed`, 'state');
+  recordIssueWrite(number, principal, (tx, stamp) => {
     if (comment !== null) insertComment(tx, { issue: number, body: comment, at: stamp.at, resolution: true }, principal);
-    tx.update(issues).set({ state: 'closed', closedAt: stamp.at, updatedAt: stamp.at }).where(eq(issues.number, number)).run();
-    logChanges(tx, { ...stamp, issue: number }, [{ field: 'state', before: 'open', after: 'closed' }]);
-    return requireIssue(number);
+    tx.update(issues).set({ state: 'closed', closedAt: stamp.at }).where(eq(issues.number, number)).run();
+    return [{ field: 'state', before: 'open', after: 'closed' }];
   });
+  return requireIssue(number);
+};
 
 export const reopenIssue = (number: number, principal: Principal) => {
   const issue = requireIssue(number);
@@ -384,15 +382,15 @@ export const insertUnderSection = (body: string, section: string, text: string) 
   return [...lines.slice(0, last + 1), ...text.trimEnd().split('\n'), ...lines.slice(last + 1)].join('\n');
 };
 
-export const appendToIssue = (number: number, { section, text }: AppendRequest, principal: Principal) =>
-  useStore().transaction((tx) => {
-    const issue = requireIssue(number);
-    const body = insertUnderSection(issue.body, section, text);
-    const stamp = stampFor(principal);
-    tx.update(issues).set({ body, updatedAt: stamp.at, version: issue.version + 1 }).where(eq(issues.number, number)).run();
-    logChanges(tx, { ...stamp, issue: number }, [{ field: 'body', before: issue.body, after: body }]);
-    return requireIssue(number);
+export const appendToIssue = (number: number, { section, text }: AppendRequest, principal: Principal) => {
+  const issue = requireIssue(number);
+  const body = insertUnderSection(issue.body, section, text);
+  recordIssueWrite(number, principal, (tx) => {
+    tx.update(issues).set({ body, version: issue.version + 1 }).where(eq(issues.number, number)).run();
+    return [{ field: 'body', before: issue.body, after: body }];
   });
+  return requireIssue(number);
+};
 
 export const deleteIssue = (number: number, principal: Principal) => {
   const issue = requireIssue(number);
@@ -403,8 +401,7 @@ export const deleteIssue = (number: number, principal: Principal) => {
     const blocked = blocksOf(number);
     tx.delete(issues).where(eq(issues.number, number)).run();
     for (const target of blocked) {
-      logChanges(tx, { ...stamp, issue: target.number }, [{ field: 'blocker', before: `#${number} ${issue.title}`, after: null }]);
-      touchIssue(tx, target.number, stamp.at);
+      recordWrites(tx, { ...stamp, issue: target.number }, [{ field: 'blocker', before: `#${number} ${issue.title}`, after: null }]);
     }
   });
 };

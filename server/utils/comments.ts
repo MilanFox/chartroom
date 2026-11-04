@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, gt } from 'drizzle-orm';
-import { comments, issues } from '../db/schema';
+import { comments } from '../db/schema';
 import type { Principal } from './principal';
 import type { Store } from './store';
 
@@ -41,14 +41,14 @@ export const insertComment = (tx: Store, { issue, body, at, resolution = false }
   return tx.select().from(comments).where(eq(comments.id, id)).get()!;
 };
 
-export const createComment = (issue: number, body: string, principal: Principal) =>
-  useStore().transaction((tx) => {
-    requireIssue(issue);
-    const at = nowIso();
-    const comment = insertComment(tx, { issue, body, at }, principal);
-    tx.update(issues).set({ updatedAt: at }).where(eq(issues.number, issue)).run();
-    return comment;
+export const createComment = (issue: number, body: string, principal: Principal) => {
+  let comment: CommentRecord;
+  recordIssueWrite(issue, principal, (tx, { at }) => {
+    comment = insertComment(tx, { issue, body, at }, principal);
+    return [];
   });
+  return comment!;
+};
 
 const requireComment = ({ issue, id }: CommentRef) => {
   requireIssue(issue);
@@ -64,21 +64,18 @@ const requireAuthor = (comment: CommentRecord, principal: Principal) => {
 export const patchComment = ({ issue, id }: CommentRef, body: string, principal: Principal) => {
   const comment = requireComment({ issue, id });
   requireAuthor(comment, principal);
-  const at = nowIso();
-  return useStore().transaction((tx) => {
+  recordIssueWrite(issue, principal, (tx, { at }) => {
     tx.update(comments).set({ body, updatedAt: at }).where(eq(comments.id, id)).run();
-    tx.update(issues).set({ updatedAt: at }).where(eq(issues.number, issue)).run();
-    return tx.select().from(comments).where(eq(comments.id, id)).get()!;
+    return [];
   });
+  return useStore().select().from(comments).where(eq(comments.id, id)).get()!;
 };
 
 export const deleteComment = ({ issue, id }: CommentRef, principal: Principal) => {
   const comment = requireComment({ issue, id });
   requireAuthor(comment, principal);
-  const stamp = stampFor(principal);
-  useStore().transaction((tx) => {
+  recordIssueWrite(issue, principal, (tx) => {
     tx.delete(comments).where(eq(comments.id, id)).run();
-    logChanges(tx, { ...stamp, issue }, [{ field: 'comment', before: id, after: null }]);
-    tx.update(issues).set({ updatedAt: stamp.at }).where(eq(issues.number, issue)).run();
+    return [{ field: 'comment', before: id, after: null }];
   });
 };

@@ -77,24 +77,14 @@ export const applyLabel = (tx: Store, issue: number, label: string): FieldWrite[
   return [...siblings.map(sibling => ({ field: 'label' as const, before: sibling, after: null })), { field: 'label', before: null, after: label }];
 };
 
-export const addLabel = (number: number, label: string, principal: Principal) => {
-  requireIssue(number);
-  const stamp = stampFor(principal);
-  useStore().transaction((tx) => {
+export const addLabel = (number: number, label: string, principal: Principal) =>
+  recordIssueWrite(number, principal, (tx) => {
     const writes = applyLabel(tx, number, label);
-    if (writes.length === 0) return;
-    logChanges(tx, { ...stamp, issue: number }, writes);
-    touchIssue(tx, number, stamp.at);
+    return writes.length > 0 ? writes : null;
   });
-};
 
-export const removeLabel = (number: number, label: string, principal: Principal) => {
-  requireIssue(number);
-  const stamp = stampFor(principal);
-  useStore().transaction((tx) => {
+export const removeLabel = (number: number, label: string, principal: Principal) =>
+  recordIssueWrite(number, principal, (tx) => {
     const { changes: removed } = tx.delete(issueLabels).where(labelOn(number, label)).run();
-    if (removed === 0) return;
-    logChanges(tx, { ...stamp, issue: number }, [{ field: 'label', before: label, after: null }]);
-    touchIssue(tx, number, stamp.at);
+    return removed === 0 ? null : [{ field: 'label', before: label, after: null }];
   });
-};

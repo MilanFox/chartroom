@@ -46,13 +46,13 @@ export const createLink = (issue: number, input: NewLink, principal: Principal) 
   if (useStore().select().from(links).where(and(eq(links.issue, issue), eq(links.url, input.url))).get()) {
     throw conflict(`issue #${issue} already links ${input.url}`, 'url');
   }
-  const { actor, origin, at } = stampFor(principal);
-  return useStore().transaction((tx) => {
+  let createdId = 0;
+  recordIssueWrite(issue, principal, (tx, { actor, origin, at }) => {
     const { id } = tx.insert(links).values({ ...input, issue, addedBy: actor, origin, createdAt: at }).returning({ id: links.id }).get();
-    logChanges(tx, { actor, origin, at, issue }, [{ field: 'link', before: null, after: loggedLink({ id, ...input }) }]);
-    touchIssue(tx, issue, at);
-    return tx.select().from(links).where(eq(links.id, id)).get()!;
+    createdId = id;
+    return [{ field: 'link', before: null, after: loggedLink({ id, ...input }) }];
   });
+  return useStore().select().from(links).where(eq(links.id, createdId)).get()!;
 };
 
 const loggedLink = ({ id, title, url }: { id: number, title: string, url: string }) => JSON.stringify({ id, title, url });
@@ -68,20 +68,17 @@ export const patchLink = (ref: LinkRef, fields: LinkFields, principal: Principal
   const link = requireLink(ref);
   const values = Object.fromEntries(Object.entries(fields).filter(([field, value]) => value !== undefined && value !== link[field as keyof LinkFields]));
   if (Object.keys(values).length === 0) return link;
-  const { at } = stampFor(principal);
-  return useStore().transaction((tx) => {
+  recordIssueWrite(ref.issue, principal, (tx) => {
     tx.update(links).set(values).where(eq(links.id, ref.id)).run();
-    touchIssue(tx, ref.issue, at);
-    return tx.select().from(links).where(eq(links.id, ref.id)).get()!;
+    return [];
   });
+  return useStore().select().from(links).where(eq(links.id, ref.id)).get()!;
 };
 
 export const deleteLink = (ref: LinkRef, principal: Principal) => {
   const link = requireLink(ref);
-  const stamp = stampFor(principal);
-  useStore().transaction((tx) => {
+  recordIssueWrite(ref.issue, principal, (tx) => {
     tx.delete(links).where(eq(links.id, ref.id)).run();
-    logChanges(tx, { ...stamp, issue: ref.issue }, [{ field: 'link', before: loggedLink(link), after: null }]);
-    touchIssue(tx, ref.issue, stamp.at);
+    return [{ field: 'link', before: loggedLink(link), after: null }];
   });
 };
