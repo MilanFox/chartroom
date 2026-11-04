@@ -16,10 +16,17 @@ export default defineConfig(async () => ({
         test: {
           name: 'server',
           environment: 'node',
-          include: ['server/**/*.spec.ts'],
+          include: ['server/test/**/*.spec.ts'],
           globalSetup: ['server/test/build-once.ts'],
           testTimeout: 30_000,
           hookTimeout: 60_000,
+        },
+      },
+      {
+        test: {
+          name: 'server-unit',
+          environment: 'node',
+          include: ['server/utils/**/*.spec.ts'],
         },
       },
       {

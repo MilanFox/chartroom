@@ -5,6 +5,8 @@ import type { SQLiteColumn } from 'drizzle-orm/sqlite-core';
 import { changes, issues } from '../db/schema';
 import type { BlockerRef } from './blockers';
 import type { FieldWrite, LoggedValue } from './changes';
+import { conflict, invalid, notFound } from './errors';
+import { blockedCondition, mapFrontierCondition } from './frontier';
 import type { Principal } from './principal';
 import type { Store } from './store';
 import type { IssueState, IssueStatus, IssueView, Kind } from '#shared/domain';
@@ -230,7 +232,7 @@ const assertSingleMap = (effort: number, self: number | null) => {
   if (existing && existing.number !== self) throw conflict(`Effort #${effort} already has map #${existing.number}`, 'parent');
 };
 
-const assertParentAllowed = (kind: Kind, parent: number | null, self: number | null) => {
+export const assertParentAllowed = (kind: Kind, parent: number | null, self: number | null) => {
   if (kind === 'effort' && parent !== null) throw invalid('an Effort takes no parent', 'parent');
   if (parent === null) {
     if (PARENT_REQUIRED.has(kind)) throw invalid(`a ${kind} needs an Effort as parent`, 'parent');
@@ -349,37 +351,6 @@ export const reopenIssue = (number: number, principal: Principal) => {
   const issue = requireIssue(number);
   if (issue.state === 'open') return issue;
   return writeField(number, { field: 'state', before: 'closed', after: 'open' }, principal);
-};
-
-const HEADING = /^(#{1,6})\s+(.*)$/;
-
-const headingOf = (line: string) => {
-  const match = HEADING.exec(line);
-  return match ? { level: match[1]!.length, text: match[2]!.trim() } : null;
-};
-
-export const insertUnderSection = (body: string, section: string, text: string) => {
-  const lines = body.split('\n');
-  const wanted = section.trim();
-  const start = lines.findIndex(line => headingOf(line)?.text === wanted);
-  if (start === -1) throw invalid(`section ${section} does not exist`, 'section');
-  const { level } = headingOf(lines[start]!)!;
-  let end = lines.length;
-  for (let index = start + 1; index < lines.length; index += 1) {
-    const heading = headingOf(lines[index]!);
-    if (heading && heading.level <= level) {
-      end = index;
-      break;
-    }
-  }
-  let last = start;
-  for (let index = end - 1; index > start; index -= 1) {
-    if (lines[index]!.trim() !== '') {
-      last = index;
-      break;
-    }
-  }
-  return [...lines.slice(0, last + 1), ...text.trimEnd().split('\n'), ...lines.slice(last + 1)].join('\n');
 };
 
 export const appendToIssue = (number: number, { section, text }: AppendRequest, principal: Principal) => {
