@@ -265,14 +265,18 @@ describe('the CLI', () => {
     expect(await printedJson(['issue', 'view', String(number)])).toMatchObject({ title: 'First writer', version: version + 1 });
   });
 
-  it('adapter prints issue-tracker.md, adapter --write writes both files byte-identical to the served ones', async () => {
+  it('adapter prints both files under a path marker line each, adapter --write writes them byte-identical to the served ones', async () => {
     const servedFile = async (file: string) => Buffer.from(await (await aliceApi.request('GET', `/instance/adapter/${file}`)).arrayBuffer());
     const directory = join(mkdtempSync(join(tmpdir(), 'chartroom-adapter-')), 'docs', 'agents');
 
     const printed = await chartroom(['adapter']);
     const written = await chartroom(['adapter', '--write', directory]);
 
-    expect(printed).toEqual({ code: 0, stdout: (await servedFile('issue-tracker.md')).toString('utf8'), stderr: '' });
+    expect(printed).toEqual({
+      code: 0,
+      stdout: `<!-- docs/agents/issue-tracker.md -->\n${await servedFile('issue-tracker.md')}<!-- docs/agents/triage-labels.md -->\n${await servedFile('triage-labels.md')}`,
+      stderr: '',
+    });
     expect(written).toEqual({ code: 0, stdout: '', stderr: '' });
     expect(readFileSync(join(directory, 'issue-tracker.md'))).toEqual(await servedFile('issue-tracker.md'));
     expect(readFileSync(join(directory, 'triage-labels.md'))).toEqual(await servedFile('triage-labels.md'));

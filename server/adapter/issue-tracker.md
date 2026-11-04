@@ -6,7 +6,7 @@ Issues, maps and specs for this repo live in the Chartroom instance at **{{baseU
 
 ## Setup
 
-- Repo setup goes through `setup-matt-pocock-skills`: pick "Other" as the issue tracker and give it this paragraph: "Chartroom at `{{baseUrl}}`; run `chartroom adapter --write docs/agents`". Writing the CLAUDE.md block stays that skill's job.
+- Repo setup goes through `setup-matt-pocock-skills`: pick "Other" as the issue tracker and give it this paragraph: "Chartroom at {{baseUrl}}. Run `chartroom adapter` and write each file it prints, verbatim, to the path in its marker line." Each file starts with a `<!-- docs/agents/<file> -->` marker line; leave the markers out of the files. Writing the CLAUDE.md block stays that skill's job. After changing settings on the admin page, refresh both files with `chartroom adapter --write docs/agents`, or re-run the setup skill.
 - The CLI reads `CHARTROOM_URL` (`{{baseUrl}}`) and `CHARTROOM_TOKEN` (a Token holder secret, `chr_…`) from the environment or from `./.env` in the working directory; the environment wins. Put both in your shell or in the repo's untracked `.env`. `--url` and `--token` override them for one call, except on `issue link add`, where `--url` is the Link target.
 - Install it with `npm install -g chartroom-cli@{{major}}` so `chartroom` is on your PATH, or prefix each command with `npx -y chartroom-cli@{{major}}`. The major must match the Instance's (the CLI warns on stderr when it does not). `chartroom` and `chart` are the same binary.
 - Verify with `chartroom me`: it prints the holder you act as. Every claim, comment and Link is attributed to that holder.

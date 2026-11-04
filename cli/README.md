@@ -81,7 +81,10 @@ export CHARTROOM_TOKEN=<secret>
 | List Token holders | `chart holders` |
 | Show the holder behind the token | `chart me` |
 | Show Instance settings and version | `chart instance` |
-| Print the Adapter files, or write them to a directory | `chart adapter --write docs/agents` |
+| Print both Adapter files, each under a `<!-- docs/agents/<file> -->` marker line | `chart adapter` |
+| Write both Adapter files to a directory | `chart adapter --write docs/agents` |
+
+Repo setup goes through `/setup-matt-pocock-skills`: at "Issue tracker" pick Other and answer `` Chartroom at <CHARTROOM_URL>. Run `chartroom adapter` and write each file it prints, verbatim, to the path in its marker line. `` The skill's agent fetches both files itself; `init`'s checklist prints that answer with your URL. After changing settings on the admin page, refresh with `chart adapter --write docs/agents`, or re-run the setup skill.
 
 ## Shared flags
 

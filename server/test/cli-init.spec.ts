@@ -53,6 +53,26 @@ const chartroom = async (argv: string[], version = '7.3.1', terminal?: Terminal)
 // eslint-disable-next-line no-control-regex -- matches the escape sequences the CLI writes
 const stripAnsi = (text: string) => text.replace(/\u001b\[[0-9;]*m/g, '');
 
+const npxHint = (url: string) => `Rather not install it? Prefix commands with npx -y chartroom-cli@7. For scripts without the CLI: ${url}/api/v1/openapi.json (bearer = the Token holder's secret).`;
+
+const plainCopy = (text: string) => `     ${text}`;
+
+const strippedChip = (text: string) => `      ${text} `;
+
+const connectSubsteps = (url: string, hintLines: string[], copy = plainCopy) => [
+  '  a. Install the CLI',
+  copy('npm install -g chartroom-cli@7'),
+  ...hintLines.map(line => `     ${line}`),
+  '',
+  '  b. Add to the repo\'s untracked .env',
+  copy(`CHARTROOM_URL=${url}`),
+  copy('CHARTROOM_TOKEN=<the secret>'),
+  '',
+  '  c. Run /setup-matt-pocock-skills and pick Other at "Issue tracker"',
+  '     Paste this to your agent:',
+  copy(`Chartroom at ${url}. Run \`chartroom adapter\` and write each file it prints, verbatim, to the path in its marker line.`),
+];
+
 const GENERATED_PASSWORD = /^[A-Za-z0-9_-]{24,}$/;
 
 const passwordOf = (envText: string, name: string) => envText.match(new RegExp(`^${name}=(.*)$`, 'm'))![1]!;
@@ -116,12 +136,12 @@ describe('chartroom init', () => {
         `2. Open http://localhost:3000 and sign in with the viewer password (in ${dir}/.env)`,
         `3. Admin → "Enter admin password…" → elevate with the admin password (in ${dir}/.env)`,
         '4. Token holders → create one and copy its secret, it is shown once',
-        '5. In your project repo, run /setup-matt-pocock-skills (issue tracker: Other, "Chartroom at http://localhost:3000"), then:',
-        '  npm install -g chartroom-cli@7',
-        '  Put these two lines in the repo\'s untracked .env:',
-        '    CHARTROOM_URL=http://localhost:3000',
-        '    CHARTROOM_TOKEN=<the secret>',
-        '  chartroom adapter --write docs/agents',
+        '5. In your project repo, connect your agents:',
+        ...connectSubsteps('http://localhost:3000', [
+          'Rather not install it? Prefix commands with npx -y chartroom-cli@7. For',
+          'scripts without the CLI: http://localhost:3000/api/v1/openapi.json (bearer',
+          '= the Token holder\'s secret).',
+        ]),
         '',
         'Project name, Effort word and Environments are optional; change them any time on the admin page.',
         'More: https://github.com/MilanFox/chartroom/blob/main/docs/operating.md',
@@ -229,15 +249,14 @@ describe('chartroom init', () => {
         for (const line of box.slice(1, -1)) expect(line, String(columns)).toMatch(/^│ .* │$/);
         const boxText = box.slice(1, -1).map(line => line.slice(2, -2).trim()).join(' ');
         expect(boxText.replaceAll(' ', ''), String(columns)).toContain(LONG_URL);
-        expect(boxText.replaceAll(' ', ''), String(columns)).toContain(`5.Inyourprojectrepo,run/setup-matt-pocock-skills(issuetracker:Other,"Chartroomat${LONG_URL}"),then:`);
+        expect(boxText.replaceAll(' ', ''), String(columns)).toContain('5.Inyourprojectrepo,connectyouragents(continuebelow)');
         expect(boxText, String(columns)).not.toContain('npm install');
-        expect(lines.slice(bottom + 1).filter(line => line.startsWith('  ')), String(columns)).toEqual([
-          '  npm install -g chartroom-cli@7',
-          '  Put these two lines in the repo\'s untracked .env:',
-          `    CHARTROOM_URL=${LONG_URL}`,
-          '    CHARTROOM_TOKEN=<the secret>',
-          '  chartroom adapter --write docs/agents',
-        ]);
+        expect(lines[bottom + 1], String(columns)).toBe(`── 5. Connect your agents ${'─'.repeat(width - 26)}`);
+        const below = lines.slice(bottom + 2, lines.findIndex(line => line.startsWith('Project name')) - 1);
+        const hintLines = below.slice(2, below.indexOf('')).map(line => line.slice(5));
+        expect(below, String(columns)).toEqual(connectSubsteps(LONG_URL, hintLines, strippedChip));
+        expect(hintLines.join('').replaceAll(' ', ''), String(columns)).toBe(npxHint(LONG_URL).replaceAll(' ', ''));
+        for (const line of hintLines) expect([...line].length, `${columns}: ${line}`).toBeLessThanOrEqual(width - 5);
       }
     });
 
@@ -248,7 +267,10 @@ describe('chartroom init', () => {
 
       expect(result.stderr).toContain('\n\u001b[36m◆\u001b[0m \u001b[1mAdmin password\u001b[0m \u001b[2m(1/7)\u001b[0m\n');
       expect(result.stdout.split('\n')[0]).toBe(`\u001b[32m✔\u001b[0m \u001b[1mChartroom is running in ${dir}\u001b[0m`);
-      expect(result.stdout).toContain('\n    \u001b[36mCHARTROOM_URL=http://localhost:3000\u001b[0m\n');
+      expect(result.stdout).toContain('\n\u001b[2m──\u001b[0m \u001b[1m4. Connect your agents\u001b[0m \u001b[2m─');
+      expect(result.stdout).toContain('\n  a. Install the CLI\n     \u001b[48;5;236;38;5;117m npm install -g chartroom-cli@7 \u001b[0m\n     \u001b[2mRather not install it?');
+      expect(result.stdout).toContain('\n     \u001b[48;5;236;38;5;117m CHARTROOM_URL=http://localhost:3000 \u001b[0m\n');
+      expect(result.stdout).toContain('\n     \u001b[1;33mPaste this to your agent:\u001b[0m\n     \u001b[48;5;236;38;5;117m Chartroom at http://localhost:3000. Run `chartroom adapter` and write each file it prints, verbatim, to the path in its marker line. \u001b[0m\n');
     });
 
     it('writes plain text without a box when NO_COLOR is set or the stream is not a terminal', async () => {
@@ -288,7 +310,7 @@ describe('chartroom init', () => {
       expect(result.stderr).not.toContain('typed-viewer');
       expect(result.stderr).toContain('Admin password: set\nViewer password: set\n');
       expect(result.stdout).toContain('2. Open https://chart.example.com and sign in with your viewer password\n   Put a TLS reverse proxy in front: https://github.com/MilanFox/chartroom/blob/main/docs/operating.md#tls-at-the-reverse-proxy\n');
-      expect(result.stdout).toContain('\n    CHARTROOM_URL=https://chart.example.com\n');
+      expect(result.stdout).toContain('\n     CHARTROOM_URL=https://chart.example.com\n');
       expect(result.stdout).not.toContain('typed-');
       expect(result.stdout).toMatch(new RegExp(`^✔ Wrote compose\\.yaml and \\.env to ${dir}\\n\\nFirst start:\\n`));
       expect(result.stdout).not.toContain(join(dir, '.env'));
@@ -414,7 +436,7 @@ describe('chartroom init', () => {
       expect(result.stdout).not.toContain('docker compose up -d');
       expect(result.stdout).toMatch(new RegExp(`^✔ Chartroom is running in ${dir}\\n`));
       expect(result.stdout).toContain('\n1. Open http://localhost:3000 and sign in with your viewer password\n2. Admin');
-      expect(result.stdout).toContain('\n4. In your project repo, run /setup-matt-pocock-skills (issue tracker: Other, "Chartroom at http://localhost:3000"), then:\n');
+      expect(result.stdout).toContain('\n4. In your project repo, connect your agents:\n  a. Install the CLI\n');
     });
 
     it('a failed start exits with its code and keeps the docker step in the checklist', async () => {
