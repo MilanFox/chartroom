@@ -1,62 +1,12 @@
 import type { H3Event } from 'h3';
 import type { JsonObject } from '../../utils/body';
 import type { Query } from '../../utils/paging';
-import type { IssueCursor, IssueFields, IssueQuery, IssueRecord } from '../../utils/issues';
-import type { BlockerRef } from '../../utils/blockers';
+import type { IssueCursor, IssueFields, IssueQuery } from '../../utils/issues';
 import type { Principal } from '../../utils/principal';
-import { COMMENT_SCHEMA, toComment } from './comments';
-import { LINK_SCHEMA, toLink } from './links';
+import { toDocument, toRows } from '../representations';
+import type { toRow } from '../representations';
+import { nullable, stringList } from '../schemas';
 import { blockerNumberParam, issueNumberParam, labelParam } from './params';
-
-interface RowRelations {
-  labels: string[]
-  blockers: BlockerRef[]
-}
-
-export const toRow = (event: H3Event, issue: IssueRecord, relations?: RowRelations) => {
-  const { labels, blockers } = relations ?? { labels: labelsOf(issue.number), blockers: blockersOf(issue.number) };
-  return {
-    number: issue.number,
-    kind: issue.kind,
-    title: issue.title,
-    state: issue.state,
-    status: statusOf(issue, blockers),
-    assignee: issue.assignee,
-    parent: issue.parent,
-    effort: effortNumberOf(issue),
-    labels,
-    blockedBy: blockers.map(({ number, open }) => ({ number, open })),
-    createdAt: issue.createdAt,
-    updatedAt: issue.updatedAt,
-    url: `${baseUrl(event)}/issues/${issue.number}`,
-  };
-};
-
-export const toDocument = (event: H3Event, issue: IssueRecord) => {
-  const resolution = resolutionOf(issue.number);
-  return {
-    ...toRow(event, issue),
-    body: issue.body,
-    createdBy: issue.createdBy,
-    origin: issue.origin,
-    closedAt: issue.closedAt,
-    version: issue.version,
-    blockedBy: blockersOf(issue.number),
-    blocks: blocksOf(issue.number),
-    children: childNumbers(issue.number),
-    links: linksOf(issue.number).map(toLink),
-    comments: commentsOf(issue.number).map(comment => toComment(event, comment)),
-    resolution: resolution === null ? null : toComment(event, resolution),
-    ...(issue.kind === 'effort' ? { name: issue.name, testInstructions: issue.testInstructions } : {}),
-  };
-};
-
-const toRows = (event: H3Event, records: IssueRecord[]) => {
-  const numbers = records.map(issue => issue.number);
-  const labels = labelsByIssue(numbers);
-  const blockers = blockersByIssue(numbers);
-  return records.map(issue => toRow(event, issue, { labels: labels.get(issue.number) ?? [], blockers: blockers.get(issue.number) ?? [] }));
-};
 
 const parentField = (body: JsonObject) => {
   const value = body.parent;
@@ -296,84 +246,7 @@ export const issueHandlers = {
   blockerRemove,
 };
 
-const nullable = (type: string) => ({ type: [type, 'null'] });
-const stringList = { type: 'array', items: { type: 'string' } };
 const numberList = { type: 'array', items: { type: 'integer' } };
-const issueRef = (properties: Record<string, unknown>) => ({ type: 'object', properties: { number: { type: 'integer' }, ...properties }, required: ['number', ...Object.keys(properties)] });
-const BLOCKER_LIST = { type: 'array', items: issueRef({ open: { type: 'boolean' } }), description: 'Blockers by number; open means the blocker still blocks' };
-
-const ROW_PROPERTIES = {
-  number: { type: 'integer' },
-  kind: { type: 'string', enum: KINDS },
-  title: { type: 'string' },
-  state: { type: 'string', enum: ['open', 'closed'] },
-  status: { type: 'string', enum: ['open', 'claimed', 'blocked', 'closed'] },
-  assignee: nullable('string'),
-  parent: nullable('integer'),
-  effort: nullable('integer'),
-  labels: stringList,
-  blockedBy: BLOCKER_LIST,
-  createdAt: { type: 'string', format: 'date-time' },
-  updatedAt: { type: 'string', format: 'date-time' },
-  url: { type: 'string', format: 'uri' },
-};
-
-export const ROW_SCHEMA = { type: 'object', properties: ROW_PROPERTIES, required: Object.keys(ROW_PROPERTIES) };
-
-const DOCUMENT_PROPERTIES = {
-  ...ROW_PROPERTIES,
-  body: { type: 'string' },
-  createdBy: { type: 'string' },
-  origin: { type: 'string', enum: ['ui', 'api'] },
-  closedAt: nullable('string'),
-  version: { type: 'integer' },
-  blockedBy: { ...BLOCKER_LIST, items: issueRef({ title: { type: 'string' }, open: { type: 'boolean' } }) },
-  blocks: { type: 'array', items: issueRef({ title: { type: 'string' } }), description: 'The issues this one blocks' },
-  children: { type: 'array', items: { type: 'integer' } },
-  links: { type: 'array', items: LINK_SCHEMA },
-  comments: { type: 'array', items: COMMENT_SCHEMA },
-  resolution: { oneOf: [COMMENT_SCHEMA, { type: 'null' }] },
-  name: { ...nullable('string'), description: 'Effort only' },
-  testInstructions: { ...nullable('string'), description: 'Effort only' },
-};
-
-export const DOCUMENT_SCHEMA = {
-  type: 'object',
-  properties: DOCUMENT_PROPERTIES,
-  required: Object.keys(DOCUMENT_PROPERTIES).filter(key => key !== 'name' && key !== 'testInstructions'),
-};
-
-const CHANGE_PROPERTIES = {
-  id: { type: 'integer' },
-  issue: { type: 'integer' },
-  actor: { type: 'string' },
-  origin: { type: 'string', enum: ['ui', 'api'] },
-  at: { type: 'string', format: 'date-time' },
-  field: { type: 'string' },
-  before: nullable('string'),
-  after: nullable('string'),
-};
-
-export const CHANGE_SCHEMA = { type: 'object', properties: CHANGE_PROPERTIES, required: Object.keys(CHANGE_PROPERTIES) };
-
-export const pageSchema = (item: Record<string, unknown>) => ({
-  type: 'object',
-  properties: { items: { type: 'array', items: item }, nextCursor: nullable('string') },
-  required: ['items', 'nextCursor'],
-});
-
-const EFFORT_COUNT_SCHEMA = { type: 'object', properties: { effort: nullable('integer'), count: { type: 'integer' } }, required: ['effort', 'count'] };
-
-const ROW_PAGE_SCHEMA = pageSchema(ROW_SCHEMA);
-
-export const ISSUE_PAGE_SCHEMA = {
-  ...ROW_PAGE_SCHEMA,
-  properties: {
-    ...ROW_PAGE_SCHEMA.properties,
-    effortCounts: { type: 'array', items: EFFORT_COUNT_SCHEMA, description: 'Per Effort, how many issues match the filters across every page; an Effort counts toward itself, null collects issues outside any Effort; ordered by Effort number, null first' },
-  },
-  required: [...ROW_PAGE_SCHEMA.required, 'effortCounts'],
-};
 
 export const ISSUE_FIELDS_SCHEMA = {
   title: { type: 'string' },
@@ -388,10 +261,6 @@ export const ISSUE_CREATE_SCHEMA = {
   labels: { ...stringList, description: 'Applied in order; a label group member removes its siblings' },
   blockedBy: { ...numberList, description: 'Blocker issue numbers; every one must exist' },
 };
-
-export const ISSUE_NUMBER_PARAM = { name: 'number', in: 'path' as const, required: true, schema: { type: 'integer' } };
-export const BLOCKER_NUMBER_PARAM = { name: 'blocker', in: 'path' as const, required: true, schema: { type: 'integer' } };
-export const LABEL_PARAM = { name: 'label', in: 'path' as const, required: true, schema: { type: 'string' }, description: 'URL-encoded, trimmed, non-blank' };
 
 const queryParam = (name: string, schema: Record<string, unknown>, description: string) => ({ name, in: 'query' as const, schema, description });
 
@@ -408,9 +277,4 @@ export const ISSUE_LIST_PARAMS = [
   queryParam('view', { type: 'string', enum: ISSUE_VIEWS }, 'A Saved view; explicit filters narrow within it. frontier: open, unassigned, no open blocker, Parent is a map. mine: open and held by the caller, refused without a Token holder. needs-triage: open and labelled needs-triage. blocked: open with an open blocker. closed-recent: closed in the last 7 days'),
   queryParam('sort', { type: 'string', default: 'number' }, `One of ${ISSUE_SORTS.join(', ')}, or a Label group id to order by its member order with issues carrying no member last in either order; number breaks ties`),
   queryParam('order', { type: 'string', enum: SORT_ORDERS, default: 'asc' }, 'The sort direction'),
-];
-
-export const PAGING_PARAMS = [
-  { name: 'limit', in: 'query' as const, schema: { type: 'integer', minimum: 1, maximum: 200, default: 50 } },
-  { name: 'cursor', in: 'query' as const, schema: { type: 'string' }, description: 'The nextCursor of the previous page' },
 ];

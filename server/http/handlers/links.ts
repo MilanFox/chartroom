@@ -1,21 +1,10 @@
 import type { H3Event } from 'h3';
 import type { JsonObject } from '../../utils/body';
-import type { LinkFields, LinkRecord } from '../../utils/links';
+import type { LinkFields } from '../../utils/links';
 import type { Query } from '../../utils/paging';
 import type { Principal } from '../../utils/principal';
+import { LINK_FIELDS, toLink } from '../representations';
 import { issueNumberParam, linkIdParam } from './params';
-
-export const toLink = (link: LinkRecord) => ({
-  id: link.id,
-  issue: link.issue,
-  role: link.role,
-  type: link.type,
-  url: link.url,
-  title: link.title,
-  addedBy: link.addedBy,
-  origin: link.origin,
-  createdAt: link.createdAt,
-});
 
 export const absoluteUrl = (body: JsonObject) => {
   const value = body.url;
@@ -74,23 +63,5 @@ export const linkHandlers = {
 
 export const LINK_ID_PARAM = { name: 'id', in: 'path' as const, required: true, schema: { type: 'integer' } };
 
-const LINK_FIELDS = {
-  role: { type: 'string', enum: LINK_ROLES },
-  type: { type: 'string', enum: LINK_TYPES, description: 'external is the fallback' },
-  title: { type: 'string' },
-};
-
 export const LINK_CREATE_SCHEMA = { type: 'object', properties: { ...LINK_FIELDS, url: { type: 'string', format: 'uri', description: 'Absolute; unique per issue' } }, required: ['role', 'type', 'url', 'title'] };
 export const LINK_FIELDS_SCHEMA = { type: 'object', properties: LINK_FIELDS };
-
-const LINK_PROPERTIES = {
-  id: { type: 'integer' },
-  issue: { type: 'integer' },
-  ...LINK_FIELDS,
-  url: { type: 'string', format: 'uri', description: 'The target; a Link has no tracker address' },
-  addedBy: { type: 'string' },
-  origin: { type: 'string', enum: ['ui', 'api'] },
-  createdAt: { type: 'string', format: 'date-time' },
-};
-
-export const LINK_SCHEMA = { type: 'object', properties: LINK_PROPERTIES, required: Object.keys(LINK_PROPERTIES) };

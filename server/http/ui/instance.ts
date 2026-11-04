@@ -3,7 +3,7 @@ import type { JsonObject } from '../../utils/body';
 import type { EnvironmentFields, EnvironmentRecord, PointerFields, PointerRecord } from '../../utils/environments';
 import type { SettingsPatch } from '../../utils/instance';
 import type { Principal } from '../../utils/principal';
-import { ENVIRONMENT_SCHEMA, POINTER_SCHEMA, toEnvironment, toPointer } from '../handlers/environments';
+import { ENVIRONMENT_SCHEMA, POINTER_SCHEMA, toEnvironment, toPointer } from '../representations';
 import { SETTINGS_PROPERTIES } from '../handlers/instance';
 import { absoluteUrl } from '../handlers/links';
 import type { MountRoute } from '../mount';

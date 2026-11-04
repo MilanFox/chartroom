@@ -1,8 +1,7 @@
 import type { H3Event } from 'h3';
 import type { Principal } from '../../utils/principal';
-import { fullHolder } from '../handlers/holders';
 import type { MountRoute } from '../mount';
-import type { JsonSchema } from '../table';
+import { fullHolder, HOLDER_SCHEMA, HOLDER_WITH_SECRET_SCHEMA } from '../representations';
 
 const create = async (event: H3Event, principal: Principal) => {
   const body = await readJsonObject(event);
@@ -19,19 +18,6 @@ const rotate = (event: H3Event, principal: Principal) => {
 
 const revoke = (event: H3Event, principal: Principal) => fullHolder(revokeHolder(getRouterParam(event, 'slug')!, actorSlug(principal)));
 
-const HOLDER_PROPERTIES = {
-  slug: { type: 'string' },
-  displayName: { type: ['string', 'null'] },
-  revoked: { type: 'boolean' },
-  createdAt: { type: 'string' },
-  revokedAt: { type: ['string', 'null'] },
-  lastUsedAt: { type: ['string', 'null'] },
-  updatedAt: { type: 'string' },
-  updatedBy: { type: 'string' },
-  secretHistory: { type: 'array', items: { type: 'object', properties: { hash: { type: 'string' }, createdAt: { type: 'string' }, revokedAt: { type: ['string', 'null'] } } } },
-};
-const HOLDER_SCHEMA: JsonSchema = { type: 'object', properties: HOLDER_PROPERTIES, required: ['slug', 'displayName', 'revoked'] };
-const HOLDER_WITH_SECRET_SCHEMA: JsonSchema = { type: 'object', properties: { ...HOLDER_PROPERTIES, secret: { type: 'string' } }, required: ['slug', 'displayName', 'revoked', 'secret'] };
 const NO_SUCH_HOLDER = { description: 'No such holder' };
 
 export const holderAdminRoutes: MountRoute[] = [

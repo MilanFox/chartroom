@@ -1,0 +1,294 @@
+import type { H3Event } from 'h3';
+import type { EnvironmentRecord, PointerRecord } from '../utils/environments';
+import type { HolderRecord } from '../utils/holders';
+import type { BlockerRef } from '../utils/blockers';
+import type { CommentRecord } from '../utils/comments';
+import type { IssueRecord } from '../utils/issues';
+import type { LinkRecord } from '../utils/links';
+import type { JsonSchema } from './table';
+import { nullable, pageSchema, stringList } from './schemas';
+
+interface RowRelations {
+  labels: string[]
+  blockers: BlockerRef[]
+}
+
+export const toRow = (event: H3Event, issue: IssueRecord, relations?: RowRelations) => {
+  const { labels, blockers } = relations ?? { labels: labelsOf(issue.number), blockers: blockersOf(issue.number) };
+  return {
+    number: issue.number,
+    kind: issue.kind,
+    title: issue.title,
+    state: issue.state,
+    status: statusOf(issue, blockers),
+    assignee: issue.assignee,
+    parent: issue.parent,
+    effort: effortNumberOf(issue),
+    labels,
+    blockedBy: blockers.map(({ number, open }) => ({ number, open })),
+    createdAt: issue.createdAt,
+    updatedAt: issue.updatedAt,
+    url: `${baseUrl(event)}/issues/${issue.number}`,
+  };
+};
+
+export const toDocument = (event: H3Event, issue: IssueRecord) => {
+  const resolution = resolutionOf(issue.number);
+  return {
+    ...toRow(event, issue),
+    body: issue.body,
+    createdBy: issue.createdBy,
+    origin: issue.origin,
+    closedAt: issue.closedAt,
+    version: issue.version,
+    blockedBy: blockersOf(issue.number),
+    blocks: blocksOf(issue.number),
+    children: childNumbers(issue.number),
+    links: linksOf(issue.number).map(toLink),
+    comments: commentsOf(issue.number).map(comment => toComment(event, comment)),
+    resolution: resolution === null ? null : toComment(event, resolution),
+    ...(issue.kind === 'effort' ? { name: issue.name, testInstructions: issue.testInstructions } : {}),
+  };
+};
+
+export const toRows = (event: H3Event, records: IssueRecord[]) => {
+  const numbers = records.map(issue => issue.number);
+  const labels = labelsByIssue(numbers);
+  const blockers = blockersByIssue(numbers);
+  return records.map(issue => toRow(event, issue, { labels: labels.get(issue.number) ?? [], blockers: blockers.get(issue.number) ?? [] }));
+};
+
+export const toComment = (event: H3Event, comment: CommentRecord) => ({
+  id: comment.id,
+  issue: comment.issue,
+  author: comment.author,
+  body: comment.body,
+  origin: comment.origin,
+  resolution: comment.resolution,
+  createdAt: comment.createdAt,
+  updatedAt: comment.updatedAt,
+  url: `${baseUrl(event)}/issues/${comment.issue}#comment-${comment.id}`,
+});
+
+const COMMENT_PROPERTIES = {
+  id: { type: 'integer' },
+  issue: { type: 'integer' },
+  author: { type: 'string' },
+  body: { type: 'string' },
+  origin: { type: 'string', enum: ['ui', 'api'] },
+  resolution: { type: 'boolean', description: 'Set only through close; the Resolution of the issue' },
+  createdAt: { type: 'string', format: 'date-time' },
+  updatedAt: { type: 'string', format: 'date-time' },
+  url: { type: 'string', format: 'uri' },
+};
+
+export const COMMENT_SCHEMA = { type: 'object', properties: COMMENT_PROPERTIES, required: Object.keys(COMMENT_PROPERTIES) };
+
+export const toLink = (link: LinkRecord) => ({
+  id: link.id,
+  issue: link.issue,
+  role: link.role,
+  type: link.type,
+  url: link.url,
+  title: link.title,
+  addedBy: link.addedBy,
+  origin: link.origin,
+  createdAt: link.createdAt,
+});
+
+export const LINK_FIELDS = {
+  role: { type: 'string', enum: LINK_ROLES },
+  type: { type: 'string', enum: LINK_TYPES, description: 'external is the fallback' },
+  title: { type: 'string' },
+};
+
+const LINK_PROPERTIES = {
+  id: { type: 'integer' },
+  issue: { type: 'integer' },
+  ...LINK_FIELDS,
+  url: { type: 'string', format: 'uri', description: 'The target; a Link has no tracker address' },
+  addedBy: { type: 'string' },
+  origin: { type: 'string', enum: ['ui', 'api'] },
+  createdAt: { type: 'string', format: 'date-time' },
+};
+
+export const LINK_SCHEMA = { type: 'object', properties: LINK_PROPERTIES, required: Object.keys(LINK_PROPERTIES) };
+
+const issueRef = (properties: Record<string, unknown>) => ({ type: 'object', properties: { number: { type: 'integer' }, ...properties }, required: ['number', ...Object.keys(properties)] });
+const BLOCKER_LIST = { type: 'array', items: issueRef({ open: { type: 'boolean' } }), description: 'Blockers by number; open means the blocker still blocks' };
+
+const ROW_PROPERTIES = {
+  number: { type: 'integer' },
+  kind: { type: 'string', enum: KINDS },
+  title: { type: 'string' },
+  state: { type: 'string', enum: ['open', 'closed'] },
+  status: { type: 'string', enum: ['open', 'claimed', 'blocked', 'closed'] },
+  assignee: nullable('string'),
+  parent: nullable('integer'),
+  effort: nullable('integer'),
+  labels: stringList,
+  blockedBy: BLOCKER_LIST,
+  createdAt: { type: 'string', format: 'date-time' },
+  updatedAt: { type: 'string', format: 'date-time' },
+  url: { type: 'string', format: 'uri' },
+};
+
+export const ROW_SCHEMA = { type: 'object', properties: ROW_PROPERTIES, required: Object.keys(ROW_PROPERTIES) };
+
+const DOCUMENT_PROPERTIES = {
+  ...ROW_PROPERTIES,
+  body: { type: 'string' },
+  createdBy: { type: 'string' },
+  origin: { type: 'string', enum: ['ui', 'api'] },
+  closedAt: nullable('string'),
+  version: { type: 'integer' },
+  blockedBy: { ...BLOCKER_LIST, items: issueRef({ title: { type: 'string' }, open: { type: 'boolean' } }) },
+  blocks: { type: 'array', items: issueRef({ title: { type: 'string' } }), description: 'The issues this one blocks' },
+  children: { type: 'array', items: { type: 'integer' } },
+  links: { type: 'array', items: LINK_SCHEMA },
+  comments: { type: 'array', items: COMMENT_SCHEMA },
+  resolution: { oneOf: [COMMENT_SCHEMA, { type: 'null' }] },
+  name: { ...nullable('string'), description: 'Effort only' },
+  testInstructions: { ...nullable('string'), description: 'Effort only' },
+};
+
+export const DOCUMENT_SCHEMA = {
+  type: 'object',
+  properties: DOCUMENT_PROPERTIES,
+  required: Object.keys(DOCUMENT_PROPERTIES).filter(key => key !== 'name' && key !== 'testInstructions'),
+};
+
+const CHANGE_PROPERTIES = {
+  id: { type: 'integer' },
+  issue: { type: 'integer' },
+  actor: { type: 'string' },
+  origin: { type: 'string', enum: ['ui', 'api'] },
+  at: { type: 'string', format: 'date-time' },
+  field: { type: 'string' },
+  before: nullable('string'),
+  after: nullable('string'),
+};
+
+export const CHANGE_SCHEMA = { type: 'object', properties: CHANGE_PROPERTIES, required: Object.keys(CHANGE_PROPERTIES) };
+
+const EFFORT_COUNT_SCHEMA = { type: 'object', properties: { effort: nullable('integer'), count: { type: 'integer' } }, required: ['effort', 'count'] };
+
+const ROW_PAGE_SCHEMA = pageSchema(ROW_SCHEMA);
+
+export const ISSUE_PAGE_SCHEMA = {
+  ...ROW_PAGE_SCHEMA,
+  properties: {
+    ...ROW_PAGE_SCHEMA.properties,
+    effortCounts: { type: 'array', items: EFFORT_COUNT_SCHEMA, description: 'Per Effort, how many issues match the filters across every page; an Effort counts toward itself, null collects issues outside any Effort; ordered by Effort number, null first' },
+  },
+  required: [...ROW_PAGE_SCHEMA.required, 'effortCounts'],
+};
+
+export const toPointer = (pointer: PointerRecord) => ({
+  id: pointer.id,
+  label: pointer.label,
+  accountName: pointer.accountName,
+  whereToFind: pointer.whereToFind,
+  environment: pointer.environment,
+});
+
+export const toEnvironment = (environment: EnvironmentRecord, pointers: PointerRecord[] | null) => ({
+  id: environment.id,
+  name: environment.name,
+  url: environment.url,
+  notes: environment.notes,
+  ...(pointers ? { credentialPointers: pointers.filter(pointer => pointer.environment === environment.id).map(toPointer) } : {}),
+});
+
+const POINTER_PROPERTIES = {
+  id: { type: 'integer' },
+  label: { type: 'string' },
+  accountName: { type: 'string' },
+  whereToFind: { type: 'string' },
+  environment: { type: ['integer', 'null'], description: 'The bound Environment id, null for any environment' },
+};
+
+export const POINTER_SCHEMA = { type: 'object', properties: POINTER_PROPERTIES, required: Object.keys(POINTER_PROPERTIES) };
+
+const ENVIRONMENT_PROPERTIES = {
+  id: { type: 'integer' },
+  name: { type: 'string' },
+  url: { type: 'string' },
+  notes: { type: ['string', 'null'] },
+  credentialPointers: { type: 'array', items: POINTER_SCHEMA, description: 'Omitted for a non-elevated Viewer' },
+};
+
+export const ENVIRONMENT_SCHEMA = { type: 'object', properties: ENVIRONMENT_PROPERTIES, required: ['id', 'name', 'url', 'notes'] };
+
+export const basicHolder = (holder: HolderRecord) => ({
+  slug: holder.slug,
+  displayName: holder.displayName,
+  revoked: holder.revokedAt !== null,
+});
+
+export const fullHolder = (holder: HolderRecord) => ({
+  ...basicHolder(holder),
+  createdAt: holder.createdAt,
+  revokedAt: holder.revokedAt,
+  lastUsedAt: holder.lastUsedAt,
+  updatedAt: holder.updatedAt,
+  updatedBy: holder.updatedBy,
+  secretHistory: secretHistoryOf(holder.slug).map(({ hash, createdAt, revokedAt }) => ({ hash, createdAt, revokedAt })),
+});
+
+const HOLDER_PROPERTIES = {
+  slug: { type: 'string' },
+  displayName: { type: ['string', 'null'] },
+  revoked: { type: 'boolean' },
+  createdAt: { type: 'string' },
+  revokedAt: { type: ['string', 'null'] },
+  lastUsedAt: { type: ['string', 'null'] },
+  updatedAt: { type: 'string' },
+  updatedBy: { type: 'string' },
+  secretHistory: { type: 'array', items: { type: 'object', properties: { hash: { type: 'string' }, createdAt: { type: 'string' }, revokedAt: { type: ['string', 'null'] } } } },
+};
+export const HOLDER_SCHEMA: JsonSchema = { type: 'object', properties: HOLDER_PROPERTIES, required: ['slug', 'displayName', 'revoked'] };
+export const HOLDER_WITH_SECRET_SCHEMA: JsonSchema = { type: 'object', properties: { ...HOLDER_PROPERTIES, secret: { type: 'string' } }, required: ['slug', 'displayName', 'revoked', 'secret'] };
+
+export const toEffortDocument = (event: H3Event, effort: IssueRecord) => {
+  const children = childrenOf(effort.number);
+  const map = children.find(child => child.kind === 'map');
+  return {
+    ...toDocument(event, effort),
+    statusRollup: statusRollupOf(effort.number),
+    linkRollup: linkRollupOf(effort.number),
+    map: map ? toRow(event, map) : null,
+    specs: children.filter(child => child.kind === 'spec').map(spec => toRow(event, spec)),
+  };
+};
+
+const countRecord = { type: 'object', additionalProperties: { type: 'integer' } };
+
+const STATUS_ROLLUP_SCHEMA = {
+  type: 'object',
+  description: 'Computed, never stored',
+  properties: {
+    map: { oneOf: [{ type: 'object', properties: { state: { type: 'string', enum: ['open', 'closed'] }, frontier: { type: 'integer', description: 'Open, unassigned children of the map with no open blocker' } }, required: ['state', 'frontier'] }, { type: 'null' }] },
+    specs: { type: 'array', items: { type: 'object', properties: { number: { type: 'integer' }, tickets: { ...countRecord, description: 'The children of the spec by status' } }, required: ['number', 'tickets'] } },
+    triage: { ...countRecord, description: 'Tickets parented straight to the Effort, one bucket per triage-state member plus none' },
+    open: { type: 'integer', description: 'Open issues in the subtree, the Effort itself excluded' },
+  },
+  required: ['map', 'specs', 'triage', 'open'],
+};
+
+const ROLLED_UP_LINK_SCHEMA = {
+  type: 'object',
+  properties: { url: LINK_SCHEMA.properties.url, title: { type: 'string' }, type: LINK_SCHEMA.properties.type, sources: { type: 'array', items: { type: 'integer' }, description: 'Every issue in the subtree carrying the URL' } },
+  required: ['url', 'title', 'type', 'sources'],
+};
+
+const EFFORT_DOCUMENT_PROPERTIES = {
+  ...DOCUMENT_SCHEMA.properties,
+  statusRollup: STATUS_ROLLUP_SCHEMA,
+  linkRollup: { type: 'object', description: 'Every Link in the subtree, closed tickets included, deduped by URL', properties: { resource: { type: 'array', items: ROLLED_UP_LINK_SCHEMA }, artifact: { type: 'array', items: ROLLED_UP_LINK_SCHEMA } }, required: ['resource', 'artifact'] },
+  map: { oneOf: [ROW_SCHEMA, { type: 'null' }] },
+  specs: { type: 'array', items: ROW_SCHEMA },
+};
+
+export const EFFORT_DOCUMENT_SCHEMA = { type: 'object', properties: EFFORT_DOCUMENT_PROPERTIES, required: [...DOCUMENT_SCHEMA.required, 'name', 'testInstructions', 'statusRollup', 'linkRollup', 'map', 'specs'] };
+export const EFFORT_PAGE_SCHEMA = pageSchema(EFFORT_DOCUMENT_SCHEMA);

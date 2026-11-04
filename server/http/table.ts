@@ -1,12 +1,14 @@
 import type { H3Event } from 'h3';
 import type { Principal } from '../utils/principal';
 import { holderRoster } from './handlers/holders';
-import { BLOCKER_NUMBER_PARAM, CHANGE_SCHEMA, DOCUMENT_SCHEMA, ISSUE_CREATE_SCHEMA, ISSUE_FIELDS_SCHEMA, ISSUE_LIST_PARAMS, ISSUE_NUMBER_PARAM, ISSUE_PAGE_SCHEMA, issueHandlers, LABEL_PARAM, PAGING_PARAMS, pageSchema } from './handlers/issues';
-import { EFFORT_DOCUMENT_SCHEMA, EFFORT_HANDLE_PARAM, EFFORT_LIST_PARAMS, EFFORT_PAGE_SCHEMA, effortHandlers } from './handlers/efforts';
-import { COMMENT_BODY_SCHEMA, COMMENT_ID_PARAM, COMMENT_SCHEMA, commentHandlers } from './handlers/comments';
+import { CHANGE_SCHEMA, COMMENT_SCHEMA, DOCUMENT_SCHEMA, EFFORT_DOCUMENT_SCHEMA, EFFORT_PAGE_SCHEMA, ENVIRONMENT_SCHEMA, ISSUE_PAGE_SCHEMA, LINK_SCHEMA, POINTER_SCHEMA } from './representations';
+import { BLOCKER_NUMBER_PARAM, ISSUE_NUMBER_PARAM, LABEL_PARAM, PAGING_PARAMS, pageSchema } from './schemas';
+import { ISSUE_CREATE_SCHEMA, ISSUE_FIELDS_SCHEMA, ISSUE_LIST_PARAMS, issueHandlers } from './handlers/issues';
+import { EFFORT_HANDLE_PARAM, EFFORT_LIST_PARAMS, effortHandlers } from './handlers/efforts';
+import { COMMENT_BODY_SCHEMA, COMMENT_ID_PARAM, commentHandlers } from './handlers/comments';
 import { LABEL_GROUP_SCHEMA, labelGroupList } from './handlers/labels';
-import { LINK_CREATE_SCHEMA, LINK_FIELDS_SCHEMA, LINK_ID_PARAM, LINK_SCHEMA, linkHandlers } from './handlers/links';
-import { ENVIRONMENT_SCHEMA, environmentList, POINTER_SCHEMA, pointerList } from './handlers/environments';
+import { LINK_CREATE_SCHEMA, LINK_FIELDS_SCHEMA, LINK_ID_PARAM, linkHandlers } from './handlers/links';
+import { environmentList, pointerList } from './handlers/environments';
 import { adapterFile, INSTANCE_SCHEMA, instanceRead } from './handlers/instance';
 import { API_ME_SCHEMA, me } from './handlers/me';
 
