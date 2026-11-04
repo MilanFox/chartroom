@@ -70,6 +70,7 @@ describe('the OpenAPI document', () => {
     expect(document.paths['/login']).toBeUndefined();
     expect(document.paths['/label-groups']).toBeUndefined();
     expect(document.paths['/labels/free-form']).toBeUndefined();
+    expect(document.paths['/snapshots']).toBeUndefined();
     expect(document.security).toEqual([{ bearer: [] }]);
     expect(document.components.securitySchemes).toEqual({ bearer: { type: 'http', scheme: 'bearer' } });
   });
@@ -93,6 +94,8 @@ describe('the OpenAPI document', () => {
     expect(Object.keys(document.paths['/label-groups/{id}/labels/order']!)).toEqual(['put']);
     expect(Object.keys(document.paths['/label-groups/{id}/labels/{label}']!)).toEqual(['patch', 'delete']);
     expect(Object.keys(document.paths['/labels/free-form']!)).toEqual(['get']);
+    expect(Object.keys(document.paths['/snapshots']!)).toEqual(['get', 'post']);
+    expect(Object.keys(document.paths['/snapshots/{name}']!)).toEqual(['get', 'delete']);
     expect(document.security).toEqual([{ session: [] }]);
     expect(document.components.securitySchemes).toEqual({ session: { type: 'apiKey', in: 'cookie', name: 'chartroom_session' } });
   });

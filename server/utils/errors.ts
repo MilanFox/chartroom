@@ -2,16 +2,18 @@ export const ERROR_CODES = ['not-found', 'conflict', 'invalid', 'forbidden', 'un
 
 export type ErrorCode = typeof ERROR_CODES[number];
 
+type ApiErrorCode = ErrorCode | 'internal';
+
 interface ApiErrorInit {
   status: number
-  code: ErrorCode
+  code: ApiErrorCode
   message: string
   field?: string
 }
 
 export class ApiError extends Error {
   readonly status: number;
-  readonly code: ErrorCode;
+  readonly code: ApiErrorCode;
   readonly field: string | undefined;
 
   constructor({ status, code, message, field }: ApiErrorInit) {
@@ -33,3 +35,4 @@ export const forbidden = (message: string) => new ApiError({ status: 403, code: 
 export const unauthenticated = (message: string) => new ApiError({ status: 401, code: 'unauthenticated', message });
 export const rateLimited = (message: string) => new ApiError({ status: 429, code: 'rate-limited', message });
 export const unsupportedMediaType = () => new ApiError({ status: 415, code: 'invalid', message: 'request body must be application/json' });
+export const internalError = (message: string) => new ApiError({ status: 500, code: 'internal', message });

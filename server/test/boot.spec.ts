@@ -33,7 +33,7 @@ describe('boot without a required password', () => {
 });
 
 describe('second boot on the same data dir', () => {
-  it('is healthy and runs no migration again', async () => {
+  it('is healthy, runs no migration again and takes no Snapshot', async () => {
     const first = await bootServer();
     await first.kill();
     expect((await first.exited).stdout).toContain('applied migrations: 0000_label-groups');
@@ -44,6 +44,7 @@ describe('second boot on the same data dir', () => {
 
     expect(response.status).toBe(200);
     expect((await second.exited).stdout).toContain('schema up to date');
+    expect(readdirSync(join(second.dataDir, 'backups'))).toEqual([]);
     await second.stop();
   });
 });

@@ -14,7 +14,7 @@ let current: Store | undefined;
 export const storeFile = (dataDir: string) => join(dataDir, 'chartroom.sqlite');
 
 export const openStore = (dataDir: string) => {
-  mkdirSync(join(dataDir, 'backups'), { recursive: true });
+  mkdirSync(backupsDir(dataDir), { recursive: true });
   const sqlite = new Database(storeFile(dataDir), { timeout: BUSY_TIMEOUT_MS });
   sqlite.pragma('journal_mode = WAL');
   sqlite.pragma('synchronous = NORMAL');
