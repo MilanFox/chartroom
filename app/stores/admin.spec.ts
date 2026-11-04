@@ -3,6 +3,8 @@ import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { apiFailure } from '~/test/issue-fixture';
 import { useInstanceStore } from './instance';
+import { useEnvironmentsStore } from './environments';
+import { useHoldersStore } from './holders';
 import { useLabelGroupsStore } from './label-groups';
 import { useAdminStore } from './admin';
 
@@ -45,9 +47,9 @@ describe('useAdminStore', () => {
 
     await admin.load();
 
-    expect(admin.environments).toEqual([staging]);
-    expect(admin.pointers).toBeNull();
-    expect(admin.holders).toBeNull();
+    expect(useEnvironmentsStore().environments).toEqual([staging]);
+    expect(useEnvironmentsStore().pointers).toBeNull();
+    expect(useHoldersStore().holders).toBeNull();
     expect(admin.runtimeSettings).toEqual(runtimeSettings);
     expect(admin.firstRun).toBe(true);
     expect(admin.snapshots).toBeNull();
@@ -73,44 +75,6 @@ describe('useAdminStore', () => {
 
     expect(sent).toEqual([settings]);
     expect(useInstanceStore().instance?.projectName).toBe('Acme Tracker');
-  });
-
-  it('deleting an Environment rereads the pointers, which come back unbound', async () => {
-    let environments = [staging];
-    let pointerEnvironment: number | null = 1;
-    endpoint('/ui/environments', { method: 'GET', handler: () => environments });
-    endpoint('/ui/credential-pointers', { method: 'GET', handler: () => [{ id: 4, label: 'QA', accountName: 'qa', whereToFind: 'Vault', environment: pointerEnvironment }] });
-    endpoint('/ui/environments/1', {
-      method: 'DELETE', handler: () => {
-        environments = [];
-        pointerEnvironment = null;
-        return noContent();
-      },
-    });
-    const admin = useAdminStore();
-
-    await admin.deleteEnvironment(1);
-
-    expect(admin.environments).toEqual([]);
-    expect(admin.pointers?.map(pointer => pointer.environment)).toEqual([null]);
-  });
-
-  it('hands back a new holder\'s one-time secret and rereads the roster, which never carries it', async () => {
-    const roster: unknown[] = [];
-    endpoint('/ui/holders', { method: 'GET', handler: () => roster });
-    endpoint('/ui/holders', {
-      method: 'POST', handler: async (event) => {
-        const { slug } = await requestJson(event);
-        roster.push({ slug, displayName: null, revoked: false });
-        return { slug, displayName: null, revoked: false, secret: 'chr_alice_secret' };
-      },
-    });
-    const admin = useAdminStore();
-
-    const created = await admin.createHolder({ slug: 'alice', displayName: null });
-
-    expect(created.secret).toBe('chr_alice_secret');
-    expect(admin.holders).toEqual([{ slug: 'alice', displayName: null, revoked: false }]);
   });
 
   it('taking a Snapshot rereads the list, newest first', async () => {

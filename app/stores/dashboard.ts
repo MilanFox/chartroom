@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import type { CredentialPointer, EffortDocument, Environment, IssueDocument, IssuePage, IssueRow } from '~/types/api';
+import type { EffortDocument, IssueDocument, IssuePage, IssueRow } from '~/types/api';
 
 const PAGE_LIMIT = 200;
 
@@ -8,8 +8,6 @@ export const useDashboardStore = defineStore('dashboard', () => {
   const effort = ref<EffortDocument | null>(null);
   const rows = ref<IssueRow[]>([]);
   const parentBodies = ref<Record<number, string>>({});
-  const environments = ref<Environment[]>([]);
-  const pointers = ref<CredentialPointer[] | null>(null);
   let latestLoad = 0;
 
   const subtreeOf = async (number: number) => {
@@ -45,19 +43,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
 
   const openChildren = computed(() => rows.value.filter(row => row.state === 'open').length);
 
-  const loadEnvironments = async () => {
-    const [listed, allPointers] = await Promise.all([
-      uiFetch<Environment[]>('/environments'),
-      uiFetch<CredentialPointer[]>('/credential-pointers').catch((error) => {
-        if (apiErrorCode(error) !== 'forbidden') throw error;
-        return null;
-      }),
-    ]);
-    environments.value = listed;
-    pointers.value = allPointers;
-  };
-
   const artifactsMarkdown = async () => (effort.value ? uiFetch<string>(`/efforts/${effort.value.number}/artifacts.md`) : '');
 
-  return { effort, rows, parentBodies, environments, pointers, openChildren, load, refresh, loadEnvironments, artifactsMarkdown };
+  return { effort, rows, parentBodies, openChildren, load, refresh, artifactsMarkdown };
 });

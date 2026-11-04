@@ -1,7 +1,7 @@
 import { mountSuspended, registerEndpoint } from '@nuxt/test-utils/runtime';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { nextTick } from 'vue';
-import { useAdminStore } from '~/stores/admin';
+import { useEnvironmentsStore } from '~/stores/environments';
 import { useSessionStore } from '~/stores/session';
 import { viewerSession } from '~/test/issue-fixture';
 import AdminEnvironments from './AdminEnvironments.vue';
@@ -36,7 +36,7 @@ describe('AdminEnvironments', () => {
         return {};
       },
     }));
-    const admin = useAdminStore();
+    const admin = useEnvironmentsStore();
     admin.environments = [staging];
     admin.pointers = [{ id: 4, label: 'QA', accountName: 'qa', whereToFind: 'Vault', environment: null }];
   });

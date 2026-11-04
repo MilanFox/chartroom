@@ -150,7 +150,7 @@ const holderLabel = (slug: string, displayName: string | null, revoked: boolean)
 };
 
 const assigneeOptions = computed(() => {
-  const options = holdersStore.holders.map(({ slug, displayName, revoked }) => ({ slug, label: holderLabel(slug, displayName, revoked) }));
+  const options = holdersStore.assignable.map(({ slug, displayName, revoked }) => ({ slug, label: holderLabel(slug, displayName, revoked) }));
   const { assignee } = filters.value;
   if (assignee && assignee !== UNASSIGNED && !options.some(option => option.slug === assignee)) options.push({ slug: assignee, label: holderLabel(assignee, null, false) });
   return options;

@@ -36,7 +36,7 @@ const emit = defineEmits<{ saved: [], cancel: [] }>();
 
 type FieldKey = 'name' | 'url' | 'notes';
 
-const admin = useAdminStore();
+const environmentsStore = useEnvironmentsStore();
 const { strings } = useStrings();
 const formId = useId();
 const draft = reactive<Record<FieldKey, string>>({ name: props.environment?.name ?? '', url: props.environment?.url ?? '', notes: props.environment?.notes ?? '' });
@@ -62,8 +62,8 @@ const submit = async () => {
   formError.value = '';
   const input = { name: draft.name.trim(), url: draft.url.trim(), notes: draft.notes.trim() || null };
   try {
-    if (props.environment) await admin.updateEnvironment(props.environment.id, input);
-    else await admin.createEnvironment(input);
+    if (props.environment) await environmentsStore.updateEnvironment(props.environment.id, input);
+    else await environmentsStore.createEnvironment(input);
     emit('saved');
   }
   catch (failure) {

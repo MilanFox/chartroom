@@ -1,7 +1,7 @@
 import { mountSuspended, registerEndpoint } from '@nuxt/test-utils/runtime';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { apiFailure } from '~/test/issue-fixture';
-import { useAdminStore } from '~/stores/admin';
+import { useEnvironmentsStore } from '~/stores/environments';
 import PointerForm from './PointerForm.vue';
 
 const dev = { id: 1, name: 'Dev', url: 'https://dev.example.test', notes: null };
@@ -48,7 +48,7 @@ describe('PointerForm', () => {
     }));
     unregister.push(registerEndpoint('/ui/credential-pointers', { method: 'GET', handler: () => [] }));
     unregister.push(registerEndpoint('/ui/environments', { method: 'GET', handler: () => [dev] }));
-    useAdminStore().environments = [dev];
+    useEnvironmentsStore().environments = [dev];
     const wrapper = await mountSuspended(PointerForm);
 
     await wrapper.get('input[name="label"]').setValue('Deploy bot');

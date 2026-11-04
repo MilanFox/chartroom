@@ -32,7 +32,7 @@
       >
         <option :value="null">{{ strings.admin.environments.anyEnvironment }}</option>
 
-        <option v-for="option in admin.environments" :key="option.id" :value="option.id">{{ option.name }}</option>
+        <option v-for="option in environmentsStore.environments" :key="option.id" :value="option.id">{{ option.name }}</option>
       </select>
 
       <p :id="`${formId}-environment-error`" role="status" class="pointer-form__error">{{ errors.environment }}</p>
@@ -53,7 +53,7 @@ const emit = defineEmits<{ saved: [], cancel: [] }>();
 
 type TextKey = 'label' | 'accountName' | 'whereToFind';
 
-const admin = useAdminStore();
+const environmentsStore = useEnvironmentsStore();
 const { strings } = useStrings();
 const formId = useId();
 const draft = reactive<Record<TextKey, string>>({ label: '', accountName: '', whereToFind: '' });
@@ -79,7 +79,7 @@ const submit = async () => {
   errors.value = {};
   formError.value = '';
   try {
-    await admin.createPointer({ label: draft.label.trim(), accountName: draft.accountName.trim(), whereToFind: draft.whereToFind.trim(), environment: environment.value });
+    await environmentsStore.createPointer({ label: draft.label.trim(), accountName: draft.accountName.trim(), whereToFind: draft.whereToFind.trim(), environment: environment.value });
     emit('saved');
   }
   catch (failure) {

@@ -80,15 +80,4 @@ describe('useDashboardStore', () => {
 
     expect(await dashboard.artifactsMarkdown()).toBe('- [ADR 0001](https://example.test/adr)\n- [research/cursor](https://example.test/branch)\n');
   });
-
-  it('lists the Environments and leaves the Credential pointers out when the session may not see them', async () => {
-    endpoint('/ui/environments', () => [{ id: 1, name: 'Staging', url: 'https://staging.example.test', notes: null }]);
-    endpoint('/ui/credential-pointers', () => new Response(JSON.stringify({ error: { code: 'forbidden', message: 'no' } }), { status: 403, headers: { 'content-type': 'application/json' } }));
-    const dashboard = useDashboardStore();
-
-    await dashboard.loadEnvironments();
-
-    expect(dashboard.environments.map(({ name }) => name)).toEqual(['Staging']);
-    expect(dashboard.pointers).toBeNull();
-  });
 });

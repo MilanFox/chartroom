@@ -46,7 +46,7 @@
               >
                 <option value="">{{ strings.admin.environments.anyEnvironment }}</option>
 
-                <option v-for="option in admin.environments" :key="option.id" :value="option.id">{{ option.name }}</option>
+                <option v-for="option in environmentsStore.environments" :key="option.id" :value="option.id">{{ option.name }}</option>
               </select>
 
               <Icon v-if="locked" name="lock" :size="12" />
@@ -66,13 +66,13 @@
           </li>
         </ul>
 
-        <p v-else-if="admin.pointers" class="admin-environments__muted">{{ strings.admin.environments.noPointers }}</p>
+        <p v-else-if="environmentsStore.pointers" class="admin-environments__muted">{{ strings.admin.environments.noPointers }}</p>
       </li>
     </ul>
 
     <p v-else class="admin-environments__muted">{{ strings.admin.environments.empty }}</p>
 
-    <p v-if="!admin.pointers" class="admin-environments__muted">{{ strings.admin.environments.pointersHidden }}</p>
+    <p v-if="!environmentsStore.pointers" class="admin-environments__muted">{{ strings.admin.environments.pointersHidden }}</p>
 
     <p role="status" class="admin-environments__error">{{ error }}</p>
 
@@ -91,7 +91,7 @@
 <script setup lang="ts">
 import type { CredentialPointer } from '~/types/api';
 
-const admin = useAdminStore();
+const environmentsStore = useEnvironmentsStore();
 const { strings, format } = useStrings();
 const baseId = useId();
 const editing = ref<number | null>(null);
@@ -103,8 +103,8 @@ const { locked, prompting, close, lockedControl } = useElevationGate();
 const { confirming, confirm, keep, focusById } = useInlineConfirm({ baseId, triggerPrefix: `${baseId}-delete-` });
 
 const groups = computed(() => {
-  const pointers = admin.pointers ?? [];
-  const environments = admin.environments.map(environment => ({
+  const pointers = environmentsStore.pointers ?? [];
+  const environments = environmentsStore.environments.map(environment => ({
     key: `environment-${environment.id}`,
     environment,
     name: environment.name,
@@ -140,13 +140,13 @@ const run = async (write: () => Promise<void>, message: string) => {
 };
 
 const removeEnvironment = async (id: number) => {
-  if (!await run(() => admin.deleteEnvironment(id), strings.value.admin.environments.errors.deleteFailed)) return;
+  if (!await run(() => environmentsStore.deleteEnvironment(id), strings.value.admin.environments.errors.deleteFailed)) return;
   confirming.value = null;
   focusById(`${baseId}-add-environment`);
 };
 
 const removePointer = async (id: number) => {
-  if (!await run(() => admin.deletePointer(id), strings.value.admin.environments.errors.deleteFailed)) return;
+  if (!await run(() => environmentsStore.deletePointer(id), strings.value.admin.environments.errors.deleteFailed)) return;
   confirming.value = null;
   focusById(`${baseId}-add-pointer`);
 };
@@ -156,7 +156,7 @@ const rebind = (pointer: CredentialPointer, select: HTMLSelectElement) => {
     select.value = String(pointer.environment ?? '');
     return;
   }
-  run(() => admin.updatePointer(pointer.id, { environment: select.value ? Number(select.value) : null }), strings.value.admin.environments.errors.failed);
+  run(() => environmentsStore.updatePointer(pointer.id, { environment: select.value ? Number(select.value) : null }), strings.value.admin.environments.errors.failed);
 };
 </script>
 

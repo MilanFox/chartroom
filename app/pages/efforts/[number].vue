@@ -56,6 +56,7 @@
 <script setup lang="ts">
 const route = useRoute();
 const dashboard = useDashboardStore();
+const environmentsStore = useEnvironmentsStore();
 const issuesStore = useIssuesStore();
 const labelGroupsStore = useLabelGroupsStore();
 const { strings, format } = useStrings();
@@ -70,7 +71,7 @@ const [{ error }] = await Promise.all([
     return true;
   }),
   useAsyncData('dashboard-environments', async () => {
-    await dashboard.loadEnvironments();
+    await environmentsStore.load();
     return true;
   }),
   useAsyncData('label-groups', async () => {

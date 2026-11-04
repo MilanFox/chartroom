@@ -1,13 +1,12 @@
 import { defineStore } from 'pinia';
-import type { CredentialPointer, Environment, EnvironmentInput, HolderSecret, PointerInput, RosterHolder, RuntimeSettings, SettingsInput, Snapshot } from '~/types/api';
+import type { RuntimeSettings, SettingsInput, Snapshot } from '~/types/api';
 
 export const useAdminStore = defineStore('admin', () => {
   const uiFetch = useUiFetch();
   const instanceStore = useInstanceStore();
   const labelGroupsStore = useLabelGroupsStore();
-  const environments = ref<Environment[]>([]);
-  const pointers = ref<CredentialPointer[] | null>(null);
-  const holders = ref<RosterHolder[] | null>(null);
+  const environmentsStore = useEnvironmentsStore();
+  const holdersStore = useHoldersStore();
   const runtimeSettings = ref<RuntimeSettings | null>(null);
   const firstRun = ref<boolean | null>(null);
   const snapshots = ref<Snapshot[] | null>(null);
@@ -17,16 +16,6 @@ export const useAdminStore = defineStore('admin', () => {
     return null;
   });
 
-  const loadEnvironments = async () => {
-    const [listed, allPointers] = await Promise.all([uiFetch<Environment[]>('/environments'), unlessForbidden(uiFetch<CredentialPointer[]>('/credential-pointers'))]);
-    environments.value = listed;
-    pointers.value = allPointers;
-  };
-
-  const loadHolders = async () => {
-    holders.value = await unlessForbidden(uiFetch<RosterHolder[]>('/holders'));
-  };
-
   const loadSnapshots = async () => {
     snapshots.value = await unlessForbidden(uiFetch<Snapshot[]>('/snapshots'));
   };
@@ -35,8 +24,8 @@ export const useAdminStore = defineStore('admin', () => {
     const [runtime, setup] = await Promise.all([
       uiFetch<RuntimeSettings>('/runtime'),
       uiFetch<{ firstRun: boolean }>('/setup'),
-      loadEnvironments(),
-      loadHolders(),
+      environmentsStore.load(),
+      holdersStore.load(),
       labelGroupsStore.load(),
       labelGroupsStore.loadFreeForm(),
       loadSnapshots(),
@@ -50,28 +39,6 @@ export const useAdminStore = defineStore('admin', () => {
     await instanceStore.load();
   };
 
-  const writeEnvironments = async (path: string, method: 'POST' | 'PATCH' | 'DELETE', body?: Partial<EnvironmentInput> | Partial<PointerInput>) => {
-    await uiFetch(path, { method, ...(body ? { body } : {}) });
-    await loadEnvironments();
-  };
-
-  const createEnvironment = (input: EnvironmentInput) => writeEnvironments('/environments', 'POST', input);
-  const updateEnvironment = (id: number, patch: Partial<EnvironmentInput>) => writeEnvironments(`/environments/${id}`, 'PATCH', patch);
-  const deleteEnvironment = (id: number) => writeEnvironments(`/environments/${id}`, 'DELETE');
-  const createPointer = (input: PointerInput) => writeEnvironments('/credential-pointers', 'POST', input);
-  const updatePointer = (id: number, patch: Partial<PointerInput>) => writeEnvironments(`/credential-pointers/${id}`, 'PATCH', patch);
-  const deletePointer = (id: number) => writeEnvironments(`/credential-pointers/${id}`, 'DELETE');
-
-  const writeHolder = async <T>(path: string, body?: Record<string, unknown>) => {
-    const written = await uiFetch<T>(path, { method: 'POST', ...(body ? { body } : {}) });
-    await loadHolders();
-    return written;
-  };
-
-  const createHolder = (input: { slug: string, displayName: string | null }) => writeHolder<HolderSecret>('/holders', input);
-  const rotateHolder = (slug: string) => writeHolder<HolderSecret>(`/holders/${slug}/rotate`);
-  const revokeHolder = (slug: string) => writeHolder<RosterHolder>(`/holders/${slug}/revoke`);
-
   const takeSnapshot = async () => {
     await uiFetch<Snapshot>('/snapshots', { method: 'POST' });
     await loadSnapshots();
@@ -83,23 +50,11 @@ export const useAdminStore = defineStore('admin', () => {
   };
 
   return {
-    environments,
-    pointers,
-    holders,
     runtimeSettings,
     firstRun,
     snapshots,
     load,
     saveSettings,
-    createEnvironment,
-    updateEnvironment,
-    deleteEnvironment,
-    createPointer,
-    updatePointer,
-    deletePointer,
-    createHolder,
-    rotateHolder,
-    revokeHolder,
     takeSnapshot,
     deleteSnapshot,
   };

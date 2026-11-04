@@ -16,7 +16,7 @@
       </div>
     </div>
 
-    <div v-if="admin.holders?.length" class="admin-holders__scroll" role="region" tabindex="0" :aria-labelledby="`${baseId}-caption`">
+    <div v-if="holdersStore.holders?.length" class="admin-holders__scroll" role="region" tabindex="0" :aria-labelledby="`${baseId}-caption`">
       <table class="admin-holders__table">
         <caption :id="`${baseId}-caption`" class="admin-holders__caption">{{ strings.admin.holders.roster }}</caption>
 
@@ -37,7 +37,7 @@
         </thead>
 
         <tbody>
-          <template v-for="holder in admin.holders" :key="holder.slug">
+          <template v-for="holder in holdersStore.holders" :key="holder.slug">
             <tr :class="{ 'admin-holders__row--revoked': holder.revoked }">
               <th scope="row" class="admin-holders__slug">{{ holder.slug }}</th>
 
@@ -74,7 +74,7 @@
       </table>
     </div>
 
-    <p v-else-if="admin.holders" class="admin-holders__muted">{{ strings.admin.holders.empty }}</p>
+    <p v-else-if="holdersStore.holders" class="admin-holders__muted">{{ strings.admin.holders.empty }}</p>
 
     <p v-else class="admin-holders__muted">{{ strings.admin.holders.hidden }}</p>
 
@@ -134,7 +134,7 @@
 <script setup lang="ts">
 import type { HolderSecret, RosterHolder } from '~/types/api';
 
-const admin = useAdminStore();
+const holdersStore = useHoldersStore();
 const { strings, format } = useStrings();
 const { copy } = useClipboard({ legacy: true });
 const baseId = useId();
@@ -181,7 +181,7 @@ const copySecret = async () => {
 const rotate = async (target: string) => {
   error.value = '';
   try {
-    await show(await admin.rotateHolder(target));
+    await show(await holdersStore.rotateHolder(target));
   }
   catch {
     error.value = strings.value.admin.holders.errors.failed;
@@ -191,7 +191,7 @@ const rotate = async (target: string) => {
 const revoke = async (target: string) => {
   error.value = '';
   try {
-    await admin.revokeHolder(target);
+    await holdersStore.revokeHolder(target);
     confirming.value = null;
     focusById(`${baseId}-slug`);
   }
@@ -206,7 +206,7 @@ const create = async () => {
   slugError.value = '';
   error.value = '';
   try {
-    const created = await admin.createHolder({ slug: slug.value.trim(), displayName: displayName.value.trim() || null });
+    const created = await holdersStore.createHolder({ slug: slug.value.trim(), displayName: displayName.value.trim() || null });
     slug.value = '';
     displayName.value = '';
     await show(created);
