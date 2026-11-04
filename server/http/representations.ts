@@ -11,10 +11,13 @@ import { nullable, pageSchema, stringList } from './schemas';
 interface RowRelations {
   labels: string[]
   blockers: BlockerRef[]
+  effort: number | null
 }
 
+const relationsOf = (issue: IssueRecord): RowRelations => ({ labels: labelsOf(issue.number), blockers: blockersOf(issue.number), effort: effortNumberOf(issue) });
+
 export const toRow = (event: H3Event, issue: IssueRecord, relations?: RowRelations) => {
-  const { labels, blockers } = relations ?? { labels: labelsOf(issue.number), blockers: blockersOf(issue.number) };
+  const { labels, blockers, effort } = relations ?? relationsOf(issue);
   return {
     number: issue.number,
     kind: issue.kind,
@@ -23,7 +26,7 @@ export const toRow = (event: H3Event, issue: IssueRecord, relations?: RowRelatio
     status: statusOf(issue, blockers),
     assignee: issue.assignee,
     parent: issue.parent,
-    effort: effortNumberOf(issue),
+    effort,
     labels,
     blockedBy: blockers.map(({ number, open }) => ({ number, open })),
     createdAt: issue.createdAt,
@@ -34,14 +37,15 @@ export const toRow = (event: H3Event, issue: IssueRecord, relations?: RowRelatio
 
 export const toDocument = (event: H3Event, issue: IssueRecord) => {
   const resolution = resolutionOf(issue.number);
+  const relations = relationsOf(issue);
   return {
-    ...toRow(event, issue),
+    ...toRow(event, issue, relations),
     body: issue.body,
     createdBy: issue.createdBy,
     origin: issue.origin,
     closedAt: issue.closedAt,
     version: issue.version,
-    blockedBy: blockersOf(issue.number),
+    blockedBy: relations.blockers,
     blocks: blocksOf(issue.number),
     children: childNumbers(issue.number),
     links: linksOf(issue.number).map(toLink),
@@ -55,7 +59,8 @@ export const toRows = (event: H3Event, records: IssueRecord[]) => {
   const numbers = records.map(issue => issue.number);
   const labels = labelsByIssue(numbers);
   const blockers = blockersByIssue(numbers);
-  return records.map(issue => toRow(event, issue, { labels: labels.get(issue.number) ?? [], blockers: blockers.get(issue.number) ?? [] }));
+  const efforts = effortsByIssue(numbers);
+  return records.map(issue => toRow(event, issue, { labels: labels.get(issue.number) ?? [], blockers: blockers.get(issue.number) ?? [], effort: efforts.get(issue.number) ?? null }));
 };
 
 export const toComment = (event: H3Event, comment: CommentRecord) => ({

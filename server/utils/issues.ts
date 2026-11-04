@@ -114,11 +114,7 @@ export const childrenOf = (parent: number): IssueRecord[] =>
 
 export const childNumbers = (number: number) => childrenOf(number).map(child => child.number);
 
-export const effortNumberOf = (issue: IssueRecord): number | null => {
-  let ancestor = issue.parent === null ? null : findIssue(issue.parent);
-  while (ancestor && ancestor.kind !== 'effort') ancestor = ancestor.parent === null ? null : findIssue(ancestor.parent);
-  return ancestor?.number ?? null;
-};
+export const effortNumberOf = (issue: IssueRecord): number | null => effortsByIssue([issue.number]).get(issue.number) ?? null;
 
 export const subtreeNumbers = (root: number) => {
   const numbers = [root];
@@ -213,11 +209,18 @@ const parentIssues = alias(issues, 'parent_issues');
 const grandparentIssues = alias(issues, 'grandparent_issues');
 
 // Parent rules cap the chain at ticket → map or spec → Effort, so two joins always reach the Effort.
-const effortOfIssue = sql<number | null>`case
-  when ${issues.kind} = 'effort' then ${issues.number}
+const effortAboveIssue = sql<number | null>`case
   when ${parentIssues.kind} = 'effort' then ${parentIssues.number}
   when ${grandparentIssues.kind} = 'effort' then ${grandparentIssues.number}
 end`;
+
+const effortOfIssue = sql<number | null>`case when ${issues.kind} = 'effort' then ${issues.number} else ${effortAboveIssue} end`;
+
+export const effortsByIssue = (numbers: number[]) =>
+  new Map(useStore().select({ number: issues.number, effort: effortAboveIssue }).from(issues)
+    .leftJoin(parentIssues, eq(parentIssues.number, issues.parent))
+    .leftJoin(grandparentIssues, eq(grandparentIssues.number, parentIssues.parent))
+    .where(inArray(issues.number, numbers)).all().map(row => [row.number, row.effort]));
 
 export const countIssuesByEffort = (query: IssueQuery) =>
   useStore().select({ effort: effortOfIssue, count: count() }).from(issues)
