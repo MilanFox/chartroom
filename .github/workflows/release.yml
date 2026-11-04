@@ -110,9 +110,13 @@ jobs:
       - run: npm ci
       - run: npm run build --workspace cli
       - name: Publish the CLI to npm
-        run: npm publish --workspace cli --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if npm view "chartroom-cli@${{ steps.version.outputs.full }}" version > /dev/null 2>&1; then
+            echo "chartroom-cli@${{ steps.version.outputs.full }} is already on npm"
+          else
+            npm install --global npm@latest
+            npm publish --workspace cli --access public
+          fi
 
       - name: Create the GitHub Release
         env:
