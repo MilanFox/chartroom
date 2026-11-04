@@ -19,7 +19,7 @@ const newerStoreMessage = (dataDir: string, imageIndex: string) => {
   const restorable = snapshotToRestore(dataDir, imageIndex);
   const restore = restorable
     ? `restore the pre-migrate Snapshot ${snapshotFile(dataDir, restorable.name)}, the newest taken from schema ${imageIndex} or older`
-    : `no pre-migrate Snapshot exists in ${backupsDir(dataDir)}`;
+    : `no pre-migrate Snapshot exists in ${snapshotsDir(dataDir)}`;
   return `the store at ${storeFile(dataDir)} carries migrations this image does not know; ${restore}`;
 };
 

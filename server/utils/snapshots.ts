@@ -15,9 +15,9 @@ export interface Snapshot {
 
 const SNAPSHOT_FILE_NAME = /^(?<kind>pre-migrate-(?<oldSchema>\d{4})-to-.+|manual)-(?<date>\d{4}-\d{2}-\d{2})T(?<hours>\d{2})-(?<minutes>\d{2})-(?<seconds>\d{2})-(?<millis>\d{3})Z\.sqlite$/;
 
-export const backupsDir = (dataDir: string) => join(dataDir, 'backups');
+export const snapshotsDir = (dataDir: string) => join(dataDir, 'backups');
 
-export const snapshotFile = (dataDir: string, name: string) => join(backupsDir(dataDir), `${name}.sqlite`);
+export const snapshotFile = (dataDir: string, name: string) => join(snapshotsDir(dataDir), `${name}.sqlite`);
 
 const stampOf = (at: Date) => at.toISOString().replace(/[:.]/g, '-');
 
@@ -33,11 +33,11 @@ const describeSnapshot = (dataDir: string, fileName: string): Snapshot | null =>
     name: fileName.slice(0, -'.sqlite'.length),
     kind: kind === 'manual' ? 'manual' : 'pre-migrate',
     takenAt: `${date}T${hours}:${minutes}:${seconds}.${millis}Z`,
-    size: statSync(join(backupsDir(dataDir), fileName)).size,
+    size: statSync(join(snapshotsDir(dataDir), fileName)).size,
   };
 };
 
-export const listSnapshots = (dataDir: string) => readdirSync(backupsDir(dataDir))
+export const listSnapshots = (dataDir: string) => readdirSync(snapshotsDir(dataDir))
   .map(fileName => describeSnapshot(dataDir, fileName))
   .filter(snapshot => snapshot !== null)
   .sort((first, second) => second.takenAt.localeCompare(first.takenAt));

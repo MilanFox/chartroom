@@ -10,14 +10,14 @@ const openBlockerExists = () =>
     .innerJoin(blockerIssue, eq(blockerIssue.number, issueBlockers.blocker))
     .where(and(eq(issueBlockers.issue, issues.number), eq(blockerIssue.state, 'open')));
 
-export const frontierCondition = () => and(eq(issues.state, 'open'), isNull(issues.assignee), notExists(openBlockerExists()))!;
+export const takeableCondition = () => and(eq(issues.state, 'open'), isNull(issues.assignee), notExists(openBlockerExists()))!;
 
 const parentIsMap = () =>
   inArray(issues.parent, useStore().select({ number: parentIssue.number }).from(parentIssue).where(eq(parentIssue.kind, 'map')));
 
 export const blockedCondition = () => and(eq(issues.state, 'open'), exists(openBlockerExists()))!;
 
-export const mapFrontierCondition = () => and(frontierCondition(), parentIsMap())!;
+export const mapFrontierCondition = () => and(takeableCondition(), parentIsMap())!;
 
 export const frontierSizeOf = (map: number) =>
-  useStore().select({ number: issues.number }).from(issues).where(and(eq(issues.parent, map), frontierCondition())).all().length;
+  useStore().select({ number: issues.number }).from(issues).where(and(eq(issues.parent, map), takeableCondition())).all().length;

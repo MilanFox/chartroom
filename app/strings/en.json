@@ -287,7 +287,7 @@
     },
     "graph": {
       "heading": "Dependency graph",
-      "progress": "{closed} of {total} closed · {mark} {frontier} · claimed {claimed} · blocked {blocked}",
+      "progress": "{closed} of {total} closed · {mark} {takeable} · claimed {claimed} · blocked {blocked}",
       "marks": {
         "map": "frontier",
         "spec": "takeable"
@@ -513,7 +513,7 @@
       "pointer": "{label}: {account}",
       "anyEnvironment": "Any Environment",
       "hidden": "Credential pointers are visible to Token holders and elevated sessions.",
-      "noPointers": "No credential pointers."
+      "noPointers": "No Credential pointers."
     },
     "drawer": {
       "label": "#{number} {title}",
@@ -565,7 +565,7 @@
       "effortPlural": "Plural",
       "pluralHint": "Blank: the singular plus s",
       "effortHint": "An Effort is what Matt Pocock's skills call one unit of work (a map, its specs and their tickets); we kept his name, but you can change it to whatever your team says.",
-      "triageHeading": "Triage display labels",
+      "triageHeading": "Triage Display labels",
       "save": "Save settings",
       "saving": "Saving…",
       "saved": "Settings saved.",
@@ -576,16 +576,16 @@
       "empty": "No Environments yet.",
       "anyEnvironment": "Any Environment",
       "pointersHidden": "Credential pointers need a Token holder session or admin elevation.",
-      "noPointers": "No credential pointers.",
+      "noPointers": "No Credential pointers.",
       "pointers": "Credential pointers of {name}",
       "pointerEnvironment": "Environment of {label}",
       "edit": "Edit",
       "delete": "Delete",
       "keep": "Keep",
-      "confirmDelete": "Delete {name}? Its credential pointers become unbound and move to Any Environment.",
+      "confirmDelete": "Delete {name}? Its Credential pointers become unbound and move to Any Environment.",
       "confirmDeletePointer": "Delete the pointer {label}?",
       "add": "Add Environment",
-      "addPointer": "Add credential pointer",
+      "addPointer": "Add Credential pointer",
       "name": "Name",
       "url": "URL",
       "notes": "Notes (optional)",
@@ -641,7 +641,7 @@
       "intro": "Label groups are exclusive: an issue carries at most one member of each. Ids are fixed; display names are yours.",
       "seededHeading": "Seeded groups",
       "seeded": "seeded",
-      "seededHint": "Built in and locked. The triage display labels are edited under Settings.",
+      "seededHint": "Built in and locked. The triage Display labels are edited under Settings.",
       "adminHeading": "Your groups",
       "noGroups": "No groups of your own yet.",
       "members": "Members of {group}",
