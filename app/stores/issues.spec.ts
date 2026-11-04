@@ -45,7 +45,7 @@ describe('useIssuesStore', () => {
     endpoint('/ui/issues/12', {
       method: 'PATCH',
       handler: () => new Response(
-        JSON.stringify({ error: { code: 'conflict', message: 'issue #12 is at version 4, last written by claude-a at 2026-11-04T09:12:00.000Z', field: 'version' } }),
+        JSON.stringify({ error: { code: 'conflict', message: 'issue #12 is at version 4, last written by claude-a at 2026-11-04T09:12:00.000Z', field: 'version', details: { version: 4, lastWrittenBy: 'claude-a', lastWrittenAt: '2026-11-04T09:12:00.000Z' } } }),
         { status: 409, headers: { 'content-type': 'application/json' } },
       ),
     });

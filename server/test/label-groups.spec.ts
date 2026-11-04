@@ -172,6 +172,7 @@ describe('admin-defined Label groups', () => {
     expect(clash).toMatchObject({ status: 409, body: { error: { code: 'conflict', field: 'labels' } } });
     expect(clash.body.error.message).toContain(`#${three.number}`);
     expect(clash.body.error.message).not.toContain(`#${one.number}`);
+    expect(clash.body.error.details).toEqual({ group: 'stage', issues: [three.number], truncated: false });
     expect((await groupsListed()).find(group => group.id === 'stage')).toEqual(groupBefore);
     expect(await Promise.all([one, two, three].map(issue => snapshot(issue.number)))).toEqual(snapshotsBefore);
 
@@ -191,6 +192,7 @@ describe('admin-defined Label groups', () => {
     expect(clash).toMatchObject({ status: 409, body: { error: { code: 'conflict', field: 'labels' } } });
     expect(clash.body.error.message).toContain(`#${both.number}`);
     expect(clash.body.error.message).not.toContain(`#${single.number}`);
+    expect(clash.body.error.details).toEqual({ group: 'area', issues: [both.number], truncated: false });
     expect((await groupsListed()).map(group => group.id)).not.toContain('area');
   });
 

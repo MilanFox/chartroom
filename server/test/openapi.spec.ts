@@ -155,6 +155,7 @@ describe('the OpenAPI document', () => {
 
     const envelope = document.components.schemas.Error!.properties.error as { properties: Record<string, { enum?: string[] }>, required: string[] };
     expect(envelope.properties.code!.enum).toEqual(ERROR_CODES);
+    expect(envelope.properties.details).toEqual({ type: 'object' });
     expect(envelope.required).toEqual(['code', 'message']);
   });
 

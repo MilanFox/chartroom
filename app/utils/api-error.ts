@@ -6,6 +6,8 @@ export const apiErrorCode = (error: unknown) => errorBodyOf(error)?.error?.code 
 
 export const apiErrorField = (error: unknown) => errorBodyOf(error)?.error?.field ?? null;
 
+export const apiErrorDetails = (error: unknown) => errorBodyOf(error)?.error?.details ?? {};
+
 export const apiErrorMessage = (error: unknown) => errorBodyOf(error)?.error?.message ?? '';
 
 export const orNullOn = (code: string) => (error: unknown) => {

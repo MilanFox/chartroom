@@ -50,8 +50,11 @@ const refuseMemberClash = (tx: Store, groupId: string) => {
   const clashing = tx.select({ issue: issueLabels.issue }).from(issueLabels)
     .innerJoin(labelGroupMembers, eq(labelGroupMembers.id, issueLabels.label))
     .where(eq(labelGroupMembers.groupId, groupId))
-    .groupBy(issueLabels.issue).having(gt(count(), 1)).orderBy(asc(issueLabels.issue)).limit(CLASH_LISTING_LIMIT).all();
-  if (clashing.length > 0) throw conflict(`${clashing.map(({ issue }) => `#${issue}`).join(', ')} would carry two members of ${groupId}`, 'labels');
+    .groupBy(issueLabels.issue).having(gt(count(), 1)).orderBy(asc(issueLabels.issue)).limit(CLASH_LISTING_LIMIT + 1).all();
+  if (clashing.length === 0) return;
+  const truncated = clashing.length > CLASH_LISTING_LIMIT;
+  const issues = clashing.slice(0, CLASH_LISTING_LIMIT).map(({ issue }) => issue);
+  throw conflict(`${issues.map(issue => `#${issue}`).join(', ')} would carry two members of ${groupId}`, 'labels', { group: groupId, issues, truncated });
 };
 
 const nextGroupPosition = () =>

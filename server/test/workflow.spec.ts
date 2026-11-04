@@ -27,7 +27,7 @@ describe('claim, close, reopen and comments', () => {
     expect(claimed.status).toBe(200);
     expect(claimed.body).toMatchObject({ assignee: 'alice', status: 'claimed', state: 'open', version: 1 });
 
-    expect(await bob.json('POST', `/issues/${work.number}/claim`)).toMatchObject({ ...conflict, body: { error: { message: expect.stringContaining('alice') } } });
+    expect(await bob.json('POST', `/issues/${work.number}/claim`)).toMatchObject({ ...conflict, body: { error: { message: expect.stringContaining('alice'), details: { assignee: 'alice' } } } });
     expect((await alice.json('POST', `/issues/${work.number}/claim`)).body).toMatchObject({ assignee: 'alice', status: 'claimed' });
 
     const freed = await bob.json('DELETE', `/issues/${work.number}/assignee`);

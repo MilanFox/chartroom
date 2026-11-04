@@ -9,27 +9,30 @@ interface ApiErrorInit {
   code: ApiErrorCode
   message: string
   field?: string
+  details?: Record<string, unknown>
 }
 
 export class ApiError extends Error {
   readonly status: number;
   readonly code: ApiErrorCode;
   readonly field: string | undefined;
+  readonly details: Record<string, unknown> | undefined;
 
-  constructor({ status, code, message, field }: ApiErrorInit) {
+  constructor({ status, code, message, field, details }: ApiErrorInit) {
     super(message);
     this.status = status;
     this.code = code;
     this.field = field;
+    this.details = details;
   }
 
   toBody() {
-    return { error: { code: this.code, message: this.message, ...(this.field ? { field: this.field } : {}) } };
+    return { error: { code: this.code, message: this.message, ...(this.field ? { field: this.field } : {}), ...(this.details ? { details: this.details } : {}) } };
   }
 }
 
 export const notFound = (message: string) => new ApiError({ status: 404, code: 'not-found', message });
-export const conflict = (message: string, field?: string) => new ApiError({ status: 409, code: 'conflict', message, field });
+export const conflict = (message: string, field?: string, details?: Record<string, unknown>) => new ApiError({ status: 409, code: 'conflict', message, field, details });
 export const invalid = (message: string, field?: string) => new ApiError({ status: 400, code: 'invalid', message, field });
 export const forbidden = (message: string) => new ApiError({ status: 403, code: 'forbidden', message });
 export const unauthenticated = (message: string) => new ApiError({ status: 401, code: 'unauthenticated', message });

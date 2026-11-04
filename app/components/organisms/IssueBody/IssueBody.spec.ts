@@ -38,7 +38,7 @@ describe('IssueBody', () => {
 
   it('keeps the typed text on a stale save and names who changed it, then reload shows their body', async () => {
     let stored = 'First draft';
-    endpoint('/ui/issues/12', { method: 'PATCH', handler: apiFailure(409, { code: 'conflict', message: 'issue #12 is at version 4, last written by claude-a at 2026-11-04T09:12:00.000Z', field: 'version' }) });
+    endpoint('/ui/issues/12', { method: 'PATCH', handler: apiFailure(409, { code: 'conflict', message: 'issue #12 is at version 4, last written by claude-a at 2026-11-04T09:12:00.000Z', field: 'version', details: { version: 4, lastWrittenBy: 'claude-a', lastWrittenAt: '2026-11-04T09:12:00.000Z' } }) });
     endpoint('/ui/issues/12', { method: 'GET', handler: () => issueFixture({ body: stored, version: 4 }) });
     const wrapper = await mountBody();
 

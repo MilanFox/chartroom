@@ -50,7 +50,7 @@ describe('AdminLabels', () => {
   });
 
   it('lists the issues of a promotion conflict as links to them', async () => {
-    endpoint('/ui/label-groups/priority/labels', { method: 'POST', handler: apiFailure(409, { code: 'conflict', message: '#3, #12 would carry two members of priority', field: 'labels' }) });
+    endpoint('/ui/label-groups/priority/labels', { method: 'POST', handler: apiFailure(409, { code: 'conflict', message: '#3, #12 would carry two members of priority', field: 'labels', details: { group: 'priority', issues: [3, 12], truncated: false } }) });
     const wrapper = await mountSuspended(AdminLabels);
 
     const card = wrapper.get('[data-group="priority"]');

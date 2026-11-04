@@ -23,7 +23,7 @@ const ERROR_SCHEMA: JsonSchema = {
   properties: {
     error: {
       type: 'object',
-      properties: { code: { type: 'string', enum: [...ERROR_CODES] }, message: { type: 'string' }, field: { type: 'string' } },
+      properties: { code: { type: 'string', enum: [...ERROR_CODES] }, message: { type: 'string' }, field: { type: 'string' }, details: { type: 'object' } },
       required: ['code', 'message'],
     },
   },

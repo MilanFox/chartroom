@@ -52,7 +52,7 @@ describe('EffortHeader', () => {
   });
 
   it('keeps the typed title on a stale save and names who changed it', async () => {
-    endpoint('/ui/issues/1', { method: 'PATCH', handler: apiFailure(409, { code: 'conflict', message: 'issue #1 is at version 5, last written by claude-a at 2026-11-04T09:12:00.000Z', field: 'version' }) });
+    endpoint('/ui/issues/1', { method: 'PATCH', handler: apiFailure(409, { code: 'conflict', message: 'issue #1 is at version 5, last written by claude-a at 2026-11-04T09:12:00.000Z', field: 'version', details: { version: 5, lastWrittenBy: 'claude-a', lastWrittenAt: '2026-11-04T09:12:00.000Z' } }) });
     const wrapper = await mountHeader();
 
     await wrapper.get('button[aria-label="Edit title"]').trigger('click');

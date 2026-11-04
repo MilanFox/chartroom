@@ -113,7 +113,7 @@ describe('IssueFields', () => {
   });
 
   it('names the holder when someone else claimed first', async () => {
-    endpoint('/ui/issues/12/claim', { method: 'POST', handler: () => new Response(JSON.stringify({ error: { code: 'conflict', message: 'issue #12 is held by claude-b', field: 'assignee' } }), { status: 409, headers: { 'content-type': 'application/json' } }) });
+    endpoint('/ui/issues/12/claim', { method: 'POST', handler: () => new Response(JSON.stringify({ error: { code: 'conflict', message: 'issue #12 is held by claude-b', field: 'assignee', details: { assignee: 'claude-b' } } }), { status: 409, headers: { 'content-type': 'application/json' } }) });
     const { wrapper, serve } = await mountFields();
 
     serve({ assignee: 'claude-b', status: 'claimed' });

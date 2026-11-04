@@ -259,7 +259,7 @@ const assertNameFree = (name: string | null | undefined, self: number | null) =>
 
 const describeLastWrite = (issue: IssueRecord) => {
   const last = useStore().select().from(changes).where(eq(changes.issue, issue.number)).orderBy(desc(changes.id)).get();
-  return last ? `${last.actor} at ${last.at}` : `${issue.createdBy} at ${issue.createdAt}`;
+  return last ? { lastWrittenBy: last.actor, lastWrittenAt: last.at } : { lastWrittenBy: issue.createdBy, lastWrittenAt: issue.createdAt };
 };
 
 export const createIssue = (input: NewIssue, principal: Principal) => {
@@ -297,7 +297,8 @@ const pendingWrites = (issue: IssueRecord, fields: IssueFields): FieldWrite[] =>
 export const patchIssue = (number: number, { fields, expectedVersion }: PatchRequest, principal: Principal) => {
   const issue = requireIssue(number);
   if (isSet(expectedVersion) && expectedVersion !== issue.version) {
-    throw conflict(`issue #${number} is at version ${issue.version}, last written by ${describeLastWrite(issue)}`, 'version');
+    const { lastWrittenBy, lastWrittenAt } = describeLastWrite(issue);
+    throw conflict(`issue #${number} is at version ${issue.version}, last written by ${lastWrittenBy} at ${lastWrittenAt}`, 'version', { version: issue.version, lastWrittenBy, lastWrittenAt });
   }
   const kind = issue.kind as Kind;
   assertEffortOnlyFields(kind, fields);
@@ -327,7 +328,7 @@ export const claimIssue = (number: number, principal: Principal) => {
   const actor = actorSlug(principal);
   if (issue.state === 'closed') throw invalid(`issue #${number} is closed`, 'state');
   if (issue.assignee === actor) return issue;
-  if (issue.assignee !== null) throw conflict(`issue #${number} is held by ${issue.assignee}`, 'assignee');
+  if (issue.assignee !== null) throw conflict(`issue #${number} is held by ${issue.assignee}`, 'assignee', { assignee: issue.assignee });
   return writeField(number, { field: 'assignee', before: null, after: actor }, principal);
 };
 

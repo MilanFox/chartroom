@@ -31,5 +31,5 @@ export const holderSession = { slug: 'milan', displayName: 'Milan', viewer: fals
 
 export const viewerSession = { slug: null, displayName: null, viewer: true, admin: null };
 
-export const apiFailure = (status: number, { code, message, field }: { code: string, message: string, field?: string }) => () =>
-  new Response(JSON.stringify({ error: { code, message, ...(field ? { field } : {}) } }), { status, headers: { 'content-type': 'application/json' } });
+export const apiFailure = (status: number, { code, message, field, details }: { code: string, message: string, field?: string, details?: Record<string, unknown> }) => () =>
+  new Response(JSON.stringify({ error: { code, message, ...(field ? { field } : {}), ...(details ? { details } : {}) } }), { status, headers: { 'content-type': 'application/json' } });
