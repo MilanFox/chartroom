@@ -37,6 +37,40 @@ describe('AdminHolders', () => {
     expect(wrapper.text()).not.toContain('chr_alice_onetime');
   });
 
+  it('derives the slug from the display name until the slug is edited, and again once it is cleared', async () => {
+    useHoldersStore().holders = [];
+    const wrapper = await mountSuspended(AdminHolders);
+    const displayName = wrapper.get('input[name="displayName"]');
+    const slug = wrapper.get<HTMLInputElement>('input[name="slug"]');
+
+    await displayName.setValue('Jürgen Müller');
+    expect(slug.element.value).toBe('jurgen-muller');
+
+    await slug.setValue('juergen');
+    await displayName.setValue('Jürgen M.');
+    expect(slug.element.value).toBe('juergen');
+
+    await slug.setValue('');
+    await displayName.setValue('Agent tracker');
+    expect(slug.element.value).toBe('agent-tracker');
+  });
+
+  it('follows the display name again after a holder is created from an edited slug', async () => {
+    endpoint('/ui/holders', { method: 'GET', handler: () => [alice] });
+    endpoint('/ui/holders', { method: 'POST', handler: () => ({ ...alice, secret: 'chr_alice_onetime' }) });
+    useHoldersStore().holders = [];
+    const wrapper = await mountSuspended(AdminHolders);
+    const slug = wrapper.get<HTMLInputElement>('input[name="slug"]');
+
+    await wrapper.get('input[name="displayName"]').setValue('Alice');
+    await slug.setValue('alice');
+    await wrapper.get('form').trigger('submit');
+    await vi.waitFor(() => expect(wrapper.get('code').text()).toBe('chr_alice_onetime'));
+
+    await wrapper.get('input[name="displayName"]').setValue('Bob Builder');
+    expect(slug.element.value).toBe('bob-builder');
+  });
+
   it('revokes only after an inline confirmation, striking the row through and keeping it listed', async () => {
     endpoint('/ui/holders', { method: 'GET', handler: () => [{ ...alice, revoked: true, revokedAt: '2026-11-04T10:00:00.000Z' }] });
     endpoint('/ui/holders/alice/revoke', { method: 'POST', handler: () => ({ ...alice, revoked: true }) });

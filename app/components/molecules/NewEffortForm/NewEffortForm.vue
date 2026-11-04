@@ -66,7 +66,7 @@ const slugErrorId = useId();
 const titleField = useTemplateRef<HTMLInputElement>('titleField');
 const slugField = useTemplateRef<HTMLInputElement>('slugField');
 const title = ref('');
-const slug = ref('');
+const slug = useDerivedSlug(title);
 const errors = reactive({ title: '', slug: '' });
 const action = reactive(useAction());
 
