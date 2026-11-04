@@ -1,16 +1,14 @@
-import { registerEndpoint } from '@nuxt/test-utils/runtime';
 import { createPinia, setActivePinia } from 'pinia';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { apiFailure } from '~/test/issue-fixture';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { apiFailure, requestOf, useEndpoints } from '~/test/endpoints';
 import { useInstanceStore } from './instance';
 import { useEnvironmentsStore } from './environments';
 import { useHoldersStore } from './holders';
 import { useLabelGroupsStore } from './label-groups';
 import { useAdminStore } from './admin';
 
-const unregister: (() => void)[] = [];
-const endpoint = (...args: Parameters<typeof registerEndpoint>) => unregister.push(registerEndpoint(...args));
-const requestJson = (event: unknown) => (event as { web: { request: Request } }).web.request.json();
+const endpoint = useEndpoints();
+const requestJson = (event: unknown) => requestOf(event).json();
 const forbidden = apiFailure(403, { code: 'forbidden', message: 'forbidden' });
 const noContent = () => new Response(null, { status: 204 });
 
@@ -35,10 +33,6 @@ const readsFor = ({ pointers, holders, snapshots = forbidden }: { pointers: () =
 describe('useAdminStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
-  });
-
-  afterEach(() => {
-    unregister.splice(0).forEach(remove => remove());
   });
 
   it('loads a non-elevated Viewer\'s page with Environments and About but no pointers or roster', async () => {

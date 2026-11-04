@@ -1,9 +1,9 @@
-import { mountSuspended, registerEndpoint } from '@nuxt/test-utils/runtime';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { apiFailure } from '~/test/issue-fixture';
+import { mountSuspended } from '@nuxt/test-utils/runtime';
+import { describe, expect, it, vi } from 'vitest';
+import { apiFailure, useEndpoints } from '~/test/endpoints';
 import ElevationPrompt from './ElevationPrompt.vue';
 
-const unregister: (() => void)[] = [];
+const endpoint = useEndpoints();
 
 const submitPassword = async (wrapper: Awaited<ReturnType<typeof mountSuspended>>, password: string) => {
   await wrapper.get('input[type="password"]').setValue(password);
@@ -11,12 +11,8 @@ const submitPassword = async (wrapper: Awaited<ReturnType<typeof mountSuspended>
 };
 
 describe('ElevationPrompt', () => {
-  afterEach(() => {
-    unregister.splice(0).forEach(remove => remove());
-  });
-
   it('labels the password field and reports a wrong password inline as a status message', async () => {
-    unregister.push(registerEndpoint('/ui/elevate', { method: 'POST', handler: apiFailure(401, { code: 'unauthenticated', message: 'unauthenticated' }) }));
+    endpoint('/ui/elevate', { method: 'POST', handler: apiFailure(401, { code: 'unauthenticated', message: 'unauthenticated' }) });
     const wrapper = await mountSuspended(ElevationPrompt);
 
     const field = wrapper.get('input[type="password"]');
@@ -28,7 +24,7 @@ describe('ElevationPrompt', () => {
   });
 
   it('reports the rate limit inline', async () => {
-    unregister.push(registerEndpoint('/ui/elevate', { method: 'POST', handler: apiFailure(429, { code: 'rate-limited', message: 'rate-limited' }) }));
+    endpoint('/ui/elevate', { method: 'POST', handler: apiFailure(429, { code: 'rate-limited', message: 'rate-limited' }) });
     const wrapper = await mountSuspended(ElevationPrompt);
 
     await submitPassword(wrapper, 'again');
@@ -37,7 +33,7 @@ describe('ElevationPrompt', () => {
   });
 
   it('elevates with the right password and cancels', async () => {
-    unregister.push(registerEndpoint('/ui/elevate', { method: 'POST', handler: () => ({ slug: null, displayName: null, viewer: true, admin: { until: new Date(Date.now() + 3_600_000).toISOString() } }) }));
+    endpoint('/ui/elevate', { method: 'POST', handler: () => ({ slug: null, displayName: null, viewer: true, admin: { until: new Date(Date.now() + 3_600_000).toISOString() } }) });
     const wrapper = await mountSuspended(ElevationPrompt);
 
     await submitPassword(wrapper, 'admin-secret');

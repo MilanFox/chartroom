@@ -26,10 +26,3 @@ export const issueFixture = (overrides: Partial<IssueDocument> = {}): IssueDocum
   resolution: null,
   ...overrides,
 });
-
-export const holderSession = { slug: 'milan', displayName: 'Milan', viewer: false, admin: null };
-
-export const viewerSession = { slug: null, displayName: null, viewer: true, admin: null };
-
-export const apiFailure = (status: number, { code, message, field, details }: { code: string, message: string, field?: string, details?: Record<string, unknown> }) => () =>
-  new Response(JSON.stringify({ error: { code, message, ...(field ? { field } : {}), ...(details ? { details } : {}) } }), { status, headers: { 'content-type': 'application/json' } });

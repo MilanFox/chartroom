@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { useAdminStore } from '~/stores/admin';
 import { useInstanceStore } from '~/stores/instance';
 import { useSessionStore } from '~/stores/session';
-import { viewerSession } from '~/test/issue-fixture';
+import { viewerSession } from '~/test/sessions';
 import AdminAbout from './AdminAbout.vue';
 
 const RELEASE_URL = 'https://github.com/milanfox/chartroom/releases/tag/v0.2.0';

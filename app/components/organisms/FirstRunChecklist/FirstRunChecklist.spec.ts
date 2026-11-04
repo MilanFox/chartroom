@@ -3,7 +3,7 @@ import type { VueWrapper } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 import { useHoldersStore } from '~/stores/holders';
 import { useSessionStore } from '~/stores/session';
-import { viewerSession } from '~/test/issue-fixture';
+import { viewerSession } from '~/test/sessions';
 import FirstRunChecklist from './FirstRunChecklist.vue';
 
 const linksOf = (wrapper: VueWrapper, selector: string) =>

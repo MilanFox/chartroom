@@ -1,6 +1,6 @@
-import { registerEndpoint } from '@nuxt/test-utils/runtime';
 import { createPinia, setActivePinia } from 'pinia';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { useEndpoints, searchOf } from '~/test/endpoints';
 import { issueFixture } from '~/test/issue-fixture';
 import { useLabelGroupsStore } from './label-groups';
 import { NO_MEMBER, useWorkbenchStore } from './workbench';
@@ -8,16 +8,11 @@ import { NO_MEMBER, useWorkbenchStore } from './workbench';
 const wayfinderType = { id: 'wayfinder-type', displayName: 'Wayfinder type', seeded: true, exclusive: true as const, labels: [{ id: 'wayfinder:task', displayLabel: 'Task' }] };
 const triageState = { id: 'triage-state', displayName: 'Triage state', seeded: true, exclusive: true as const, labels: [{ id: 'needs-triage', displayLabel: 'Needs triage' }, { id: 'ready-for-agent', displayLabel: 'Ready for an agent' }] };
 
-const unregister: (() => void)[] = [];
-const searchOf = (event: unknown) => new URL((event as { web: { request: Request } }).web.request.url).searchParams;
+const endpoint = useEndpoints();
 
 describe('useWorkbenchStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
-  });
-
-  afterEach(() => {
-    unregister.splice(0).forEach(remove => remove());
   });
 
   it('round-trips every URL parameter under the API names', () => {
@@ -136,13 +131,13 @@ describe('useWorkbenchStore', () => {
 
   it('loads the first page with its per-Effort totals, then appends the next 100 by cursor without touching the URL', async () => {
     const requests: string[] = [];
-    unregister.push(registerEndpoint('/ui/issues', (event) => {
+    endpoint('/ui/issues', (event) => {
       const search = searchOf(event);
       requests.push(search.toString());
       return search.get('cursor') === 'page-2'
         ? { items: [issueFixture({ number: 3 })], nextCursor: null, effortCounts: [{ effort: 1, count: 3 }] }
         : { items: [issueFixture({ number: 9 }), issueFixture({ number: 5 })], nextCursor: 'page-2', effortCounts: [{ effort: 1, count: 3 }] };
-    }));
+    });
     const workbench = useWorkbenchStore();
     workbench.readQuery({ label: ['needs-triage', 'docs'] });
 

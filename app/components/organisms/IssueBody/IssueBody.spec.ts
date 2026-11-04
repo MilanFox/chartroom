@@ -1,13 +1,14 @@
-import { mountSuspended, registerEndpoint } from '@nuxt/test-utils/runtime';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { mountSuspended } from '@nuxt/test-utils/runtime';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h } from 'vue';
+import { apiFailure, requestOf, useEndpoints } from '~/test/endpoints';
 import { useIssuesStore } from '~/stores/issues';
 import { useSessionStore } from '~/stores/session';
-import { apiFailure, holderSession, issueFixture, viewerSession } from '~/test/issue-fixture';
+import { issueFixture } from '~/test/issue-fixture';
+import { holderSession, viewerSession } from '~/test/sessions';
 import IssueBody from './IssueBody.vue';
 
-const unregister: (() => void)[] = [];
-const endpoint = (...args: Parameters<typeof registerEndpoint>) => unregister.push(registerEndpoint(...args));
+const endpoint = useEndpoints();
 
 const IssueBodyOfStore = defineComponent(() => {
   const issues = useIssuesStore();
@@ -22,10 +23,6 @@ const mountBody = async (body = 'First draft') => {
 describe('IssueBody', () => {
   beforeEach(() => {
     useSessionStore().me = holderSession;
-  });
-
-  afterEach(() => {
-    unregister.splice(0).forEach(remove => remove());
   });
 
   it('renders the body as markdown with a script tag inert', async () => {
@@ -76,7 +73,7 @@ describe('IssueBody', () => {
     endpoint('/ui/issues/12', {
       method: 'PATCH',
       handler: (event) => {
-        ifMatch.push((event as { web: { request: Request } }).web.request.headers.get('if-match'));
+        ifMatch.push(requestOf(event).headers.get('if-match'));
         return issueFixture({ body: 'Second draft', version: 4 });
       },
     });

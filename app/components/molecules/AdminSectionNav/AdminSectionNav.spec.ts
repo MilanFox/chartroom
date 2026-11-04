@@ -1,16 +1,13 @@
-import { mountSuspended, registerEndpoint } from '@nuxt/test-utils/runtime';
-import { afterEach, describe, expect, it } from 'vitest';
+import { mountSuspended } from '@nuxt/test-utils/runtime';
+import { describe, expect, it } from 'vitest';
 import AdminSectionNav from './AdminSectionNav.vue';
+import { useEndpoints } from '~/test/endpoints';
 
-const unregister: (() => void)[] = [];
+const endpoint = useEndpoints();
 
 describe('AdminSectionNav', () => {
-  afterEach(() => {
-    unregister.splice(0).forEach(remove => remove());
-  });
-
   it('links each section by its anchor and marks only the current one', async () => {
-    unregister.push(registerEndpoint('/ui/me', () => ({ slug: null, displayName: null, viewer: true, admin: null })));
+    endpoint('/ui/me', () => ({ slug: null, displayName: null, viewer: true, admin: null }));
     const wrapper = await mountSuspended(AdminSectionNav, {
       props: { sections: [{ id: 'settings', label: 'Settings' }, { id: 'about', label: 'About' }] },
       route: '/admin#about',

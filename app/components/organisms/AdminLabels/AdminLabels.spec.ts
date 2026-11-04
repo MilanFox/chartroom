@@ -1,14 +1,14 @@
-import { mountSuspended, registerEndpoint } from '@nuxt/test-utils/runtime';
+import { mountSuspended } from '@nuxt/test-utils/runtime';
 import type { VueWrapper } from '@vue/test-utils';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { nextTick } from 'vue';
+import { apiFailure, useEndpoints } from '~/test/endpoints';
 import { useLabelGroupsStore } from '~/stores/label-groups';
 import { useSessionStore } from '~/stores/session';
-import { apiFailure, viewerSession } from '~/test/issue-fixture';
+import { viewerSession } from '~/test/sessions';
 import AdminLabels from './AdminLabels.vue';
 
-const unregister: (() => void)[] = [];
-const endpoint = (...args: Parameters<typeof registerEndpoint>) => unregister.push(registerEndpoint(...args));
+const endpoint = useEndpoints();
 const seeded = { id: 'triage-category', displayName: 'Category', seeded: true, exclusive: true as const, labels: [{ id: 'bug', displayLabel: 'Bug' }] };
 const priority = { id: 'priority', displayName: 'Priority', seeded: false, exclusive: true as const, labels: [{ id: 'high', displayLabel: 'High' }, { id: 'low', displayLabel: 'Low' }] };
 const buttonsNamed = (wrapper: VueWrapper, name: string) => wrapper.findAll('button').filter(button => (button.attributes('aria-label') ?? button.text()) === name);
@@ -19,10 +19,6 @@ describe('AdminLabels', () => {
     const labelGroups = useLabelGroupsStore();
     labelGroups.labelGroups = [seeded, priority];
     labelGroups.freeFormLabels = [{ label: 'urgent', count: 3 }];
-  });
-
-  afterEach(() => {
-    unregister.splice(0).forEach(remove => remove());
   });
 
   it('shows a seeded group read-only with a seeded tag, and names each admin member\'s reorder buttons after the member', async () => {

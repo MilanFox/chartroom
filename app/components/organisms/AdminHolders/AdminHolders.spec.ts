@@ -1,23 +1,19 @@
-import { mountSuspended, registerEndpoint } from '@nuxt/test-utils/runtime';
+import { mountSuspended } from '@nuxt/test-utils/runtime';
 import type { VueWrapper } from '@vue/test-utils';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { useEndpoints } from '~/test/endpoints';
 import { useHoldersStore } from '~/stores/holders';
 import { useSessionStore } from '~/stores/session';
-import { viewerSession } from '~/test/issue-fixture';
+import { viewerSession } from '~/test/sessions';
 import AdminHolders from './AdminHolders.vue';
 
-const unregister: (() => void)[] = [];
-const endpoint = (...args: Parameters<typeof registerEndpoint>) => unregister.push(registerEndpoint(...args));
+const endpoint = useEndpoints();
 const alice = { slug: 'alice', displayName: 'Alice', revoked: false, createdAt: '2026-11-04T09:00:00.000Z', lastUsedAt: null, revokedAt: null };
 const buttonNamed = (wrapper: VueWrapper, name: string) => wrapper.findAll('button').filter(button => button.text() === name);
 
 describe('AdminHolders', () => {
   beforeEach(() => {
     useSessionStore().me = { slug: null, displayName: null, viewer: true, admin: { until: new Date(Date.now() + 3_600_000).toISOString() } };
-  });
-
-  afterEach(() => {
-    unregister.splice(0).forEach(remove => remove());
   });
 
   it('shows a new holder\'s secret once, gone after Done', async () => {

@@ -1,13 +1,11 @@
-import { registerEndpoint } from '@nuxt/test-utils/runtime';
 import { createPinia, setActivePinia } from 'pinia';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { searchOf, useEndpoints } from '~/test/endpoints';
 import type { EffortDocument, IssueDocument } from '~/types/api';
 import { issueFixture } from '~/test/issue-fixture';
 import { useDashboardStore } from './dashboard';
 
-const unregister: (() => void)[] = [];
-const endpoint = (...args: Parameters<typeof registerEndpoint>) => unregister.push(registerEndpoint(...args));
-const searchOf = (event: unknown) => new URL((event as { web: { request: Request } }).web.request.url).searchParams;
+const endpoint = useEndpoints();
 
 const row = (number: number, overrides: Partial<IssueDocument> = {}) => issueFixture({ number, title: `Issue ${number}`, effort: 1, ...overrides });
 
@@ -25,10 +23,6 @@ const effortDocument = (overrides: Partial<EffortDocument> = {}): EffortDocument
 describe('useDashboardStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
-  });
-
-  afterEach(() => {
-    unregister.splice(0).forEach(remove => remove());
   });
 
   it('loads the Effort document, the map and spec bodies and every issue of the subtree, following each cursor', async () => {

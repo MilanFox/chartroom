@@ -1,12 +1,13 @@
-import { mountSuspended, registerEndpoint } from '@nuxt/test-utils/runtime';
+import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { clearNuxtData } from '#app';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { useEndpoints, searchOf } from '~/test/endpoints';
 import type { IssueDocument, IssueRow } from '~/types/api';
 import { useIssuesStore } from '~/stores/issues';
 import { issueFixture } from '~/test/issue-fixture';
 import DependencyGraph from './DependencyGraph.vue';
 
-const unregister: (() => void)[] = [];
+const endpoint = useEndpoints();
 
 const child = (number: number, overrides: Partial<IssueRow> = {}): IssueRow => ({
   number,
@@ -34,7 +35,7 @@ const CHILDREN = [
 
 const mountGraph = async (overrides: Partial<IssueDocument>) => {
   const pages = [{ items: CHILDREN.slice(0, 2), nextCursor: 'next' }, { items: CHILDREN.slice(2), nextCursor: null }];
-  unregister.push(registerEndpoint('/ui/issues', { method: 'GET', handler: event => pages[new URL((event as { web: { request: Request } }).web.request.url).searchParams.has('cursor') ? 1 : 0] }));
+  endpoint('/ui/issues', { method: 'GET', handler: event => pages[searchOf(event).has('cursor') ? 1 : 0] });
   useIssuesStore().children = {};
   const wrapper = await mountSuspended(DependencyGraph, { props: { issue: issueFixture({ number: 30, parent: 1, ...overrides }) } });
   await vi.waitFor(() => expect(wrapper.findAll('a')).toHaveLength(CHILDREN.length));
@@ -45,7 +46,6 @@ const nodeLabels = (wrapper: Awaited<ReturnType<typeof mountGraph>>) => wrapper.
 
 describe('DependencyGraph', () => {
   afterEach(() => {
-    unregister.splice(0).forEach(remove => remove());
     clearNuxtData();
     localStorage.clear();
   });

@@ -1,15 +1,15 @@
-import { mountSuspended, registerEndpoint } from '@nuxt/test-utils/runtime';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { mountSuspended } from '@nuxt/test-utils/runtime';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h } from 'vue';
+import { apiFailure, requestOf, searchOf, useEndpoints } from '~/test/endpoints';
 import type { IssueDocument } from '~/types/api';
 import { useIssuesStore } from '~/stores/issues';
 import { useSessionStore } from '~/stores/session';
-import { holderSession, issueFixture, viewerSession } from '~/test/issue-fixture';
+import { issueFixture } from '~/test/issue-fixture';
+import { holderSession, viewerSession } from '~/test/sessions';
 import IssueFields from './IssueFields.vue';
 
-const unregister: (() => void)[] = [];
-const endpoint = (...args: Parameters<typeof registerEndpoint>) => unregister.push(registerEndpoint(...args));
-const requestOf = (event: unknown) => (event as { web: { request: Request } }).web.request;
+const endpoint = useEndpoints();
 const noContent = () => new Response(null, { status: 204 });
 
 const labelGroups = [
@@ -26,7 +26,7 @@ const mountFields = async (overrides: Partial<IssueDocument> = {}) => {
   endpoint('/ui/labels', () => labelGroups);
   const containers = [{ number: 1, kind: 'effort', title: 'Tracker' }, { number: 2, kind: 'map', title: 'Agent Tracker v1' }];
   endpoint('/ui/issues', (event) => {
-    const kind = new URL(requestOf(event).url).searchParams.get('kind');
+    const kind = searchOf(event).get('kind');
     return { items: containers.filter(container => container.kind === kind), nextCursor: null };
   });
   endpoint('/ui/issues/12', { method: 'GET', handler: () => current });
@@ -38,10 +38,6 @@ const mountFields = async (overrides: Partial<IssueDocument> = {}) => {
 describe('IssueFields', () => {
   beforeEach(() => {
     useSessionStore().me = holderSession;
-  });
-
-  afterEach(() => {
-    unregister.splice(0).forEach(remove => remove());
   });
 
   it('names every sidebar row as a group', async () => {
@@ -113,7 +109,7 @@ describe('IssueFields', () => {
   });
 
   it('names the holder when someone else claimed first', async () => {
-    endpoint('/ui/issues/12/claim', { method: 'POST', handler: () => new Response(JSON.stringify({ error: { code: 'conflict', message: 'issue #12 is held by claude-b', field: 'assignee', details: { assignee: 'claude-b' } } }), { status: 409, headers: { 'content-type': 'application/json' } }) });
+    endpoint('/ui/issues/12/claim', { method: 'POST', handler: apiFailure(409, { code: 'conflict', message: 'issue #12 is held by claude-b', field: 'assignee', details: { assignee: 'claude-b' } }) });
     const { wrapper, serve } = await mountFields();
 
     serve({ assignee: 'claude-b', status: 'claimed' });

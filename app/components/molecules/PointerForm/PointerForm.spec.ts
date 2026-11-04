@@ -1,23 +1,19 @@
-import { mountSuspended, registerEndpoint } from '@nuxt/test-utils/runtime';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { apiFailure } from '~/test/issue-fixture';
+import { mountSuspended } from '@nuxt/test-utils/runtime';
+import { describe, expect, it, vi } from 'vitest';
+import { apiFailure, requestOf, useEndpoints } from '~/test/endpoints';
 import { useEnvironmentsStore } from '~/stores/environments';
 import PointerForm from './PointerForm.vue';
 
 const dev = { id: 1, name: 'Dev', url: 'https://dev.example.test', notes: null };
 
-const unregister: (() => void)[] = [];
+const endpoint = useEndpoints();
 
 describe('PointerForm', () => {
-  afterEach(() => {
-    unregister.splice(0).forEach(remove => remove());
-  });
-
   it('shows the server\'s refusal of a secret-looking account name on that field', async () => {
-    unregister.push(registerEndpoint('/ui/credential-pointers', {
+    endpoint('/ui/credential-pointers', {
       method: 'POST',
       handler: apiFailure(400, { code: 'invalid', message: 'Server says: not a secret here', field: 'accountName' }),
-    }));
+    });
     const wrapper = await mountSuspended(PointerForm);
 
     await wrapper.get('input[name="label"]').setValue('Deploy bot');
@@ -40,14 +36,14 @@ describe('PointerForm', () => {
 
   it('binds the new pointer to the Environment picked in its select', async () => {
     const sent: unknown[] = [];
-    unregister.push(registerEndpoint('/ui/credential-pointers', {
+    endpoint('/ui/credential-pointers', {
       method: 'POST', handler: async (event) => {
-        sent.push(await (event as unknown as { web: { request: Request } }).web.request.json());
+        sent.push(await requestOf(event).json());
         return {};
       },
-    }));
-    unregister.push(registerEndpoint('/ui/credential-pointers', { method: 'GET', handler: () => [] }));
-    unregister.push(registerEndpoint('/ui/environments', { method: 'GET', handler: () => [dev] }));
+    });
+    endpoint('/ui/credential-pointers', { method: 'GET', handler: () => [] });
+    endpoint('/ui/environments', { method: 'GET', handler: () => [dev] });
     useEnvironmentsStore().environments = [dev];
     const wrapper = await mountSuspended(PointerForm);
 

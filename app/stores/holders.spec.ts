@@ -1,7 +1,7 @@
 import { registerEndpoint } from '@nuxt/test-utils/runtime';
 import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { apiFailure } from '~/test/issue-fixture';
+import { apiFailure } from '~/test/endpoints';
 import { useHoldersStore } from './holders';
 
 const unregister: (() => void)[] = [];

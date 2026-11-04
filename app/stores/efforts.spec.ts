@@ -1,8 +1,8 @@
-import { registerEndpoint } from '@nuxt/test-utils/runtime';
 import { createPinia, setActivePinia } from 'pinia';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { useEffortsStore } from './efforts';
 import { useInstanceStore } from './instance';
+import { useEndpoints, requestOf, searchOf } from '~/test/endpoints';
 
 const effort = (number: number, name: string) => ({
   number,
@@ -17,24 +17,20 @@ const effort = (number: number, name: string) => ({
   statusRollup: { map: null, specs: [], triage: {}, open: number },
 });
 
-const unregister: (() => void)[] = [];
+const endpoint = useEndpoints();
 
 describe('useEffortsStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
   });
 
-  afterEach(() => {
-    unregister.splice(0).forEach(remove => remove());
-  });
-
   it('loads every Effort, following each cursor', async () => {
-    unregister.push(registerEndpoint('/ui/efforts', (event) => {
-      const cursor = new URL((event as { web: { request: Request } }).web.request.url).searchParams.get('cursor');
+    endpoint('/ui/efforts', (event) => {
+      const cursor = searchOf(event).get('cursor');
       return cursor === 'page-2'
         ? { items: [effort(3, 'docs')], nextCursor: null }
         : { items: [effort(1, 'tracker'), effort(2, 'cli')], nextCursor: 'page-2' };
-    }));
+    });
     const efforts = useEffortsStore();
 
     await efforts.load();
@@ -45,16 +41,16 @@ describe('useEffortsStore', () => {
   it('creates an Effort with its title and slug, then reloads the list and the Instance so the picker and the Issues count show it', async () => {
     const sent: unknown[] = [];
     let created = false;
-    unregister.push(registerEndpoint('/ui/issues', {
+    endpoint('/ui/issues', {
       method: 'POST',
       handler: async (event) => {
-        sent.push(await (event as { web: { request: Request } }).web.request.json());
+        sent.push(await requestOf(event).json());
         created = true;
         return { number: 7, kind: 'effort', name: 'docs', title: 'Docs site' };
       },
-    }));
-    unregister.push(registerEndpoint('/ui/efforts', () => ({ items: created ? [effort(7, 'docs'), effort(1, 'tracker')] : [effort(1, 'tracker')], nextCursor: null })));
-    unregister.push(registerEndpoint('/ui/instance', () => ({ openIssues: created ? 5 : 4 })));
+    });
+    endpoint('/ui/efforts', () => ({ items: created ? [effort(7, 'docs'), effort(1, 'tracker')] : [effort(1, 'tracker')], nextCursor: null }));
+    endpoint('/ui/instance', () => ({ openIssues: created ? 5 : 4 }));
     const efforts = useEffortsStore();
 
     const number = await efforts.create({ title: 'Docs site', name: 'docs' });
