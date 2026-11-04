@@ -14,3 +14,11 @@ export const orNullOn = (code: string) => (error: unknown) => {
   if (apiErrorCode(error) !== code) throw error;
   return null;
 };
+
+export const fieldErrorOf = (failure: unknown, fields: readonly string[]) => {
+  const field = apiErrorField(failure);
+  if (!field || !fields.includes(field)) return null;
+  return { field, message: apiErrorMessage(failure) };
+};
+
+export const slugErrorOf = (failure: unknown, messages: { taken: string, shape: string }) => (apiErrorCode(failure) === 'conflict' ? messages.taken : messages.shape);

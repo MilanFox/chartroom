@@ -57,7 +57,7 @@ const issuesStore = useIssuesStore();
 const dashboard = useDashboardStore();
 const { strings, format } = useStrings();
 const { copy } = useClipboard({ legacy: true });
-const action = reactive(useIssueAction());
+const action = reactive(useAction());
 const linkError = useLinkError();
 const addForm = useTemplateRef<{ reset: () => void }>('addForm');
 const addError = ref<LinkFormProps['error']>(null);

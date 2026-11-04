@@ -68,7 +68,7 @@
 
     <p v-if="!environmentsStore.pointers" class="admin-environments__muted">{{ strings.admin.environments.pointersHidden }}</p>
 
-    <p role="status" class="admin-environments__error">{{ error }}</p>
+    <p role="status" class="admin-environments__error">{{ action.error }}</p>
 
     <EnvironmentForm v-if="adding === 'environment'" @saved="adding = null" @cancel="stopAdding('environment')" />
 
@@ -90,7 +90,7 @@ const { strings, format } = useStrings();
 const baseId = useId();
 const editing = ref<number | null>(null);
 const adding = ref<'environment' | 'pointer' | null>(null);
-const error = ref('');
+const action = reactive(useAction());
 
 const { confirming, confirm, keep, focusById } = useInlineConfirm({ triggerPrefix: `${baseId}-delete-` });
 
@@ -106,32 +106,22 @@ const stopAdding = (kind: 'environment' | 'pointer') => {
   focusById(`${baseId}-add-${kind}`);
 };
 
-const run = async (write: () => Promise<void>, message: string) => {
-  error.value = '';
-  try {
-    await write();
-    return true;
-  }
-  catch {
-    error.value = message;
-    return false;
-  }
-};
+const deleteFailed = () => strings.value.admin.environments.errors.deleteFailed;
 
 const removeEnvironment = async (id: number) => {
-  if (!await run(() => environmentsStore.deleteEnvironment(id), strings.value.admin.environments.errors.deleteFailed)) return;
+  if (!await action.run(() => environmentsStore.deleteEnvironment(id), deleteFailed)) return;
   confirming.value = null;
   focusById(`${baseId}-add-environment`);
 };
 
 const removePointer = async (id: number) => {
-  if (!await run(() => environmentsStore.deletePointer(id), strings.value.admin.environments.errors.deleteFailed)) return;
+  if (!await action.run(() => environmentsStore.deletePointer(id), deleteFailed)) return;
   confirming.value = null;
   focusById(`${baseId}-add-pointer`);
 };
 
 const rebind = (pointer: CredentialPointer, environment: string) => {
-  run(() => environmentsStore.updatePointer(pointer.id, { environment: environment ? Number(environment) : null }), strings.value.admin.environments.errors.failed);
+  action.run(() => environmentsStore.updatePointer(pointer.id, { environment: environment ? Number(environment) : null }), () => strings.value.admin.environments.errors.failed);
 };
 </script>
 

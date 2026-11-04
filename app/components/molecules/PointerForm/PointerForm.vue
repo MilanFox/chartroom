@@ -39,11 +39,11 @@
     </div>
 
     <div class="pointer-form__actions">
-      <button type="submit" class="pointer-form__save">{{ submitting ? strings.admin.environments.saving : strings.admin.environments.savePointer }}</button>
+      <button type="submit" class="pointer-form__save">{{ action.busy ? strings.admin.environments.saving : strings.admin.environments.savePointer }}</button>
 
       <button type="button" class="pointer-form__cancel" @click="emit('cancel')">{{ strings.admin.environments.cancel }}</button>
 
-      <p role="status" class="pointer-form__error">{{ formError }}</p>
+      <p role="status" class="pointer-form__error">{{ action.error }}</p>
     </div>
   </form>
 </template>
@@ -59,8 +59,7 @@ const formId = useId();
 const draft = reactive<Record<TextKey, string>>({ label: '', accountName: '', whereToFind: '' });
 const environment = ref<number | null>(null);
 const errors = ref<Partial<Record<TextKey | 'environment', string>>>({});
-const formError = ref('');
-const submitting = ref(false);
+const action = reactive(useAction());
 
 const fields = computed(() => {
   const labels = strings.value.admin.environments;
@@ -73,28 +72,20 @@ const fields = computed(() => {
 
 onMounted(() => document.getElementById(`${formId}-label`)?.focus());
 
+const explain = (failure: unknown) => {
+  const fieldError = fieldErrorOf(failure, [...Object.keys(draft), 'environment']);
+  if (!fieldError) return strings.value.admin.environments.errors.failed;
+  errors.value = { [fieldError.field]: fieldError.message };
+  document.getElementById(`${formId}-${fieldError.field}`)?.focus();
+  return '';
+};
+
 const submit = async () => {
-  if (submitting.value) return;
-  submitting.value = true;
-  errors.value = {};
-  formError.value = '';
-  try {
-    await environmentsStore.createPointer({ label: draft.label.trim(), accountName: draft.accountName.trim(), whereToFind: draft.whereToFind.trim(), environment: environment.value });
-    emit('saved');
-  }
-  catch (failure) {
-    const field = apiErrorField(failure) as TextKey | 'environment' | null;
-    if (field && (field in draft || field === 'environment')) {
-      errors.value = { [field]: apiErrorMessage(failure) };
-      document.getElementById(`${formId}-${field}`)?.focus();
-    }
-    else {
-      formError.value = strings.value.admin.environments.errors.failed;
-    }
-  }
-  finally {
-    submitting.value = false;
-  }
+  const saved = await action.run(() => {
+    errors.value = {};
+    return environmentsStore.createPointer({ label: draft.label.trim(), accountName: draft.accountName.trim(), whereToFind: draft.whereToFind.trim(), environment: environment.value });
+  }, explain);
+  if (saved) emit('saved');
 };
 </script>
 

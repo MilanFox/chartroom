@@ -78,7 +78,7 @@
 
     <p v-else class="admin-holders__muted">{{ strings.admin.holders.hidden }}</p>
 
-    <p role="status" class="admin-holders__error">{{ error }}</p>
+    <p role="status" class="admin-holders__error">{{ action.error }}</p>
 
     <form class="admin-holders__create" novalidate @submit.prevent="create">
       <LockedField
@@ -96,7 +96,7 @@
       <LockedField v-model="displayName" name="displayName" :label="strings.admin.holders.displayNameOptional" />
 
       <div class="admin-holders__submit">
-        <AdminAction :label="creating ? strings.admin.holders.creating : strings.admin.holders.create" type="submit" variant="primary" />
+        <AdminAction :label="action.busy ? strings.admin.holders.creating : strings.admin.holders.create" type="submit" variant="primary" />
       </div>
     </form>
   </AdminSection>
@@ -112,11 +112,10 @@ const baseId = useId();
 const notice = useTemplateRef<HTMLElement>('notice');
 const issued = ref<HolderSecret | null>(null);
 const copyMessage = ref('');
-const error = ref('');
 const slug = ref('');
 const displayName = ref('');
 const slugError = ref('');
-const creating = ref(false);
+const action = reactive(useAction());
 
 const { locked } = useElevationGate();
 
@@ -149,52 +148,33 @@ const copySecret = async () => {
   }
 };
 
-const rotate = async (target: string) => {
-  error.value = '';
-  try {
-    await show(await holdersStore.rotateHolder(target));
-  }
-  catch {
-    error.value = strings.value.admin.holders.errors.failed;
-  }
-};
+const failed = () => strings.value.admin.holders.errors.failed;
+
+const rotate = (target: string) => action.run(async () => show(await holdersStore.rotateHolder(target)), failed);
 
 const revoke = async (target: string) => {
-  error.value = '';
-  try {
-    await holdersStore.revokeHolder(target);
-    confirming.value = null;
-    focusById(`${baseId}-slug`);
-  }
-  catch {
-    error.value = strings.value.admin.holders.errors.failed;
-  }
+  if (!await action.run(() => holdersStore.revokeHolder(target), failed)) return;
+  confirming.value = null;
+  focusById(`${baseId}-slug`);
+};
+
+const explainCreate = (failure: unknown) => {
+  const messages = strings.value.admin.holders.errors;
+  if (apiErrorField(failure) !== 'slug') return messages.failed;
+  slugError.value = slugErrorOf(failure, { taken: messages.slugTaken, shape: messages.slugShape });
+  focusById(`${baseId}-slug`);
+  return '';
 };
 
 const create = async () => {
-  if (locked.value || creating.value) return;
-  creating.value = true;
-  slugError.value = '';
-  error.value = '';
-  try {
+  if (locked.value) return;
+  await action.run(async () => {
+    slugError.value = '';
     const created = await holdersStore.createHolder({ slug: slug.value.trim(), displayName: displayName.value.trim() || null });
     slug.value = '';
     displayName.value = '';
     await show(created);
-  }
-  catch (failure) {
-    const messages = strings.value.admin.holders.errors;
-    if (apiErrorField(failure) === 'slug') {
-      slugError.value = apiErrorCode(failure) === 'conflict' ? messages.slugTaken : messages.slugShape;
-      focusById(`${baseId}-slug`);
-    }
-    else {
-      error.value = messages.failed;
-    }
-  }
-  finally {
-    creating.value = false;
-  }
+  }, explainCreate);
 };
 </script>
 

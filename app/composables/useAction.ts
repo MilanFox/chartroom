@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-unused-vars -- the core rule misreads type-level parameters
 type ExplainFailure = (failure: unknown) => string;
 
-export const useIssueAction = () => {
+export const useAction = () => {
   const busy = ref(false);
   const error = ref('');
 

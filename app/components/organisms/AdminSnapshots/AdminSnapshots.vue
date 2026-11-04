@@ -1,7 +1,7 @@
 <template>
   <AdminSection id="snapshots" :heading="strings.shell.adminSections.snapshots" :intro="strings.admin.snapshots.intro">
     <div class="admin-snapshots__take">
-      <AdminAction :id="`${baseId}-take`" :label="taking ? strings.admin.snapshots.taking : strings.admin.snapshots.take" variant="primary" @run="take" />
+      <AdminAction :id="`${baseId}-take`" :label="takeAction.busy ? strings.admin.snapshots.taking : strings.admin.snapshots.take" variant="primary" @run="take" />
 
       <p role="status" class="admin-snapshots__status" :class="{ 'admin-snapshots__status--failed': takeFailed }">{{ takeStatus }}</p>
     </div>
@@ -44,7 +44,7 @@
                   :message="format(strings.admin.snapshots.confirmDelete, { name: snapshot.name })"
                   :confirm-label="strings.admin.snapshots.delete"
                   :keep-label="strings.admin.snapshots.keep"
-                  :error="deleteError"
+                  :error="deleteAction.error"
                   @confirm="remove(snapshot.name)"
                   @keep="keep(snapshot.name)"
                 />
@@ -65,45 +65,33 @@
 const admin = useAdminStore();
 const { strings, format } = useStrings();
 const baseId = useId();
-const taking = ref(false);
+const takeAction = reactive(useAction());
+const deleteAction = reactive(useAction());
 const takeStatus = ref('');
 const takeFailed = ref(false);
-const deleteError = ref('');
 
 const { confirming, confirm, keep, focusById } = useInlineConfirm({ triggerPrefix: `${baseId}-delete-` });
 
 watch(confirming, () => {
-  deleteError.value = '';
+  deleteAction.error = '';
 });
 
+const explainTake = (failure: unknown) => {
+  takeFailed.value = true;
+  takeStatus.value = apiErrorMessage(failure) || strings.value.admin.snapshots.errors.failed;
+  return '';
+};
+
 const take = async () => {
-  if (taking.value) return;
-  taking.value = true;
   takeStatus.value = '';
   takeFailed.value = false;
-  try {
-    await admin.takeSnapshot();
-    takeStatus.value = strings.value.admin.snapshots.taken;
-  }
-  catch (failure) {
-    takeFailed.value = true;
-    takeStatus.value = apiErrorMessage(failure) || strings.value.admin.snapshots.errors.failed;
-  }
-  finally {
-    taking.value = false;
-  }
+  if (await takeAction.run(() => admin.takeSnapshot(), explainTake)) takeStatus.value = strings.value.admin.snapshots.taken;
 };
 
 const remove = async (name: string) => {
-  deleteError.value = '';
-  try {
-    await admin.deleteSnapshot(name);
-    confirming.value = null;
-    focusById(`${baseId}-take`);
-  }
-  catch {
-    deleteError.value = strings.value.admin.snapshots.errors.deleteFailed;
-  }
+  if (!await deleteAction.run(() => admin.deleteSnapshot(name), () => strings.value.admin.snapshots.errors.deleteFailed)) return;
+  confirming.value = null;
+  focusById(`${baseId}-take`);
 };
 </script>
 

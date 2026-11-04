@@ -42,10 +42,10 @@
       </div>
     </div>
 
-    <p class="new-effort__error" aria-live="polite">{{ formError }}</p>
+    <p class="new-effort__error" aria-live="polite">{{ action.error }}</p>
 
     <div class="new-effort__actions">
-      <button type="submit" class="new-effort__create">{{ submitting ? strings.efforts.new.creating : strings.efforts.new.create }}</button>
+      <button type="submit" class="new-effort__create">{{ action.busy ? strings.efforts.new.creating : strings.efforts.new.create }}</button>
 
       <button type="button" class="new-effort__cancel" @click="emit('cancel')">{{ strings.efforts.new.cancel }}</button>
     </div>
@@ -68,12 +68,11 @@ const slugField = useTemplateRef<HTMLInputElement>('slugField');
 const title = ref('');
 const slug = ref('');
 const errors = reactive({ title: '', slug: '' });
-const formError = ref('');
-const submitting = ref(false);
+const action = reactive(useAction());
 
 onMounted(() => titleField.value?.focus());
 
-const showFailure = (failure: unknown) => {
+const explain = (failure: unknown) => {
   const messages = strings.value.efforts.new.errors;
   const field = apiErrorField(failure);
   if (field === 'title') {
@@ -81,29 +80,21 @@ const showFailure = (failure: unknown) => {
     titleField.value?.focus();
   }
   else if (field === 'name') {
-    errors.slug = apiErrorCode(failure) === 'conflict' ? messages.slugTaken : messages.slugShape;
+    errors.slug = slugErrorOf(failure, { taken: messages.slugTaken, shape: messages.slugShape });
     slugField.value?.focus();
   }
   else {
-    formError.value = messages.unknown;
+    return messages.unknown;
   }
+  return '';
 };
 
 const submit = async () => {
-  if (submitting.value) return;
-  submitting.value = true;
-  errors.title = '';
-  errors.slug = '';
-  formError.value = '';
-  try {
+  await action.run(async () => {
+    errors.title = '';
+    errors.slug = '';
     emit('created', await effortsStore.create({ title: title.value.trim(), name: slug.value.trim() || null }));
-  }
-  catch (failure) {
-    showFailure(failure);
-  }
-  finally {
-    submitting.value = false;
-  }
+  }, explain);
 };
 </script>
 

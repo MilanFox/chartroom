@@ -30,7 +30,7 @@
       </div>
 
       <div class="admin-settings__actions">
-        <AdminAction :label="saving ? strings.admin.settings.saving : strings.admin.settings.save" type="submit" variant="primary" />
+        <AdminAction :label="action.busy ? strings.admin.settings.saving : strings.admin.settings.save" type="submit" variant="primary" />
 
         <p role="status" class="admin-settings__status" :class="{ 'admin-settings__status--failed': failed }">{{ status }}</p>
       </div>
@@ -46,7 +46,7 @@ const draft = reactive({ projectName: '', singular: '', plural: '', triageLabels
 const errors = ref<Record<string, string>>({});
 const status = ref('');
 const failed = ref(false);
-const saving = ref(false);
+const action = reactive(useAction());
 
 const { locked } = useElevationGate();
 
@@ -70,32 +70,24 @@ watch(() => instanceStore.instance, (instance) => {
 }, { immediate: true });
 
 const showFailure = (failure: unknown) => {
-  const field = apiErrorField(failure);
+  const fieldError = apiErrorCode(failure) === 'invalid' ? fieldErrorOf(failure, [...nameFields.value.map(field => field.error), ...triageIds.value.map(id => `triageLabels.${id}`)]) : null;
   failed.value = true;
-  if (apiErrorCode(failure) === 'invalid' && field) errors.value = { [field]: apiErrorMessage(failure) };
+  if (fieldError) errors.value = { [fieldError.field]: fieldError.message };
   else status.value = strings.value.admin.settings.failed;
+  return '';
 };
 
 const save = async () => {
-  if (locked.value || saving.value) return;
-  saving.value = true;
+  if (locked.value || action.busy) return;
   errors.value = {};
   status.value = '';
   failed.value = false;
-  try {
-    await admin.saveSettings({
-      projectName: draft.projectName.trim(),
-      effortName: { singular: draft.singular.trim(), plural: draft.plural.trim() || null },
-      triageLabels: Object.fromEntries(Object.entries(draft.triageLabels).map(([id, label]) => [id, label.trim()])),
-    });
-    status.value = strings.value.admin.settings.saved;
-  }
-  catch (failure) {
-    showFailure(failure);
-  }
-  finally {
-    saving.value = false;
-  }
+  const saved = await action.run(() => admin.saveSettings({
+    projectName: draft.projectName.trim(),
+    effortName: { singular: draft.singular.trim(), plural: draft.plural.trim() || null },
+    triageLabels: Object.fromEntries(Object.entries(draft.triageLabels).map(([id, label]) => [id, label.trim()])),
+  }), showFailure);
+  if (saved) status.value = strings.value.admin.settings.saved;
 };
 </script>
 

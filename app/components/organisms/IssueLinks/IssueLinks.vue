@@ -82,7 +82,7 @@ const props = defineProps<IssueLinksProps>();
 const session = useSessionStore();
 const issuesStore = useIssuesStore();
 const { strings, format } = useStrings();
-const action = reactive(useIssueAction());
+const action = reactive(useAction());
 const linkError = useLinkError();
 const addForm = useTemplateRef<{ reset: () => void }>('addForm');
 const editButtons = new Map<number, HTMLButtonElement | null>();

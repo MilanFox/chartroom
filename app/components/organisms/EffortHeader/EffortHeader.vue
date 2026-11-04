@@ -102,7 +102,7 @@ const titleButton = useTemplateRef<HTMLButtonElement>('titleButton');
 const slugButton = useTemplateRef<HTMLButtonElement>('slugButton');
 const titleEditor = reactive(useVersionedEditor(() => props.effort, 'title', titleButton));
 const slugEditor = reactive(useVersionedEditor(() => props.effort, 'name', slugButton));
-const action = reactive(useIssueAction());
+const action = reactive(useAction());
 const closeButton = useTemplateRef<HTMLButtonElement>('closeButton');
 const closeAnywayButton = useTemplateRef<HTMLButtonElement>('closeAnywayButton');
 const warning = ref(false);
@@ -111,7 +111,7 @@ const slugFailure = computed(() => {
   const messages = strings.value.efforts.new.errors;
   const { failure } = slugEditor;
   if (apiErrorField(failure) !== 'name') return undefined;
-  return apiErrorCode(failure) === 'conflict' ? messages.slugTaken : messages.slugShape;
+  return slugErrorOf(failure, { taken: messages.slugTaken, shape: messages.slugShape });
 });
 
 const failed = () => strings.value.issue.fields.failed;
