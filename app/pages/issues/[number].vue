@@ -42,7 +42,7 @@ const issue = computed(() => issuesStore.documents[number.value] ?? null);
 
 if (issue.value?.kind === 'effort') await navigateTo(effortPath(issue.value), { replace: true });
 
-const missingMessage = computed(() => (apiErrorCode(error.value) === 'not-found' || !Number.isInteger(number.value) ? strings.value.issue.notFound : strings.value.issue.loadFailed));
+const missingMessage = computed(() => missingMessageOf(error.value, number.value, strings.value.issue));
 
 const crumbs = computed(() => {
   if (!issue.value) return [];

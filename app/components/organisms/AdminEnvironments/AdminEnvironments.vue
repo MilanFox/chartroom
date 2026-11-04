@@ -102,20 +102,7 @@ const { locked, prompting, close, lockedControl } = useElevationGate();
 
 const { confirming, confirm, keep, focusById } = useInlineConfirm({ baseId, triggerPrefix: `${baseId}-delete-` });
 
-const groups = computed(() => {
-  const pointers = environmentsStore.pointers ?? [];
-  const environments = environmentsStore.environments.map(environment => ({
-    key: `environment-${environment.id}`,
-    environment,
-    name: environment.name,
-    url: environment.url,
-    notes: environment.notes,
-    pointers: pointers.filter(pointer => pointer.environment === environment.id),
-  }));
-  const unbound = pointers.filter(pointer => pointer.environment === null);
-  if (!unbound.length) return environments;
-  return [...environments, { key: 'any', environment: null, name: strings.value.admin.environments.anyEnvironment, url: null, notes: null, pointers: unbound }];
-});
+const groups = computed(() => environmentGroups(environmentsStore.environments, environmentsStore.pointers ?? [], strings.value.admin.environments.anyEnvironment));
 
 const stopEditing = (id: number) => {
   editing.value = null;

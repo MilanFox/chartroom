@@ -30,19 +30,7 @@
 const environmentsStore = useEnvironmentsStore();
 const { strings, format } = useStrings();
 
-const groups = computed(() => {
-  const pointers = environmentsStore.pointers ?? [];
-  const environments = environmentsStore.environments.map(environment => ({
-    key: `environment-${environment.id}`,
-    name: environment.name,
-    url: environment.url,
-    notes: environment.notes,
-    pointers: pointers.filter(pointer => pointer.environment === environment.id),
-  }));
-  const unbound = pointers.filter(pointer => pointer.environment === null);
-  if (!unbound.length) return environments;
-  return [...environments, { key: 'any', name: strings.value.dashboard.environments.anyEnvironment, url: null, notes: null, pointers: unbound }];
-});
+const groups = computed(() => environmentGroups(environmentsStore.environments, environmentsStore.pointers ?? [], strings.value.dashboard.environments.anyEnvironment));
 </script>
 
 <style lang="scss" scoped>

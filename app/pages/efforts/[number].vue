@@ -58,7 +58,6 @@ const route = useRoute();
 const dashboard = useDashboardStore();
 const environmentsStore = useEnvironmentsStore();
 const issuesStore = useIssuesStore();
-const labelGroupsStore = useLabelGroupsStore();
 const { strings, format } = useStrings();
 const number = computed(() => Number(route.params.number));
 const mapHeadingId = useId();
@@ -74,17 +73,14 @@ const [{ error }] = await Promise.all([
     await environmentsStore.load();
     return true;
   }),
-  useAsyncData('label-groups', async () => {
-    await labelGroupsStore.load();
-    return true;
-  }),
+  useLabelGroupsLoaded(),
 ]);
 
 const effort = computed(() => (dashboard.effort?.number === number.value ? dashboard.effort : null));
 
 if (apiErrorCode(error.value) === 'invalid' && Number.isInteger(number.value)) await navigateTo(issuePath(number.value), { replace: true });
 
-const missingMessage = computed(() => (apiErrorCode(error.value) === 'not-found' || !Number.isInteger(number.value) ? strings.value.dashboard.notFound : strings.value.dashboard.loadFailed));
+const missingMessage = computed(() => missingMessageOf(error.value, number.value, strings.value.dashboard));
 
 const crumbs = computed(() => (effort.value ? crumbsFor({ page: 'dashboard', effort: effort.value }, strings.value.breadcrumb) : []));
 
