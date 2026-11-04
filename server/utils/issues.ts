@@ -27,7 +27,7 @@ export const PARENT_RULES: Record<Kind, Kind[]> = {
 
 const PARENT_REQUIRED = new Set<Kind>(['map', 'spec']);
 const EFFORT_ONLY_FIELDS = ['name', 'testInstructions'] as const;
-const EFFORT_NAME_SHAPE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+export const LOWERCASE_SLUG_SHAPE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const RECENTLY_CLOSED_SECONDS = 7 * 24 * 60 * 60;
 const LOGGED_FIELDS = ['title', 'body', 'parent', 'name', 'testInstructions'] as const;
 
@@ -241,7 +241,7 @@ const assertEffortOnlyFields = (kind: Kind, fields: IssueFields) => {
 
 const assertNameFree = (name: string | null | undefined, self: number | null) => {
   if (!isSet(name)) return;
-  if (!EFFORT_NAME_SHAPE.test(name)) throw invalid('name must be a lowercase slug', 'name');
+  if (!LOWERCASE_SLUG_SHAPE.test(name)) throw invalid('name must be a lowercase slug', 'name');
   const existing = useStore().select({ number: issues.number }).from(issues).where(eq(issues.name, name)).get();
   if (existing && existing.number !== self) throw conflict(`name ${name} is taken by #${existing.number}`, 'name');
 };

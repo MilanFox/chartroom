@@ -5,6 +5,8 @@ export const labelGroups = sqliteTable('label_groups', {
   displayName: text('display_name').notNull(),
   position: integer().notNull(),
   seeded: integer({ mode: 'boolean' }).notNull().default(false),
+  updatedAt: text('updated_at'),
+  updatedBy: text('updated_by'),
 });
 
 export const labelGroupMembers = sqliteTable('label_group_members', {

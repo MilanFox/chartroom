@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, ne, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, ne, notInArray, sql } from 'drizzle-orm';
 import { issueLabels, issues, labelGroupMembers, labelGroups } from '../db/schema';
 import type { FieldWrite } from './changes';
 import type { Principal } from './principal';
@@ -43,6 +43,13 @@ export const listLabelGroups = () => {
     exclusive: true as const,
     labels: members.filter(member => member.groupId === group.id).map(({ id, displayLabel }) => ({ id, displayLabel })),
   }));
+};
+
+export const listFreeFormLabels = () => {
+  const usage = count();
+  return useStore().select({ label: issueLabels.label, count: usage }).from(issueLabels)
+    .where(notInArray(issueLabels.label, useStore().select({ id: labelGroupMembers.id }).from(labelGroupMembers)))
+    .groupBy(issueLabels.label).orderBy(desc(usage), asc(issueLabels.label)).all();
 };
 
 const labelOn = (issue: number, label: string) => and(eq(issueLabels.issue, issue), eq(issueLabels.label, label));
