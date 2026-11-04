@@ -45,6 +45,10 @@ export default defineNuxtConfig({
     '@middleware': resolve(__dirname, './app/middleware'),
   },
 
+  routeRules: {
+    '/api/docs': { ssr: false },
+  },
+
   sourcemap: {
     server: false,
     client: true,

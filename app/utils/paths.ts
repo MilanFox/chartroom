@@ -19,3 +19,5 @@ export const LOGIN_PATH = '/login';
 export const HOME_PATH = '/';
 
 export const ISSUES_PATH = '/issues';
+
+export const API_DOCS_PATH = '/api/docs';
