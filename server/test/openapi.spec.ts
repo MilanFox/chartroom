@@ -62,6 +62,11 @@ describe('the OpenAPI document', () => {
     expect(Object.keys(document.paths['/efforts/{handle}']!)).toEqual(['get']);
     expect(Object.keys(document.paths['/efforts/{handle}/artifacts.md']!)).toEqual(['get']);
     expect(Object.keys(document.paths['/labels']!)).toEqual(['get']);
+    expect(Object.keys(document.paths['/instance']!)).toEqual(['get']);
+    expect(Object.keys(document.paths['/instance/adapter/issue-tracker.md']!)).toEqual(['get']);
+    expect(Object.keys(document.paths['/instance/adapter/triage-labels.md']!)).toEqual(['get']);
+    expect(Object.keys(document.paths['/environments']!)).toEqual(['get']);
+    expect(Object.keys(document.paths['/credential-pointers']!)).toEqual(['get']);
     expect(document.paths['/login']).toBeUndefined();
     expect(document.security).toEqual([{ bearer: [] }]);
     expect(document.components.securitySchemes).toEqual({ bearer: { type: 'http', scheme: 'bearer' } });
@@ -74,6 +79,11 @@ describe('the OpenAPI document', () => {
     expect(document.paths['/me']!.get).toBeDefined();
     expect(document.paths['/login']!.post?.summary).toBeTruthy();
     expect(document.paths['/holders/{slug}/rotate']!.post?.summary).toBeTruthy();
+    expect(Object.keys(document.paths['/instance']!)).toEqual(['get', 'patch']);
+    expect(Object.keys(document.paths['/environments']!)).toEqual(['get', 'post']);
+    expect(Object.keys(document.paths['/environments/{id}']!)).toEqual(['patch', 'delete']);
+    expect(Object.keys(document.paths['/credential-pointers']!)).toEqual(['get', 'post']);
+    expect(Object.keys(document.paths['/credential-pointers/{id}']!)).toEqual(['patch', 'delete']);
     expect(document.security).toEqual([{ session: [] }]);
     expect(document.components.securitySchemes).toEqual({ session: { type: 'apiKey', in: 'cookie', name: 'chartroom_session' } });
   });

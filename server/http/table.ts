@@ -6,6 +6,8 @@ import { EFFORT_DOCUMENT_SCHEMA, EFFORT_HANDLE_PARAM, EFFORT_LIST_PARAMS, EFFORT
 import { COMMENT_BODY_SCHEMA, COMMENT_ID_PARAM, COMMENT_SCHEMA, commentHandlers } from './handlers/comments';
 import { LABEL_GROUP_SCHEMA, labelGroupList } from './handlers/labels';
 import { LINK_CREATE_SCHEMA, LINK_FIELDS_SCHEMA, LINK_ID_PARAM, LINK_SCHEMA, linkHandlers } from './handlers/links';
+import { ENVIRONMENT_SCHEMA, environmentList, POINTER_SCHEMA, pointerList } from './handlers/environments';
+import { adapterFile, INSTANCE_SCHEMA, instanceRead } from './handlers/instance';
 import { ME_SCHEMA, me } from './handlers/me';
 
 export type RouteMethod = 'get' | 'post' | 'put' | 'patch' | 'delete';
@@ -378,6 +380,46 @@ export const routeTable: TableRoute[] = [
       summary: 'The Label groups in group order, seeded groups first',
       tags: ['labels'],
       responses: { 200: { description: 'Label groups', schema: { type: 'array', items: LABEL_GROUP_SCHEMA } } },
+    },
+  },
+  {
+    method: 'get',
+    path: '/instance',
+    handler: instanceRead,
+    openapi: {
+      summary: 'The Instance settings, version and open issue count',
+      tags: ['instance'],
+      responses: { 200: { description: 'Instance', schema: INSTANCE_SCHEMA } },
+    },
+  },
+  ...ADAPTER_FILES.map(file => ({
+    method: 'get' as const,
+    path: `/instance/adapter/${file}`,
+    handler: adapterFile(file),
+    openapi: {
+      summary: `The generated Adapter file ${file}, in this Instance's words`,
+      tags: ['instance'],
+      responses: { 200: { description: 'Markdown', contentType: 'text/markdown', schema: { type: 'string' } } },
+    },
+  })),
+  {
+    method: 'get',
+    path: '/environments',
+    handler: environmentList,
+    openapi: {
+      summary: 'The Environments with their Credential pointers',
+      tags: ['instance'],
+      responses: { 200: { description: 'Environments', schema: { type: 'array', items: ENVIRONMENT_SCHEMA } } },
+    },
+  },
+  {
+    method: 'get',
+    path: '/credential-pointers',
+    handler: pointerList,
+    openapi: {
+      summary: 'Every Credential pointer, bound or not',
+      tags: ['instance'],
+      responses: { 200: { description: 'Credential pointers', schema: { type: 'array', items: POINTER_SCHEMA } }, 403: { description: 'A non-elevated Viewer' } },
     },
   },
 ];

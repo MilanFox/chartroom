@@ -192,13 +192,14 @@ describe('labels', () => {
     expect(await alice.json('POST', '/issues', { body: { kind: 'ticket', title: 'x', blockedBy: ['1'] } })).toMatchObject(invalidOn('blockedBy'));
   });
 
-  it('GET /labels lists the three seeded groups first, exclusive, members in seeded order with displayLabel defaulting to the id', async () => {
+  it('GET /labels lists the three seeded groups first, exclusive, members in seeded order with displayLabel defaulting to the id or the triage default', async () => {
     const groups = await alice.json('GET', '/labels');
     expect(groups.status).toBe(200);
     const member = (id: string) => ({ id, displayLabel: id });
+    const triageLabels = { 'needs-triage': 'Needs triage', 'needs-info': 'Needs info', 'ready-for-agent': 'Ready for agent', 'ready-for-human': 'Ready for human', 'wontfix': 'Won\'t fix' };
     expect(groups.body.slice(0, 3)).toEqual([
       { id: 'triage-category', displayName: 'triage-category', seeded: true, exclusive: true, labels: ['bug', 'enhancement'].map(member) },
-      { id: 'triage-state', displayName: 'triage-state', seeded: true, exclusive: true, labels: ['needs-triage', 'needs-info', 'ready-for-agent', 'ready-for-human', 'wontfix'].map(member) },
+      { id: 'triage-state', displayName: 'triage-state', seeded: true, exclusive: true, labels: Object.entries(triageLabels).map(([id, displayLabel]) => ({ id, displayLabel })) },
       { id: 'wayfinder-type', displayName: 'wayfinder-type', seeded: true, exclusive: true, labels: ['wayfinder:research', 'wayfinder:prototype', 'wayfinder:grilling', 'wayfinder:task'].map(member) },
     ]);
     expect(groups.body).toHaveLength(3);

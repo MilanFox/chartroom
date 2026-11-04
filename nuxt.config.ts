@@ -57,7 +57,7 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-11-01',
 
   nitro: {
-    serverAssets: [{ baseName: 'migrations', dir: './db/migrations' }],
+    serverAssets: [{ baseName: 'migrations', dir: './db/migrations' }, { baseName: 'adapter', dir: './adapter' }],
   },
 
   vite: {

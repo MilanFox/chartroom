@@ -4,10 +4,6 @@ import { fullHolder } from '../handlers/holders';
 import type { MountRoute } from '../mount';
 import type { JsonSchema } from '../table';
 
-const requireElevation = (principal: Principal) => {
-  if (!isElevated(principal)) throw forbidden('holder administration requires elevation');
-};
-
 const create = async (event: H3Event, principal: Principal) => {
   requireElevation(principal);
   const body = await readJsonObject(event);

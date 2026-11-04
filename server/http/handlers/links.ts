@@ -17,7 +17,7 @@ export const toLink = (link: LinkRecord) => ({
   createdAt: link.createdAt,
 });
 
-const absoluteUrl = (body: JsonObject) => {
+export const absoluteUrl = (body: JsonObject) => {
   const value = body.url;
   if (typeof value !== 'string' || !URL.canParse(value)) throw invalid('url must be an absolute URL', 'url');
   return value;

@@ -39,3 +39,9 @@ export const requireText = (body: JsonObject, field: string) => {
   if (value.trim() === '') throw invalid(`${field} must not be blank`, field);
   return value;
 };
+
+export const nestedObject = (body: JsonObject, field: string): JsonObject => {
+  const value = body[field];
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) throw invalid(`${field} must be an object`, field);
+  return Object.fromEntries(Object.entries(value).map(([key, inner]) => [`${field}.${key}`, inner]));
+};
