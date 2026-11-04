@@ -169,3 +169,16 @@ export interface FreeFormLabel {
   label: string
   count: number
 }
+
+export type ChangeField = 'title' | 'body' | 'parent' | 'name' | 'testInstructions' | 'state' | 'assignee' | 'comment' | 'label' | 'blocker' | 'link';
+
+export interface IssueChange {
+  id: number
+  issue: number
+  actor: string
+  origin: Origin
+  at: string
+  field: ChangeField
+  before: string | null
+  after: string | null
+}

@@ -43,6 +43,8 @@
       <EffortTestInstructions :effort="effort" />
 
       <EffortEnvironments />
+
+      <EffortChanges :effort="effort" />
     </div>
 
     <IssueDrawer :number="drawerNumber" @close="drawerNumber = null" />
@@ -90,7 +92,7 @@ const specCountsOf = (spec: number) => ({ ...EMPTY_STATUS_COUNTS, ...effort.valu
 const openDrawer = (issue: number) => drawerNumber.value = issue;
 
 issuesStore.$onAction(({ name, args, after }) => {
-  if (name === 'loadParentCandidates' || (name === 'load' && args[0] !== number.value)) return;
+  if (name === 'loadParentCandidates' || name === 'loadChanges' || (name === 'load' && args[0] !== number.value)) return;
   after(() => dashboard.refresh());
 });
 

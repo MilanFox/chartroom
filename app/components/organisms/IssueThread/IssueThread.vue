@@ -1,14 +1,22 @@
 <template>
   <section class="issue-thread" :aria-labelledby="headingId">
-    <h2 :id="headingId" class="issue-thread__heading">
-      {{ strings.issue.thread.heading }}
+    <header class="issue-thread__header">
+      <h2 :id="headingId" class="issue-thread__heading">
+        {{ strings.issue.thread.heading }}
 
-      <span class="issue-thread__count">{{ format(strings.issue.thread.count, { count: issue.comments.length }) }}</span>
-    </h2>
+        <span class="issue-thread__count">{{ format(strings.issue.thread.count, { count: issue.comments.length }) }}</span>
+      </h2>
 
-    <ol v-if="issue.comments.length" class="issue-thread__comments">
-      <li v-for="comment in issue.comments" :key="comment.id" class="issue-thread__comment">
-        <CommentItem :comment="comment" />
+      <button type="button" role="switch" class="issue-thread__toggle" :aria-checked="showChanges" @click="showChanges = !showChanges">
+        {{ strings.issue.changes.toggle }}
+      </button>
+    </header>
+
+    <ol v-if="entries.length" class="issue-thread__entries">
+      <li v-for="entry in entries" :key="`${entry.kind}-${entry.id}`" class="issue-thread__entry">
+        <CommentItem v-if="entry.kind === 'comment'" :comment="entry.comment" />
+
+        <ChangeRow v-else :group="entry" />
       </li>
     </ol>
 
@@ -43,6 +51,10 @@ const headingId = useId();
 const commentId = useId();
 const errorId = useId();
 const draft = ref('');
+const showChanges = useLocalStorage('chartroom:show-changes', true, { initOnMounted: true });
+const changes = useIssueChanges(() => props.issue);
+
+const entries = computed(() => threadEntries(showChanges.value ? changes.value : [], props.issue.comments));
 
 const post = async () => {
   if (!draft.value.trim()) {
@@ -57,10 +69,17 @@ const post = async () => {
 .issue-thread {
   margin-top: $space-6;
 
-  &__heading {
-    margin: 0;
+  &__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: $space-2;
     padding-bottom: $space-2;
     border-bottom: 1px solid var(--color-rule);
+  }
+
+  &__heading {
+    margin: 0;
   }
 
   &__count {
@@ -69,13 +88,30 @@ const post = async () => {
     font-weight: 400;
   }
 
-  &__comments {
+  &__toggle {
+    @include button-quiet;
+    margin-left: auto;
+    font-weight: 400;
+
+    &::before {
+      display: inline-block;
+      width: $space-3;
+      margin-right: $space-1;
+      content: '\2610';
+    }
+
+    &[aria-checked='true']::before {
+      content: '\2611';
+    }
+  }
+
+  &__entries {
     margin: 0;
     padding: 0;
     list-style: none;
   }
 
-  &__comment + &__comment {
+  &__entry + &__entry {
     border-top: 1px solid var(--color-rule);
   }
 
