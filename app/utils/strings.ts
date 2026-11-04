@@ -2,6 +2,7 @@ import type { InstanceNames } from '~/types/api';
 
 export interface StringNames {
   project: string
+  product: string
   effort: string
   efforts: string
 }
@@ -16,7 +17,7 @@ const fillNames = <T extends StringTree>(tree: T, names: StringNames): T =>
 
 export const resolveStrings = <T extends StringTree & { names: StringNames }>(catalog: T, instance: InstanceNames | null): T => {
   const names = instance
-    ? { project: instance.projectName, effort: instance.effortName.singular, efforts: instance.effortName.plural }
+    ? { ...catalog.names, project: instance.projectName, effort: instance.effortName.singular, efforts: instance.effortName.plural }
     : catalog.names;
   return fillNames({ ...catalog, names }, names);
 };

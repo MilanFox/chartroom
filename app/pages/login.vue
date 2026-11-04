@@ -1,6 +1,8 @@
 <template>
   <main class="login">
     <form class="login__card" novalidate @submit.prevent="submit">
+      <ChartroomLogo class="login__logo" />
+
       <h1>{{ strings.login.heading }}</h1>
 
       <label :for="fieldId" class="login__label">{{ strings.login.field }}</label>
@@ -78,6 +80,10 @@ const submit = async () => {
     flex-direction: column;
     width: min(400px, 100%);
     padding: $space-6;
+  }
+
+  &__logo {
+    margin-bottom: $space-4;
   }
 
   &__label {
