@@ -16,13 +16,13 @@ cd my-chartroom
 docker compose up -d
 ```
 
-`my-chartroom` is the folder for the Instance's files; name it anything, it is created if missing. `init` asks for the admin and viewer passwords (Enter generates them), the public URL and the port, then writes `compose.yaml` and `.env` into it. The Instance listens on loopback only, port 3000 by default; put a TLS reverse proxy in front of it. See [Operating an Instance](docs/operating.md).
+`my-chartroom` is the folder for the Instance's files; name it anything, it is created if missing. `init` asks you to choose the admin and viewer passwords, then for the public URL and the port, then writes `compose.yaml` and `.env` into it. The Instance listens on loopback only, port 3000 by default; put a TLS reverse proxy in front of it. See [Operating an Instance](docs/operating.md).
 
 ## First run
 
 `init` ends by printing this list with your URL filled in.
 
-1. Open the Instance, `http://localhost:3000` by default, and sign in with the viewer password from `.env`.
+1. Open the Instance, `http://localhost:3000` by default, and sign in with your viewer password.
 2. Elevate with the admin password.
 3. Follow the setup checklist on the admin page and create the first Token holder. Its secret is shown once.
 4. In your project repo, write the Adapter files for your agents:
@@ -51,7 +51,7 @@ Every command: [CLI reference](cli/README.md).
 
 ## Docs
 
-- [Operating an Instance](docs/operating.md): environment variables, TLS, Snapshots, upgrade, rollback
+- [Operating an Instance](docs/operating.md): environment variables, TLS, Snapshots, upgrade, rollback, uninstall
 - API reference: `<your Instance>/api/docs`
 - [Release notes](https://github.com/MilanFox/chartroom/releases)
 - [MIT licence](LICENSE)

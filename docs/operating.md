@@ -95,3 +95,23 @@ The first boot creates nothing but the seeded Label groups: no Token holder, no 
    ```
 
    `<major>` is the Instance's major version, `0` while it is `0.x`. Re-run it after changing settings.
+
+## Uninstall
+
+> [!WARNING]
+> This deletes the store with every Effort, issue and Token holder, and cannot be undone. To keep a copy, take a Snapshot on the admin page first and copy it out: `docker compose cp chartroom:/data/backups/<name>.sqlite .`
+
+In the folder holding `compose.yaml`:
+
+```sh
+docker compose down --volumes --rmi all
+cd .. && rm -r my-chartroom
+```
+
+`down --volumes --rmi all` removes the container, its network, the `chartroom-data` volume and the image; leave out `--rmi all` while another Instance on the host runs the same image. Deleting the folder removes `compose.yaml` and `.env` with the passwords. If the folder is already gone, `docker ps -a` and `docker volume ls` show what is left; remove it with `docker rm -f <container>` and `docker volume rm <folder>_chartroom-data`.
+
+Then, outside the Instance:
+
+- Drop the site block from the reverse proxy and reload it.
+- In each project repo, delete the Adapter files written by `adapter --write` and unset `CHARTROOM_URL` and `CHARTROOM_TOKEN` wherever you exported them.
+- `npm uninstall -g chartroom-cli` if you installed the CLI globally.

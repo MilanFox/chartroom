@@ -1,5 +1,6 @@
 services:
   chartroom:
+    container_name: chartroom
     image: ghcr.io/milanfox/chartroom:0.2.0
     env_file: .env
     environment:

@@ -18,7 +18,7 @@ Installed globally (`npm install -g chartroom-cli@<major>`), the binary is `char
 npx -y chartroom-cli@latest init my-chartroom
 ```
 
-Writes `compose.yaml` and `.env` into `my-chartroom/` (default: the current directory), then prints a first-start checklist. In a terminal it walks seven steps: passwords, public URL, host port, update check, review, start now; otherwise it generates the passwords and takes every default. Needs no `CHARTROOM_URL` or `CHARTROOM_TOKEN`, and refuses with exit `1` if either file already exists.
+Writes `compose.yaml` and `.env` into `my-chartroom/` (default: the current directory), then prints a first-start checklist. In a terminal it walks seven steps, and you choose both passwords: admin and viewer password, public URL, host port, update check, review, start now. Otherwise it generates both passwords into `.env` and takes every default. The container is named after the directory, prefixed with `chartroom-` unless the name already contains it. Needs no `CHARTROOM_URL` or `CHARTROOM_TOKEN`, and refuses with exit `1` if either file already exists.
 
 ## Auth
 
