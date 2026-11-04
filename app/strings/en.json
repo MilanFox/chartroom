@@ -106,5 +106,146 @@
     "claimed": "Claimed",
     "blocked": "Blocked",
     "closed": "Closed"
+  },
+  "issue": {
+    "pageTitle": "#{number} {title}",
+    "number": "#{number}",
+    "kinds": {
+      "effort": "{effort}",
+      "map": "Map",
+      "spec": "Spec",
+      "ticket": "Ticket"
+    },
+    "meta": {
+      "created": "created {date} by {holder}",
+      "closed": "closed {date}",
+      "updated": "updated {date}",
+      "separator": " · "
+    },
+    "manual": "manual",
+    "notFound": "There is no issue #{number}.",
+    "loadFailed": "Issue #{number} could not be loaded. Try again.",
+    "editor": {
+      "save": "Save",
+      "saving": "Saving…",
+      "cancel": "Cancel",
+      "failed": "Saving failed. Try again."
+    },
+    "conflict": {
+      "message": "Changed by @{holder} at {time}, reload to see it.",
+      "reload": "Reload",
+      "generic": "Changed by someone else, reload to see it."
+    },
+    "title": {
+      "label": "Title",
+      "edit": "Edit title"
+    },
+    "body": {
+      "label": "Body (markdown)",
+      "edit": "Edit body",
+      "empty": "No description yet."
+    },
+    "fields": {
+      "heading": "Details",
+      "none": "none",
+      "failed": "That did not save. Try again.",
+      "labels": {
+        "heading": "Labels",
+        "groupNone": "None",
+        "freeForm": "Other labels",
+        "new": "New label",
+        "add": "Add",
+        "remove": "Remove label {label}",
+        "empty": "Enter a label."
+      },
+      "claim": {
+        "heading": "Claim",
+        "claimedBy": "Claimed by @{slug}",
+        "unclaimed": "Unclaimed",
+        "claim": "Claim",
+        "unclaim": "Unclaim",
+        "heldBy": "Already claimed by @{slug}.",
+        "heldBySomeone": "Already claimed by someone else."
+      },
+      "parent": {
+        "heading": "Parent",
+        "label": "Parent issue",
+        "none": "None",
+        "option": "{kind} #{number}: {title}",
+        "invalid": "That parent is not allowed here."
+      },
+      "blockers": {
+        "heading": "Blocked by",
+        "closedChip": "#{number} ✓",
+        "closedName": "#{number} {title}, closed",
+        "remove": "Remove blocker #{number}",
+        "number": "Blocker issue number",
+        "placeholder": "#n",
+        "add": "Add blocker",
+        "notFound": "There is no issue #{number}.",
+        "invalid": "#{number} cannot block this issue: it is the issue itself or would close a cycle."
+      },
+      "blocks": {
+        "heading": "Blocks"
+      },
+      "links": {
+        "heading": "Links",
+        "count": "({count})",
+        "by": "by {holder} · {date}",
+        "edit": "Edit link {title}",
+        "remove": "Remove link {title}",
+        "editHeading": "Edit link",
+        "addHeading": "Add Link",
+        "role": "Role",
+        "type": "Type",
+        "url": "URL",
+        "title": "Title",
+        "add": "Add Link",
+        "save": "Save",
+        "cancel": "Cancel",
+        "roles": {
+          "resource": "Resource",
+          "artifact": "Artifact"
+        },
+        "types": {
+          "branch": "Branch",
+          "file": "File",
+          "preview": "Preview",
+          "doc": "Doc",
+          "external": "External"
+        },
+        "errors": {
+          "url": "Enter an absolute URL.",
+          "taken": "That URL is already linked here.",
+          "title": "Enter a title."
+        }
+      }
+    },
+    "thread": {
+      "heading": "Comments",
+      "count": "({count}, oldest first)",
+      "empty": "No comments yet.",
+      "resolution": "Resolution",
+      "edited": "edited",
+      "edit": "Edit",
+      "delete": "Delete",
+      "editLabel": "Edit comment (markdown)",
+      "confirmDelete": "Delete this comment?",
+      "keep": "Keep",
+      "commentLabel": "Comment as @{slug} (markdown)",
+      "comment": "Comment",
+      "posting": "Posting…",
+      "emptyComment": "Write a comment first.",
+      "signIn": "Sign in as a Token holder to comment"
+    },
+    "close": {
+      "heading": "Resolution",
+      "label": "Resolution comment, posted in the same act as the close (optional, markdown)",
+      "close": "Close with resolution",
+      "closing": "Closing…",
+      "closedHeading": "Closed",
+      "closedAt": "closed {date}",
+      "reopen": "Reopen"
+    }
   }
 }

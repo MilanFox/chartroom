@@ -2,6 +2,7 @@ interface UiFetchOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   body?: Record<string, unknown>
   query?: Record<string, string | number>
+  headers?: Record<string, string>
 }
 
 const endSession = async () => {
