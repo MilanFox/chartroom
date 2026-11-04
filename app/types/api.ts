@@ -48,3 +48,69 @@ export interface Effort {
   updatedAt: string
   statusRollup: StatusRollup
 }
+
+export type Origin = 'ui' | 'api';
+
+export interface IssueRow {
+  number: number
+  kind: IssueKind
+  title: string
+  state: 'open' | 'closed'
+  status: IssueStatus
+  assignee: string | null
+  parent: number | null
+  effort: number | null
+  labels: string[]
+  createdAt: string
+  updatedAt: string
+  url: string
+}
+
+export interface IssueComment {
+  id: number
+  issue: number
+  author: string
+  body: string
+  origin: Origin
+  resolution: boolean
+  createdAt: string
+  updatedAt: string
+  url: string
+}
+
+export type LinkRole = 'resource' | 'artifact';
+export type LinkType = 'branch' | 'file' | 'preview' | 'doc' | 'external';
+
+export interface IssueLink {
+  id: number
+  issue: number
+  role: LinkRole
+  type: LinkType
+  url: string
+  title: string
+  addedBy: string
+  origin: Origin
+  createdAt: string
+}
+
+export interface IssueDocument extends IssueRow {
+  body: string
+  createdBy: string
+  origin: Origin
+  closedAt: string | null
+  version: number
+  blockedBy: { number: number, title: string, open: boolean }[]
+  blocks: { number: number, title: string }[]
+  children: number[]
+  links: IssueLink[]
+  comments: IssueComment[]
+  resolution: IssueComment | null
+}
+
+export interface LabelGroup {
+  id: string
+  displayName: string
+  seeded: boolean
+  exclusive: true
+  labels: { id: string, displayLabel: string }[]
+}

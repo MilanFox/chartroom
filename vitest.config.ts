@@ -9,6 +9,7 @@ export default defineConfig(async () => ({
           name: 'app',
           environment: 'nuxt',
           include: ['app/**/*.spec.ts'],
+          setupFiles: ['app/test/happy-dom-node-name.ts'],
         },
       }),
       {
