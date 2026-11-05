@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { snapshotsDir, findSnapshot, listSnapshots, manualStem, preMigrateStem, snapshotToRestore } from './snapshots';
+import { snapshotsDir, deleteSnapshot, findSnapshot, listSnapshots, manualStem, preMigrateStem, snapshotToRestore } from './snapshots';
 
 let dataDir: string;
 
@@ -67,5 +67,15 @@ describe('snapshotToRestore', () => {
 
   it('returns null when every pre-migrate Snapshot is from a newer schema', () => {
     expect(snapshotToRestore(dataDir, '0001')).toBeNull();
+  });
+
+  it('falls back to an older pre-migrate Snapshot once the matching one is deleted', () => {
+    deleteSnapshot(dataDir, newest);
+    expect(snapshotToRestore(dataDir, '0004')?.name).toBe(oldest);
+  });
+
+  it('returns null once every pre-migrate Snapshot it could restore is deleted', () => {
+    deleteSnapshot(dataDir, oldest);
+    expect(snapshotToRestore(dataDir, '0002')).toBeNull();
   });
 });

@@ -1,5 +1,5 @@
 <template>
-  <AdminSection id="snapshots" :heading="strings.shell.adminSections.snapshots" :intro="strings.admin.snapshots.intro">
+  <AdminSection id="snapshots" :heading="heading" :intro="strings.admin.snapshots.intro">
     <div class="admin-snapshots__take">
       <AdminAction :id="`${baseId}-take`" :label="takeAction.busy ? strings.admin.snapshots.taking : strings.admin.snapshots.take" variant="primary" @run="take" />
 
@@ -34,14 +34,14 @@
               <td class="admin-snapshots__actions">
                 <a :href="`/ui/snapshots/${encodeURIComponent(snapshot.name)}`" :download="`${snapshot.name}.sqlite`" class="admin-snapshots__download">{{ strings.admin.snapshots.download }}</a>
 
-                <AdminAction v-if="snapshot.trigger === 'manual'" :id="`${baseId}-delete-${snapshot.name}`" :label="strings.admin.snapshots.delete" variant="danger" @run="confirm(snapshot.name)" />
+                <AdminAction :id="`${baseId}-delete-${snapshot.name}`" :label="strings.admin.snapshots.delete" variant="danger" @run="confirm(snapshot.name)" />
               </td>
             </tr>
 
             <tr v-if="confirming === snapshot.name">
               <td colspan="4">
                 <InlineConfirm
-                  :message="format(strings.admin.snapshots.confirmDelete, { name: snapshot.name })"
+                  :message="format(snapshot.trigger === 'pre-migrate' ? strings.admin.snapshots.confirmDeletePreMigrate : strings.admin.snapshots.confirmDelete, { name: snapshot.name })"
                   :confirm-label="strings.admin.snapshots.delete"
                   :keep-label="strings.admin.snapshots.keep"
                   :error="deleteAction.error"
@@ -69,6 +69,13 @@ const takeAction = reactive(useAction());
 const deleteAction = reactive(useAction());
 const takeStatus = ref('');
 const takeFailed = ref(false);
+
+const heading = computed(() => {
+  const section = strings.value.shell.adminSections.snapshots;
+  if (!admin.snapshots) return section;
+  const total = admin.snapshots.reduce((sum, snapshot) => sum + snapshot.size, 0);
+  return format(strings.value.admin.snapshots.heading, { heading: section, total: formatFileSize(total) });
+});
 
 const { confirming, confirm, keep, focusById } = useInlineConfirm({ triggerPrefix: `${baseId}-delete-` });
 

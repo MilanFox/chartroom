@@ -78,7 +78,4 @@ export const takeSnapshot = (store: Store, dataDir: string, stem: string) => {
   return describeSnapshot(dataDir, `${stem}.sqlite`)!;
 };
 
-export const deleteSnapshot = (dataDir: string, name: string) => {
-  if (findSnapshot(dataDir, name)?.trigger === 'pre-migrate') throw invalid('a pre-migrate Snapshot cannot be deleted', 'name');
-  rmSync(snapshotFile(dataDir, name));
-};
+export const deleteSnapshot = (dataDir: string, name: string) => rmSync(snapshotFile(dataDir, name));

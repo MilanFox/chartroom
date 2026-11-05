@@ -147,7 +147,7 @@ describe('boot against a store carrying a migration the image does not know', ()
   });
 });
 
-describe('manual Snapshots on the UI mount', () => {
+describe('Snapshots on the UI mount', () => {
   const server = {} as LaunchedServer;
 
   beforeAll(async () => {
@@ -207,13 +207,6 @@ describe('manual Snapshots on the UI mount', () => {
     expect((await admin.json('GET', '/snapshots')).body).not.toContainEqual(expect.objectContaining({ name }));
   });
 
-  it('deleting a pre-migrate Snapshot is refused and keeps the file', async () => {
-    const name = await preMigrateName();
-
-    expect(await (await elevatedViewer(server)).json('DELETE', `/snapshots/${name}`)).toMatchObject({ status: 400, body: { error: { code: 'invalid', field: 'name' } } });
-    expect(backupsOf(server.dataDir)).toContain(`${name}.sqlite`);
-  });
-
   it('an unknown or path-like Snapshot name is not-found', async () => {
     const admin = await elevatedViewer(server);
     const preMigrate = await preMigrateName();
@@ -238,6 +231,21 @@ describe('manual Snapshots on the UI mount', () => {
       expect(await holder.json(method, path), `holder ${method} ${path}`).toMatchObject({ status: 403, body: { error: { code: 'forbidden' } } });
     }
     expect(backupsOf(server.dataDir)).toEqual(before);
+  });
+
+  it('a pre-migrate Snapshot is forbidden to delete without elevation, then an elevated session deletes it', async () => {
+    const viewer = uiClient(server);
+    await viewer.login(TEST_PASSWORDS.CHARTROOM_VIEWER_PASSWORD);
+    const holder = uiClient(server);
+    await holder.login(await holderSecret(server, 'dave'));
+    const name = await preMigrateName();
+
+    expect(await viewer.json('DELETE', `/snapshots/${name}`)).toMatchObject({ status: 403, body: { error: { code: 'forbidden' } } });
+    expect(await holder.json('DELETE', `/snapshots/${name}`)).toMatchObject({ status: 403, body: { error: { code: 'forbidden' } } });
+    expect(backupsOf(server.dataDir)).toContain(`${name}.sqlite`);
+
+    expect(await (await elevatedViewer(server)).json('DELETE', `/snapshots/${name}`)).toEqual({ status: 204, body: null });
+    expect(backupsOf(server.dataDir)).not.toContain(`${name}.sqlite`);
   });
 
   it('a failed manual Snapshot reports the error and leaves no file behind', async () => {
