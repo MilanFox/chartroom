@@ -5,7 +5,7 @@
         <NuxtLink
           :to="{ hash: `#${section.id}` }"
           class="admin-section-nav__link"
-          :aria-current="currentHash === `#${section.id}` ? 'location' : undefined"
+          :aria-current="currentId === section.id ? 'location' : undefined"
         >{{ section.label }}</NuxtLink>
       </li>
     </ul>
@@ -15,14 +15,33 @@
 <script setup lang="ts">
 import type { AdminSectionNavProps } from './AdminSectionNav.types';
 
-defineProps<AdminSectionNavProps>();
+const props = defineProps<AdminSectionNavProps>();
 
 const route = useRoute();
 const { strings } = useStrings();
-const currentHash = ref('');
+const currentId = ref('');
+let followsHash = false;
+
+const hasReached = (section: HTMLElement) => section.getBoundingClientRect().top <= parseFloat(getComputedStyle(section).scrollMarginTop) + 1;
+
+const sectionInView = () => {
+  const root = document.documentElement;
+  if (root.scrollTop > 0 && window.innerHeight + root.scrollTop >= root.scrollHeight - 1) return props.sections.at(-1)?.id;
+  return props.sections.findLast(({ id }) => {
+    const section = document.getElementById(id);
+    return section && hasReached(section);
+  })?.id;
+};
 
 onMounted(() => {
-  watch(() => route.hash, hash => currentHash.value = hash, { immediate: true });
+  watch(() => route.hash, (hash) => {
+    currentId.value = hash.slice(1);
+    followsHash = Boolean(hash);
+  }, { immediate: true });
+  useEventListener(window, ['wheel', 'touchmove', 'keydown'], () => followsHash = false, { passive: true });
+  useEventListener(window, 'scroll', useThrottleFn(() => {
+    if (!followsHash) currentId.value = sectionInView() ?? '';
+  }, 100, true), { passive: true });
 });
 </script>
 
