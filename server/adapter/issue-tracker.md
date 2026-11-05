@@ -73,12 +73,14 @@ Create the issue under its {{Effort}}. Find it with `chartroom effort view <slug
 
 `chartroom issue view <n>`. The user normally passes the number or the URL; the number is the last path segment of the URL.
 
+If you are about to work the ticket, claim it right after viewing it: `chartroom issue claim <n>`. A `conflict` means it is already held, even when the holder named is your own (another session may share your holder): stop and ask the user. If you give the work up, `chartroom issue unassign <n>`. When the work is done, close the ticket (see below).
+
 ## When a ticket's work is finished
 
-A ticket whose work is on the main branch but whose `state` is still `open` reads as unfinished to every later session, and keeps every ticket it blocks blocked. Close it in the same session that merged the work, after the merge:
+A ticket whose work is on the main branch but whose `state` is still `open` reads as unfinished to every later session, and keeps every ticket it blocks blocked. Close it in the same session, once the work is on the main branch, whether it got there by merge or by direct commit:
 
-1. `chartroom issue link add <n> --role artifact --type branch --url <branch or PR url> --title "…"` for the branch or PR, if not linked yet.
-2. `chartroom issue close <n> --comment-file -` with a short Resolution: what landed, the merge commit or PR link, anything beyond the ticket's list, and known gaps for later tickets.
+1. `chartroom issue link add <n> --role artifact --type branch --url <branch or PR url> --title "…"` for the branch, if there is one and it is not linked yet.
+2. `chartroom issue close <n> --comment-file -` with a short Resolution: what landed, the commit or merge reference, anything beyond the ticket's list, and known gaps for later tickets.
 
 Closing is the only done signal; the `ready-for-agent` label stays as it is and nothing else is edited. Do not close the parent spec, map or {{Effort}}; the human does that, or the skill that owns it. A ticket closed by mistake is reopened with `chartroom issue reopen <n>`.
 
