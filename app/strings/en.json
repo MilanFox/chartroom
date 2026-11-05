@@ -290,6 +290,8 @@
         "blockerRemoved": "removed blocker {blocker}",
         "linkAdded": "added Link {title}",
         "linkRemoved": "removed Link {title}",
+        "researchAdded": "added Research note {slug} ({size})",
+        "researchUpdated": "updated Research note {slug} ({before} → {after})",
         "commentDeleted": "deleted a comment"
       }
     },
