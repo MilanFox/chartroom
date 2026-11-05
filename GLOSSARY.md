@@ -37,7 +37,7 @@ One running Chartroom serving exactly one project: its Efforts, Token holders, E
 _Avoid_: Server, deployment, tenant, workspace
 
 **Snapshot**:
-A consistent copy of the Instance's store taken while it runs, kept beside it so a human can restore the Instance to that moment. The tracker takes one by itself before it changes the store's shape; an Admin can take one at any time.
+A consistent copy of the Instance's store taken while it runs, kept beside it so a human can restore the Instance to that moment. The tracker takes one by itself before it changes the store's shape; an Admin can take one at any time and delete one.
 _Avoid_: Backup file, dump, export
 
 **Effort**:
@@ -109,7 +109,7 @@ The comment that answers a ticket, posted in the same act as closing it.
 _Avoid_: Answer, closing note, outcome
 
 **Change**:
-A record the tracker keeps of one field of an issue being written: who wrote it, through which Origin, when, and the value before and after. Shown among the comments, never one of them.
+A record the tracker keeps of one field of an issue, or one of its Research notes, being written: who wrote it, through which Origin, when, and the value before and after; for a Research note, only its size. Shown among the comments, never one of them.
 _Avoid_: Audit entry, event, activity, history entry, system comment
 
 **Origin**:
