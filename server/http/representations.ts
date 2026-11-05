@@ -5,7 +5,9 @@ import type { BlockerRef } from '../utils/blockers';
 import type { CommentRecord } from '../utils/comments';
 import type { IssueRecord } from '../utils/issues';
 import type { LinkRecord } from '../utils/links';
-import type { CredentialPointer, EffortDocument, ExcerptedRow, Environment, Holder, IssueComment, IssueDocument, IssueLink, IssueRow, Origin, RosterHolder } from '#shared/api';
+import type { ResearchNoteRecord } from '../utils/research-notes';
+import type { RolledUpNoteRecord } from '../utils/efforts';
+import type { CredentialPointer, EffortDocument, ExcerptedRow, Environment, Holder, IssueComment, IssueDocument, IssueLink, IssueRow, Origin, ResearchNote, ResearchNoteSummary, RolledUpResearchNote, RosterHolder } from '#shared/api';
 import type { IssueState, Kind, LinkRole, LinkType } from '#shared/domain';
 import { STATUSES } from '#shared/domain';
 import type { JsonSchema } from './table';
@@ -121,6 +123,51 @@ const LINK_PROPERTIES = {
 };
 
 export const LINK_SCHEMA = { type: 'object', properties: LINK_PROPERTIES, required: Object.keys(LINK_PROPERTIES) };
+
+const researchNoteUrl = (event: H3Event, issue: number, slug: string) => `${baseUrl(event)}/issues/${issue}/research/${slug}`;
+
+export const toResearchNoteSummary = (event: H3Event, note: ResearchNoteRecord): ResearchNoteSummary => ({
+  issue: note.issue,
+  slug: note.slug,
+  title: note.title,
+  size: note.size,
+  createdAt: note.createdAt,
+  createdBy: note.createdBy,
+  updatedAt: note.updatedAt,
+  updatedBy: note.updatedBy,
+  origin: note.origin as Origin,
+  url: researchNoteUrl(event, note.issue, note.slug),
+});
+
+export const toResearchNote = (event: H3Event, note: ResearchNoteRecord): ResearchNote => ({ ...toResearchNoteSummary(event, note), body: note.body });
+
+const toRolledUpResearchNote = (event: H3Event, note: RolledUpNoteRecord): RolledUpResearchNote => ({
+  issue: { number: note.issue.number, title: note.issue.title, kind: note.issue.kind as Kind },
+  slug: note.slug,
+  title: note.title,
+  size: note.size,
+  updatedAt: note.updatedAt,
+  url: researchNoteUrl(event, note.issue.number, note.slug),
+});
+
+const RESEARCH_NOTE_SUMMARY_PROPERTIES = {
+  issue: { type: 'integer' },
+  slug: { type: 'string' },
+  title: { type: 'string', description: 'The text of the first # heading, else the slug' },
+  size: { type: 'integer', description: 'Bytes of the UTF-8 body' },
+  createdAt: { type: 'string', format: 'date-time' },
+  createdBy: { type: 'string' },
+  updatedAt: { type: 'string', format: 'date-time' },
+  updatedBy: { type: 'string' },
+  origin: { type: 'string', enum: ['ui', 'api'] },
+  url: { type: 'string', format: 'uri', description: 'The page of the note' },
+};
+
+export const RESEARCH_NOTE_SUMMARY_SCHEMA = { type: 'object', properties: RESEARCH_NOTE_SUMMARY_PROPERTIES, required: Object.keys(RESEARCH_NOTE_SUMMARY_PROPERTIES) };
+
+const RESEARCH_NOTE_PROPERTIES = { ...RESEARCH_NOTE_SUMMARY_PROPERTIES, body: { type: 'string' } };
+
+export const RESEARCH_NOTE_SCHEMA = { type: 'object', properties: RESEARCH_NOTE_PROPERTIES, required: Object.keys(RESEARCH_NOTE_PROPERTIES) };
 
 const issueRef = (properties: Record<string, unknown>) => ({ type: 'object', properties: { number: { type: 'integer' }, ...properties }, required: ['number', ...Object.keys(properties)] });
 const BLOCKER_LIST = { type: 'array', items: issueRef({ open: { type: 'boolean' } }), description: 'Blockers by number; open means the blocker still blocks' };
@@ -269,6 +316,7 @@ export const toEffortDocument = (event: H3Event, effort: IssueRecord): EffortDoc
     testInstructions: effort.testInstructions,
     statusRollup: statusRollupOf(effort.number),
     linkRollup: linkRollupOf(effort.number),
+    researchRollup: researchRollupOf(effort.number).map(note => toRolledUpResearchNote(event, note)),
     map: map ? toExcerptedRow(event, map) : null,
     specs: children.filter(child => child.kind === 'spec').map(spec => toExcerptedRow(event, spec)),
   };
@@ -294,6 +342,19 @@ const ROLLED_UP_LINK_SCHEMA = {
   required: ['url', 'title', 'type', 'sources'],
 };
 
+const ROLLED_UP_RESEARCH_NOTE_SCHEMA = {
+  type: 'object',
+  properties: {
+    issue: issueRef({ title: { type: 'string' }, kind: { type: 'string', enum: KINDS } }),
+    slug: RESEARCH_NOTE_SUMMARY_PROPERTIES.slug,
+    title: RESEARCH_NOTE_SUMMARY_PROPERTIES.title,
+    size: RESEARCH_NOTE_SUMMARY_PROPERTIES.size,
+    updatedAt: RESEARCH_NOTE_SUMMARY_PROPERTIES.updatedAt,
+    url: RESEARCH_NOTE_SUMMARY_PROPERTIES.url,
+  },
+  required: ['issue', 'slug', 'title', 'size', 'updatedAt', 'url'],
+};
+
 const EXCERPTED_ROW_SCHEMA = {
   type: 'object',
   properties: { ...ROW_PROPERTIES, excerpt: { type: 'string', description: 'The first body paragraph that is not a heading or an HTML comment, whitespace collapsed; empty when there is none' } },
@@ -304,9 +365,10 @@ const EFFORT_DOCUMENT_PROPERTIES = {
   ...DOCUMENT_SCHEMA.properties,
   statusRollup: STATUS_ROLLUP_SCHEMA,
   linkRollup: { type: 'object', description: 'Every Link in the subtree, closed tickets included, deduped by URL', properties: { resource: { type: 'array', items: ROLLED_UP_LINK_SCHEMA }, artifact: { type: 'array', items: ROLLED_UP_LINK_SCHEMA } }, required: ['resource', 'artifact'] },
+  researchRollup: { type: 'array', description: 'Every Research note in the subtree, the Effort itself included, newest updatedAt first', items: ROLLED_UP_RESEARCH_NOTE_SCHEMA },
   map: { oneOf: [EXCERPTED_ROW_SCHEMA, { type: 'null' }] },
   specs: { type: 'array', items: EXCERPTED_ROW_SCHEMA },
 };
 
-export const EFFORT_DOCUMENT_SCHEMA = { type: 'object', properties: EFFORT_DOCUMENT_PROPERTIES, required: [...DOCUMENT_SCHEMA.required, 'name', 'testInstructions', 'statusRollup', 'linkRollup', 'map', 'specs'] };
+export const EFFORT_DOCUMENT_SCHEMA = { type: 'object', properties: EFFORT_DOCUMENT_PROPERTIES, required: [...DOCUMENT_SCHEMA.required, 'name', 'testInstructions', 'statusRollup', 'linkRollup', 'researchRollup', 'map', 'specs'] };
 export const EFFORT_PAGE_SCHEMA = pageSchema(EFFORT_DOCUMENT_SCHEMA);

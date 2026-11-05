@@ -105,6 +105,20 @@ export const links = sqliteTable('links', {
   createdAt: text('created_at').notNull(),
 }, table => [unique().on(table.issue, table.url)]);
 
+export const researchNotes = sqliteTable('research_notes', {
+  id: integer().primaryKey({ autoIncrement: true }),
+  issue: integer().notNull().references(() => issues.number, { onDelete: 'cascade' }),
+  slug: text().notNull(),
+  title: text().notNull(),
+  body: text().notNull(),
+  size: integer().notNull(),
+  createdAt: text('created_at').notNull(),
+  createdBy: text('created_by').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  updatedBy: text('updated_by').notNull(),
+  origin: text().notNull(),
+}, table => [unique().on(table.issue, table.slug)]);
+
 export const instanceSettings = sqliteTable('instance_settings', {
   id: integer().primaryKey(),
   projectName: text('project_name').notNull(),

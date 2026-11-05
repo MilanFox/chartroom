@@ -63,6 +63,17 @@ export CHARTROOM_TOKEN=<secret>
 
 `issue list` takes `--kind`, `--state`, `--label`, `--parent`, `--effort`, `--assignee`, `--missing`, `-q`, `--view`, `--sort`, `--order`. `--label` and `--missing` repeat.
 
+## Research notes
+
+| Purpose | Example |
+| --- | --- |
+| Store a Markdown file on an issue, slug from the file name; again to replace it | `chart research put 12 notes/local-transcription.md` |
+| Store stdin under a slug | `chart research put 12 - --slug local-transcription` |
+| List the notes of an issue, without bodies | `chart research list 12` |
+| Show one note with its body | `chart research view 12 local-transcription` |
+
+A note is Markdown of at most 512 KB, titled by its first `# ` heading. Binaries and large files belong in an artifact Link. The printed `url` is the note's page.
+
 ## Efforts
 
 | Purpose | Example |
@@ -90,7 +101,7 @@ Repo setup goes through `/setup-matt-pocock-skills`: at "Issue tracker" pick Oth
 
 | Flag | Meaning |
 | --- | --- |
-| `--body-file -` | Any `*-file` flag reads stdin when given `-`. |
+| `--body-file -` | Any `*-file` flag reads stdin when given `-`; so does `research put` given `-` as the file, with `--slug`. |
 | `--limit`, `--cursor` | Page through a list verb; output is `{ items, nextCursor }`. |
 | `--all` | Follow every cursor and print a plain array. |
 

@@ -60,6 +60,8 @@ describe('the OpenAPI document', () => {
     expect(Object.keys(document.paths['/issues/{number}/blockers/{blocker}']!)).toEqual(['put', 'delete']);
     expect(Object.keys(document.paths['/issues/{number}/links']!)).toEqual(['get', 'post']);
     expect(Object.keys(document.paths['/issues/{number}/links/{id}']!)).toEqual(['patch', 'delete']);
+    expect(Object.keys(document.paths['/issues/{number}/research']!)).toEqual(['get']);
+    expect(Object.keys(document.paths['/issues/{number}/research/{slug}']!)).toEqual(['get', 'put']);
     expect(Object.keys(document.paths['/efforts']!)).toEqual(['get']);
     expect(Object.keys(document.paths['/efforts/{handle}']!)).toEqual(['get']);
     expect(Object.keys(document.paths['/efforts/{handle}/artifacts.md']!)).toEqual(['get']);
@@ -209,6 +211,8 @@ describe('the OpenAPI document', () => {
       await api.json('PUT', `/issues/${ticket.number}/blockers/${blocker.number}`);
       await api.json('POST', `/issues/${ticket.number}/links`, { body: { role: 'artifact', type: 'branch', url: 'https://git.example/shape', title: 'Shape' } });
       await api.json('POST', `/issues/${ticket.number}/comments`, { body: { body: 'A comment' } });
+      const created = await api.json('PUT', `/issues/${ticket.number}/research/shape`, { body: { body: '# Shape' } });
+      const replaced = await api.json('PUT', `/issues/${ticket.number}/research/shape`, { body: { body: '# Shape, again' } });
       await api.json('POST', `/issues/${ticket.number}/claim`);
       await api.json('POST', `/issues/${ticket.number}/close`, { body: { comment: 'Resolved' } });
 
@@ -226,6 +230,8 @@ describe('the OpenAPI document', () => {
         { path: '/issues/{number}/comments', url: `/issues/${ticket.number}/comments` },
         { path: '/issues/{number}/links', url: `/issues/${ticket.number}/links` },
         { path: '/issues/{number}/changes', url: `/issues/${ticket.number}/changes` },
+        { path: '/issues/{number}/research', url: `/issues/${ticket.number}/research` },
+        { path: '/issues/{number}/research/{slug}', url: `/issues/${ticket.number}/research/shape` },
       ];
 
       for (const origin of ['api', 'ui'] as const) {
@@ -234,6 +240,8 @@ describe('the OpenAPI document', () => {
           expect(drift(schemaOf(documents[origin], ['get', path], '200'), body, `${origin} get ${path}`)).toEqual([]);
         }
       }
+      expect(drift(schemaOf(documents.api, ['put', '/issues/{number}/research/{slug}'], '201'), created.body, 'api put research created')).toEqual([]);
+      expect(drift(schemaOf(documents.api, ['put', '/issues/{number}/research/{slug}'], '200'), replaced.body, 'api put research replaced')).toEqual([]);
       expect(drift(schemaOf(documents.ui, ['post', '/holders'], '201'), holder, 'ui post /holders')).toEqual([]);
       const login = await uiClient(server).login(TEST_PASSWORDS.CHARTROOM_VIEWER_PASSWORD);
       expect(drift(schemaOf(documents.ui, ['post', '/login'], '200'), login.body, 'ui post /login')).toEqual([]);

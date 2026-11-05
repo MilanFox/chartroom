@@ -8,7 +8,7 @@ export type LinkType = 'branch' | 'file' | 'preview' | 'doc' | 'external';
 export const LOGGED_FIELDS = ['title', 'body', 'parent', 'name', 'testInstructions'] as const;
 export const EFFORT_ONLY_FIELDS = ['name', 'testInstructions'] as const;
 
-export type ChangeField = typeof LOGGED_FIELDS[number] | 'state' | 'assignee' | 'comment' | 'label' | 'blocker' | 'link';
+export type ChangeField = typeof LOGGED_FIELDS[number] | 'state' | 'assignee' | 'comment' | 'label' | 'blocker' | 'link' | 'research';
 
 export const KINDS: Kind[] = ['effort', 'map', 'spec', 'ticket'];
 export const ISSUE_STATES: IssueState[] = ['open', 'closed'];

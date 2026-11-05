@@ -17,6 +17,7 @@ const effort: EffortDocument = {
     resource: [],
     artifact: [{ url: 'https://example.test/adr', title: 'ADR 0001', type: 'doc', sources: [3, 4] }],
   },
+  researchRollup: [],
   map: null,
   specs: [],
 };

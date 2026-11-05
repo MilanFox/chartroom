@@ -1,7 +1,8 @@
 import { and, asc, desc, eq, inArray, ne } from 'drizzle-orm';
-import { issues, links } from '../db/schema';
+import { issues, links, researchNotes } from '../db/schema';
 import type { IssueCursor, IssueRecord, IssueState, IssueStatus, SortOrder } from './issues';
 import type { LinkRecord, LinkRole, LinkType } from './links';
+import type { ResearchNoteRecord } from './research-notes';
 
 export type EffortSort = 'updatedAt' | 'name';
 
@@ -22,6 +23,8 @@ export interface RolledUpLink {
 }
 
 export type LinkRollup = Record<LinkRole, RolledUpLink[]>;
+
+export type RolledUpNoteRecord = Pick<ResearchNoteRecord, 'slug' | 'title' | 'size' | 'updatedAt'> & { issue: Pick<IssueRecord, 'number' | 'title' | 'kind'> };
 
 export interface StatusRollup {
   map: { state: IssueState, frontier: number } | null
@@ -59,6 +62,15 @@ export const linkRollupOf = (effort: number): LinkRollup => {
   for (const link of subtree) mergeIntoRollup(rollup[link.role as LinkRole], link);
   return rollup;
 };
+
+export const researchRollupOf = (effort: number): RolledUpNoteRecord[] =>
+  useStore()
+    .select({ slug: researchNotes.slug, title: researchNotes.title, size: researchNotes.size, updatedAt: researchNotes.updatedAt, issue: { number: issues.number, title: issues.title, kind: issues.kind } })
+    .from(researchNotes)
+    .innerJoin(issues, eq(researchNotes.issue, issues.number))
+    .where(inArray(researchNotes.issue, subtreeNumbers(effort)))
+    .orderBy(desc(researchNotes.updatedAt), desc(researchNotes.id))
+    .all();
 
 export const artifactsMarkdownOf = (effort: number) =>
   linkRollupOf(effort).artifact.map(({ title, url }) => `- [${title}](${url})\n`).join('');

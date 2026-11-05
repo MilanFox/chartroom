@@ -134,7 +134,7 @@ describe('the CLI', () => {
   });
 
   it('a wrong flag, an unknown command or a missing argument is usage on stderr with exit 2', async () => {
-    for (const argv of [['me', '--bogus'], ['frobnicate'], [], ['issue', 'view'], ['issue', 'view', '1', '2'], ['issue', 'block', '1']]) {
+    for (const argv of [['me', '--bogus'], ['frobnicate'], [], ['issue', 'view'], ['issue', 'view', '1', '2'], ['issue', 'block', '1'], ['research', 'put', '1']]) {
       const result = await chartroom(argv);
 
       expect(result, argv.join(' ')).toMatchObject({ code: 2, stdout: '' });
@@ -222,6 +222,50 @@ describe('the CLI', () => {
     expect(appended.body).toBe('## Notes\n\nfrom stdin\nappended');
     expect(closed).toMatchObject({ state: 'closed', resolution: { body: 'Done via pipe' } });
     expect(edited.testInstructions).toBe('Open staging');
+  });
+
+  describe('research', () => {
+    it('put reads the file, takes the slug from its name and the title from its heading, and prints the note with its url; put again replaces it', async () => {
+      const ticket = await createTicket('Transcription spike');
+      const directory = mkdtempSync(join(tmpdir(), 'chartroom-research-'));
+      const file = join(directory, 'local-transcription.md');
+      writeFileSync(file, '# Local transcription\n\nWhisper runs offline.\n');
+
+      const created = await chartroom(['research', 'put', String(ticket.number), file]);
+      expect(created).toMatchObject({ code: 0, stderr: '' });
+      expect(JSON.parse(created.stdout)).toMatchObject({ slug: 'local-transcription', title: 'Local transcription', body: '# Local transcription\n\nWhisper runs offline.\n', url: `${server.baseUrl}/issues/${ticket.number}/research/local-transcription` });
+
+      writeFileSync(file, '# Local transcription, revised\n');
+      expect(JSON.parse((await chartroom(['research', 'put', String(ticket.number), file])).stdout)).toMatchObject({ title: 'Local transcription, revised' });
+      expect((await aliceApi.json('GET', `/issues/${ticket.number}/research`)).body).toHaveLength(1);
+    });
+
+    it('put - reads stdin under --slug; without --slug it is a usage error that writes nothing', async () => {
+      const ticket = await createTicket('Piped research');
+
+      const missingSlug = await chartroom(['research', 'put', String(ticket.number), '-'], { stdin: '# Piped' });
+      expect(missingSlug).toMatchObject({ code: 2, stdout: '' });
+      expect(missingSlug.stderr).toContain('needs --slug');
+
+      const piped = JSON.parse((await chartroom(['research', 'put', String(ticket.number), '-', '--slug', 'piped-notes'], { stdin: '# Piped' })).stdout);
+      expect(piped).toMatchObject({ slug: 'piped-notes', title: 'Piped', body: '# Piped' });
+      expect((await aliceApi.json('GET', `/issues/${ticket.number}/research`)).body.map((note: { slug: string }) => note.slug)).toEqual(['piped-notes']);
+    });
+
+    it('--slug overrides the file name; list and view print what the API serves', async () => {
+      const ticket = await createTicket('Listed research');
+      const file = join(mkdtempSync(join(tmpdir(), 'chartroom-research-')), 'draft.md');
+      writeFileSync(file, 'no heading');
+      await chartroom(['research', 'put', String(ticket.number), file, '--slug', 'final']);
+
+      const listed = await chartroom(['research', 'list', String(ticket.number)]);
+      const viewed = await chartroom(['research', 'view', String(ticket.number), 'final']);
+
+      expect(JSON.parse(listed.stdout)).toEqual((await aliceApi.json('GET', `/issues/${ticket.number}/research`)).body);
+      expect(JSON.parse(listed.stdout)).toMatchObject([{ slug: 'final', title: 'final' }]);
+      expect(JSON.parse(viewed.stdout)).toEqual((await aliceApi.json('GET', `/issues/${ticket.number}/research/final`)).body);
+      expectEnvelope(await chartroom(['research', 'view', String(ticket.number), 'missing']), 'not-found');
+    });
   });
 
   it('two -file flags both reading stdin are a usage error with exit 2 and write nothing', async () => {
