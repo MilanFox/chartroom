@@ -4,7 +4,7 @@ Every Chartroom tracker operation from the shell. One verb per API route; output
 
 ## Install
 
-Install it globally at the major version of your Instance, `0` while it is `0.x`. The binary is `chartroom`, with the aliases `chart` and `chartroom-cli`, which is what the Adapter's commands call. Node 24 or newer.
+Install it globally at the major version of your Instance, such as `1`. The binary is `chartroom`, with the aliases `chart` and `chartroom-cli`, which is what the Adapter's commands call. Node 24 or newer.
 
 ```sh
 npm install -g chartroom-cli@<major>

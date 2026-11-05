@@ -101,7 +101,7 @@ The first boot creates nothing but the seeded Label groups: no Token holder, no 
    npm install -g chartroom-cli@<major>
    ```
 
-   `<major>` is the Instance's major version, `0` while it is `0.x`; without a global install, prefix commands with `npx -y chartroom-cli@<major>`.
+   `<major>` is the Instance's major version, such as `1`; without a global install, prefix commands with `npx -y chartroom-cli@<major>`.
 5. Run `/setup-matt-pocock-skills` with **Other** as the issue tracker and answer: "Chartroom at `<url>`. Run `chartroom adapter` and write each file it prints, verbatim, to the path in its marker line." After changing settings, refresh the files with `chartroom adapter --write docs/agents`.
 
 ## HTTP API reference
