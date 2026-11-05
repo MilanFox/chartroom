@@ -20,7 +20,7 @@ describe('claim, close, reopen and comments', () => {
 
   const ticket = (title: string) => createTicket(alice, title);
 
-  it('claims for the caller, refuses a second holder, is idempotent, and anyone unassigns', async () => {
+  it('claims for the caller, refuses any second claim, even by the holder, and anyone unassigns', async () => {
     const work = await ticket('Claim me');
 
     const claimed = await alice.json('POST', `/issues/${work.number}/claim`);
@@ -28,7 +28,7 @@ describe('claim, close, reopen and comments', () => {
     expect(claimed.body).toMatchObject({ assignee: 'alice', status: 'claimed', state: 'open', version: 1 });
 
     expect(await bob.json('POST', `/issues/${work.number}/claim`)).toMatchObject({ ...conflict, body: { error: { message: expect.stringContaining('alice'), details: { assignee: 'alice' } } } });
-    expect((await alice.json('POST', `/issues/${work.number}/claim`)).body).toMatchObject({ assignee: 'alice', status: 'claimed' });
+    expect(await alice.json('POST', `/issues/${work.number}/claim`)).toMatchObject({ ...conflict, body: { error: { message: expect.stringContaining('alice'), details: { assignee: 'alice' } } } });
 
     const freed = await bob.json('DELETE', `/issues/${work.number}/assignee`);
     expect(freed.status).toBe(200);

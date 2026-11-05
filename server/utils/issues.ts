@@ -334,7 +334,6 @@ export const claimIssue = (number: number, caller: Caller) => {
   const issue = requireIssue(number);
   const actor = actorSlug(caller);
   if (issue.state === 'closed') throw invalid(`issue #${number} is closed`, 'state');
-  if (issue.assignee === actor) return issue;
   if (issue.assignee !== null) throw conflict(`issue #${number} is held by ${issue.assignee}`, 'assignee', { assignee: issue.assignee });
   return writeField(number, { field: 'assignee', before: null, after: actor }, caller);
 };

@@ -134,7 +134,7 @@ export const routeTable: TableRoute[] = [
     openapi: {
       summary: 'Claim an issue for the caller',
       tags: ['issues'],
-      description: 'Assigns the issue to the calling Token holder, signalling that it is being worked. An issue claimed by someone else cannot be claimed.',
+      description: 'Assigns the issue to the calling Token holder, signalling that it is being worked. An issue that is already claimed, by anyone including the caller, cannot be claimed.',
       parameters: [ISSUE_NUMBER_PARAM],
       responses: {
         200: { description: 'Document', schema: DOCUMENT_SCHEMA },
