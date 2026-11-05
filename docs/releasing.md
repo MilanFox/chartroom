@@ -30,8 +30,8 @@ The `Release` workflow (`.github/workflows/release.yml`) runs on `v*` tags only;
 | --- | --- |
 | Version check: the tag without `v` equals `package.json` and `cli/package.json` | the tag is not `vX.Y.Z` or a manifest disagrees; runs before anything is built or published |
 | Gate: `npm ci`, lint, typecheck, tests | any of them fails |
-| Smoke: build the amd64 image, start it, read `GET /health` | `version` differs from the tag |
-| Image: build `linux/amd64` and `linux/arm64`, push to `ghcr.io/milanfox/chartroom` | |
+| Smoke: build each architecture on its own native runner (`ubuntu-latest`, `ubuntu-24.04-arm`), start it, read `GET /health` | `version` differs from the tag |
+| Image: push each architecture by digest, then tag the two as one multi-arch image in `ghcr.io/milanfox/chartroom` | |
 | npm: build and publish `chartroom-cli` from `cli/` through trusted publishing, with provenance | skipped when the version is already on npm |
 | GitHub Release: notes from `scripts/release-notes.ts` | |
 
