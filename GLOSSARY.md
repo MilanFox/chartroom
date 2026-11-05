@@ -13,8 +13,12 @@ A Link to something read or used while working an Effort, map, spec or ticket, s
 _Avoid_: Reference, source, input
 
 **Artifact**:
-A Link to something created while working an Effort, map, spec or ticket, such as a prototype branch, a research file or a deployed preview. The things a team hands to testers and clients.
+A Link to something created while working an Effort, map, spec or ticket, such as a prototype branch, a screenshot or a deployed preview. The things a team hands to testers and clients.
 _Avoid_: Output, deliverable, attachment
+
+**Research note**:
+A Markdown text stored in the Instance and attached to exactly one issue of any Kind, addressed by that issue and a slug, such as `#3/local-transcription`. An issue may hold several. Research, audits and spike notes are all Research notes; the issue that produced one says what kind of work it was. Process material, not a result, and not an issue: it has no number, Claim, labels, comments or blockers.
+_Avoid_: Document, finding, attachment, file
 
 **Environment**:
 A named, instance-wide place the project runs, such as staging or production, with its URL. A preview deployment is an Artifact, not an Environment.
@@ -121,7 +125,7 @@ One of a fixed set of named filters over the instance-wide issue list, such as t
 _Avoid_: Smart list, preset
 
 **Dashboard**:
-The page showing one Effort: its map, specs and tickets in workflow order, with its Status and Artifacts roll-ups. Neither the Effort nor a Saved view is the Dashboard.
+The page showing one Effort: its map, specs and tickets in workflow order, with its Status, Artifacts and Research roll-ups. Neither the Effort nor a Saved view is the Dashboard.
 _Avoid_: Overview, board, home
 
 **Workbench**:
@@ -133,7 +137,7 @@ The frame around every page: the navigation, the Effort picker, the session menu
 _Avoid_: Layout, chrome, header
 
 **Roll-up**:
-A figure computed over an Effort's subtree and never stored: the Status counts of its map, specs and tickets, or the deduped Links of every issue below it, grouped by role.
+A figure computed over an Effort's subtree and never stored: the Status counts of its map, specs and tickets, the deduped Links of every issue below it, grouped by role, or the Research notes of every issue in it.
 _Avoid_: Summary, aggregate, total
 
 **Elevation**:
