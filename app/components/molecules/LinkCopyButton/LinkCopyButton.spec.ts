@@ -39,4 +39,17 @@ describe('LinkCopyButton', () => {
 
     await vi.waitFor(() => expect(wrapper.get('[role="status"]').text()).toBe('Copying failed. Try again.'));
   });
+
+  it('clears the status message after a few seconds', async () => {
+    copyMock.mockResolvedValue(undefined);
+    const wrapper = await mountSuspended(LinkCopyButton, { props });
+    vi.useFakeTimers();
+
+    await wrapper.get('button').trigger('click');
+    await vi.waitFor(() => expect(wrapper.get('[role="status"]').text()).toBe('Copied link: ADR 0001'));
+    await vi.advanceTimersByTimeAsync(4000);
+
+    expect(wrapper.get('[role="status"]').text()).toBe('');
+    vi.useRealTimers();
+  });
 });

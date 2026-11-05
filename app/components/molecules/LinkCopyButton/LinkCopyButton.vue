@@ -16,6 +16,7 @@ const props = defineProps<LinkCopyButtonProps>();
 const { strings, format } = useStrings();
 const { copy } = useClipboard({ legacy: true });
 const copyMessage = ref('');
+const { start: clearMessageLater } = useTimeoutFn(() => copyMessage.value = '', 4000, { immediate: false });
 
 const copyLink = async () => {
   copyMessage.value = '';
@@ -26,6 +27,7 @@ const copyLink = async () => {
   catch {
     copyMessage.value = strings.value.dashboard.links.copyFailed;
   }
+  clearMessageLater();
 };
 </script>
 
