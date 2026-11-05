@@ -10,7 +10,7 @@ const endpoint = useEndpoints();
 describe('NewLabelGroupForm', () => {
   beforeEach(() => {
     useSessionStore().me = { ...viewerSession, admin: { until: new Date(Date.now() + 3_600_000).toISOString() } };
-    endpoint('/ui/labels', { method: 'GET', handler: () => [] });
+    endpoint('/ui/labels', { method: 'GET', handler: () => ({ items: [], nextCursor: null }) });
     endpoint('/ui/labels/free-form', { method: 'GET', handler: () => [] });
   });
 

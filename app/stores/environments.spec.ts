@@ -16,7 +16,7 @@ describe('useEnvironmentsStore', () => {
   });
 
   it('lists the Environments and leaves the Credential pointers out when the session may not see them', async () => {
-    endpoint('/ui/environments', () => [staging]);
+    endpoint('/ui/environments', () => ({ items: [staging], nextCursor: null }));
     endpoint('/ui/credential-pointers', { method: 'GET', handler: forbidden });
     const environmentsStore = useEnvironmentsStore();
 
@@ -29,8 +29,8 @@ describe('useEnvironmentsStore', () => {
   it('deleting an Environment rereads the pointers, which come back unbound', async () => {
     let environments = [staging];
     let pointerEnvironment: number | null = 1;
-    endpoint('/ui/environments', { method: 'GET', handler: () => environments });
-    endpoint('/ui/credential-pointers', { method: 'GET', handler: () => [{ id: 4, label: 'QA', accountName: 'qa', whereToFind: 'Vault', environment: pointerEnvironment }] });
+    endpoint('/ui/environments', { method: 'GET', handler: () => ({ items: environments, nextCursor: null }) });
+    endpoint('/ui/credential-pointers', { method: 'GET', handler: () => ({ items: [{ id: 4, label: 'QA', accountName: 'qa', whereToFind: 'Vault', environment: pointerEnvironment }], nextCursor: null }) });
     endpoint('/ui/environments/1', {
       method: 'DELETE', handler: () => {
         environments = [];

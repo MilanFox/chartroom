@@ -6,10 +6,10 @@ export const canSeePointers = (caller: Caller) => !caller.viewer || isElevated(c
 
 export const environmentList = (_event: H3Event, caller: Caller) => {
   const pointers = canSeePointers(caller) ? listPointers() : null;
-  return listEnvironments().map(environment => toEnvironment(environment, pointers));
+  return { items: listEnvironments().map(environment => toEnvironment(environment, pointers)), nextCursor: null };
 };
 
 export const pointerList = (_event: H3Event, caller: Caller) => {
   if (!canSeePointers(caller)) throw forbidden('credential pointers require a holder session or elevation');
-  return listPointers().map(toPointer);
+  return { items: listPointers().map(toPointer), nextCursor: null };
 };

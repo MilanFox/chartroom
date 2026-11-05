@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import type { HolderSecret, RosterHolder } from '~/types/api';
+import type { HolderSecret, Page, RosterHolder } from '~/types/api';
 
 export const useHoldersStore = defineStore('holders', () => {
   const uiFetch = useUiFetch();
@@ -7,7 +7,7 @@ export const useHoldersStore = defineStore('holders', () => {
   const assignable = computed(() => holders.value ?? []);
 
   const load = async () => {
-    holders.value = await uiFetch<RosterHolder[]>('/holders').catch(orNullOn('forbidden'));
+    holders.value = (await uiFetch<Page<RosterHolder>>('/holders').catch(orNullOn('forbidden')))?.items ?? null;
   };
 
   const writeThen = useWriteThen(load);

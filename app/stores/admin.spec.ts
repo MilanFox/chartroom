@@ -20,11 +20,11 @@ const seeded = { id: 'triage-category', displayName: 'Category', seeded: true, e
 const manualSnapshot = { name: 'manual-20261104-091500', kind: 'manual', takenAt: '2026-11-04T09:15:00.000Z', size: 40960 };
 
 const readsFor = ({ pointers, holders, snapshots = forbidden }: { pointers: () => unknown, holders: () => unknown, snapshots?: () => unknown }) => {
-  endpoint('/ui/labels', { method: 'GET', handler: () => [seeded] });
+  endpoint('/ui/labels', { method: 'GET', handler: () => ({ items: [seeded], nextCursor: null }) });
   endpoint('/ui/labels/free-form', { method: 'GET', handler: () => [{ label: 'urgent', count: 2 }] });
   endpoint('/ui/snapshots', { method: 'GET', handler: snapshots });
   endpoint('/ui/admin/closed-efforts', { method: 'GET', handler: forbidden });
-  endpoint('/ui/environments', { method: 'GET', handler: () => [staging] });
+  endpoint('/ui/environments', { method: 'GET', handler: () => ({ items: [staging], nextCursor: null }) });
   endpoint('/ui/credential-pointers', { method: 'GET', handler: pointers });
   endpoint('/ui/holders', { method: 'GET', handler: holders });
   endpoint('/ui/runtime', () => runtimeSettings);

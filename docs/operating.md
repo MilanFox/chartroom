@@ -76,7 +76,7 @@ Breaking changes in the CLI output and the HTTP API:
 
 | Change | 1.x | 2.0 |
 | --- | --- | --- |
-| `issue list --all` and `research list` (`GET /issues/{n}/research`) | bare array | `{ items, nextCursor }`, `nextCursor` is `null` |
+| `issue list --all`, `research list` (`GET /issues/{n}/research`), `labels`, `holders`, `environments` and `credential-pointers` | bare array | `{ items, nextCursor }`, `nextCursor` is `null` |
 | `issue list` without `--all` | `{ items, nextCursor }` | unchanged |
 | `children` in `issue view` | issue numbers | `{ number, title, open }`, like `blockedBy` |
 | `issue claim` on a ticket already held | succeeds when the holder is the caller's own Token holder | always `conflict`; the Adapter tells agents to stop and ask the user |
@@ -85,7 +85,7 @@ Scripts and agents that read these outputs change: `jq '.[]'` becomes `jq '.item
 
 Hand this to the coding agent in each connected project:
 
-> Chartroom was upgraded to 2.0. Run `npm install -g chartroom-cli@2` (or change `npx -y chartroom-cli@1` to `@2` where it is pinned). Then run `chartroom adapter --write docs/agents` and commit the changed files with `docs: refresh Chartroom Adapter files for 2.0`. Then search the repo's scripts for uses of `chartroom issue list --all`, `chartroom research list` and `children` from `chartroom issue view`, and change them to read `.items[]` and `.children[].number`. Do not change anything else.
+> Chartroom was upgraded to 2.0. Run `npm install -g chartroom-cli@2` (or change `npx -y chartroom-cli@1` to `@2` where it is pinned). Then run `chartroom adapter --write docs/agents` and commit the changed files with `docs: refresh Chartroom Adapter files for 2.0`. Then search the repo's scripts for uses of `chartroom issue list --all`, `chartroom research list`, `chartroom labels`, `chartroom holders`, `chartroom environments`, `chartroom credential-pointers` and `children` from `chartroom issue view`, and change them to read `.items[]` and `.children[].number`. Do not change anything else.
 
 ## Rollback
 

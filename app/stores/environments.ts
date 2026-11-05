@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import type { CredentialPointer, Environment, EnvironmentInput, PointerInput } from '~/types/api';
+import type { CredentialPointer, Environment, EnvironmentInput, Page, PointerInput } from '~/types/api';
 
 export const useEnvironmentsStore = defineStore('environments', () => {
   const uiFetch = useUiFetch();
@@ -8,11 +8,11 @@ export const useEnvironmentsStore = defineStore('environments', () => {
 
   const load = async () => {
     const [listed, allPointers] = await Promise.all([
-      uiFetch<Environment[]>('/environments'),
-      uiFetch<CredentialPointer[]>('/credential-pointers').catch(orNullOn('forbidden')),
+      uiFetch<Page<Environment>>('/environments'),
+      uiFetch<Page<CredentialPointer>>('/credential-pointers').catch(orNullOn('forbidden')),
     ]);
-    environments.value = listed;
-    pointers.value = allPointers;
+    environments.value = listed.items;
+    pointers.value = allPointers?.items ?? null;
   };
 
   const writeThen = useWriteThen(load);

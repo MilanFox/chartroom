@@ -19,8 +19,8 @@ describe('EnvironmentForm', () => {
         return {};
       },
     });
-    endpoint('/ui/environments', { method: 'GET', handler: () => [] });
-    endpoint('/ui/credential-pointers', { method: 'GET', handler: () => [] });
+    endpoint('/ui/environments', { method: 'GET', handler: () => ({ items: [], nextCursor: null }) });
+    endpoint('/ui/credential-pointers', { method: 'GET', handler: () => ({ items: [], nextCursor: null }) });
     const session = useSessionStore();
     session.me = lapsed;
     const wrapper = await mountSuspended(EnvironmentForm);

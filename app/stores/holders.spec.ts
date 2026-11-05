@@ -24,7 +24,7 @@ describe('useHoldersStore', () => {
 
   it('hands back a new holder\'s one-time secret and rereads the roster, which never carries it', async () => {
     const roster: unknown[] = [];
-    endpoint('/ui/holders', { method: 'GET', handler: () => roster });
+    endpoint('/ui/holders', { method: 'GET', handler: () => ({ items: roster, nextCursor: null }) });
     endpoint('/ui/holders', {
       method: 'POST', handler: async (event) => {
         const { slug } = await requestOf(event).json();

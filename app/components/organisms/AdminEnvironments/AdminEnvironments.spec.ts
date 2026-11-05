@@ -27,8 +27,8 @@ describe('AdminEnvironments', () => {
   beforeEach(() => {
     sent.length = 0;
     let environment: number | null = null;
-    endpoint('/ui/environments', { method: 'GET', handler: () => [staging] });
-    endpoint('/ui/credential-pointers', { method: 'GET', handler: () => [{ id: 4, label: 'QA', accountName: 'qa', whereToFind: 'Vault', environment }] });
+    endpoint('/ui/environments', { method: 'GET', handler: () => ({ items: [staging], nextCursor: null }) });
+    endpoint('/ui/credential-pointers', { method: 'GET', handler: () => ({ items: [{ id: 4, label: 'QA', accountName: 'qa', whereToFind: 'Vault', environment }], nextCursor: null }) });
     endpoint('/ui/credential-pointers/4', {
       method: 'PATCH', handler: async (event) => {
         const body = await requestOf(event).json();

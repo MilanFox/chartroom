@@ -18,7 +18,7 @@ describe('useLabelGroupsStore', () => {
     const sent: unknown[] = [];
     let groups: unknown[] = [seeded];
     let freeForm = [{ label: 'high', count: 1 }];
-    endpoint('/ui/labels', { method: 'GET', handler: () => groups });
+    endpoint('/ui/labels', { method: 'GET', handler: () => ({ items: groups, nextCursor: null }) });
     endpoint('/ui/labels/free-form', { method: 'GET', handler: () => freeForm });
     endpoint('/ui/label-groups', {
       method: 'POST', handler: async (event) => {
@@ -39,7 +39,7 @@ describe('useLabelGroupsStore', () => {
 
   it('moving a member down sends the group\'s new member order', async () => {
     const sent: unknown[] = [];
-    endpoint('/ui/labels', { method: 'GET', handler: () => [seeded, priority([{ id: 'high', displayLabel: 'High' }, { id: 'low', displayLabel: 'Low' }])] });
+    endpoint('/ui/labels', { method: 'GET', handler: () => ({ items: [seeded, priority([{ id: 'high', displayLabel: 'High' }, { id: 'low', displayLabel: 'Low' }])], nextCursor: null }) });
     endpoint('/ui/labels/free-form', { method: 'GET', handler: () => [] });
     endpoint('/ui/label-groups/priority/labels/order', {
       method: 'PUT', handler: async (event) => {
@@ -57,7 +57,7 @@ describe('useLabelGroupsStore', () => {
 
   it('moving an admin group up reorders only the admin groups; the seeded ones stay first', async () => {
     const sent: unknown[] = [];
-    endpoint('/ui/labels', { method: 'GET', handler: () => [seeded, priority([]), effortGroup] });
+    endpoint('/ui/labels', { method: 'GET', handler: () => ({ items: [seeded, priority([]), effortGroup], nextCursor: null }) });
     endpoint('/ui/labels/free-form', { method: 'GET', handler: () => [] });
     endpoint('/ui/label-groups/order', {
       method: 'PUT', handler: async (event) => {

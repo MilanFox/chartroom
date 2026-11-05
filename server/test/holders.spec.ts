@@ -27,7 +27,7 @@ describe('holder administration', () => {
 
     const roster = await admin.json('GET', '/holders');
     expect(JSON.stringify(roster.body)).not.toContain(created.body.secret);
-    expect(roster.body.find((holder: { slug: string }) => holder.slug === 'grace').secret).toBeUndefined();
+    expect(roster.body.items.find((holder: { slug: string }) => holder.slug === 'grace').secret).toBeUndefined();
   });
 
   it('refuses the reserved slug, a bad shape and a duplicate', async () => {
@@ -77,8 +77,8 @@ describe('holder roster', () => {
     const roster = await ui.json('GET', '/holders');
 
     expect(roster.status).toBe(200);
-    expect(roster.body.map((holder: { slug: string }) => holder.slug)).toEqual(['amy', 'zed']);
-    expect(Object.keys(roster.body[0])).toEqual(expect.arrayContaining(ADMIN_FIELDS));
+    expect(roster.body.items.map((holder: { slug: string }) => holder.slug)).toEqual(['amy', 'zed']);
+    expect(Object.keys(roster.body.items[0])).toEqual(expect.arrayContaining(ADMIN_FIELDS));
   });
 
   it('is basic for a holder session and for a bearer call', async () => {
@@ -94,10 +94,10 @@ describe('holder roster', () => {
 
     const kim = { slug: 'kim', displayName: 'Kim', revoked: false };
     expect(viaSession.status).toBe(200);
-    expect(viaSession.body).toContainEqual(kim);
+    expect(viaSession.body.items).toContainEqual(kim);
     expect(viaBearer.status).toBe(200);
-    expect(viaBearer.body).toContainEqual(kim);
-    for (const holder of [...viaSession.body, ...viaBearer.body]) expect(Object.keys(holder)).toEqual(['slug', 'displayName', 'revoked']);
+    expect(viaBearer.body.items).toContainEqual(kim);
+    for (const holder of [...viaSession.body.items, ...viaBearer.body.items]) expect(Object.keys(holder)).toEqual(['slug', 'displayName', 'revoked']);
   });
 });
 
@@ -142,7 +142,7 @@ describe('rotate and revoke', () => {
     expect(revoked.status).toBe(200);
     expect(revoked.body).toMatchObject({ slug: 'eve', revoked: true, revokedAt: expect.any(String), lastUsedAt: expect.any(String), updatedBy: 'admin' });
     expect(revoked.body.secret).toBeUndefined();
-    expect((await admin.json('GET', '/holders')).body).toContainEqual(expect.objectContaining({ slug: 'eve', revoked: true }));
+    expect((await admin.json('GET', '/holders')).body.items).toContainEqual(expect.objectContaining({ slug: 'eve', revoked: true }));
     expect((await apiClient(server, secret).json('GET', '/me')).status).toBe(401);
     expect((await holderSession.json('GET', '/me')).status).toBe(401);
     expect((await uiClient(server).login(secret)).status).toBe(401);

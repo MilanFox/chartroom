@@ -103,7 +103,7 @@ Repo setup goes through `/setup-matt-pocock-skills`: at "Issue tracker" pick Oth
 | Flag | Meaning |
 | --- | --- |
 | `--body-file -` | Any `*-file` flag reads stdin when given `-`; so does `research put` given `-` as the file, with `--slug`. |
-| `--limit`, `--cursor` | Page through a list verb. `issue list`, `issue changes`, `effort list` and `research list` all print `{ items, nextCursor }`, so `.items[]` reads it; `nextCursor` is `null` on the last page. |
+| `--limit`, `--cursor` | Page through a list verb. `issue list`, `issue changes`, `effort list`, `research list`, `labels`, `holders`, `environments` and `credential-pointers` all print `{ items, nextCursor }`, so `.items[]` reads it; `nextCursor` is `null` on the last page. |
 | `--all` | Follow every cursor and print the same shape with every item and `nextCursor: null`. |
 | `--version`, `-v` | Print the CLI's version and exit; reads no `.env` and calls no Instance. |
 | `--help`, `-h` | Print the usage list on stdout and exit. |

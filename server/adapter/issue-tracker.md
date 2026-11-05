@@ -12,7 +12,7 @@ Issues, maps and specs for this repo live in the Chartroom instance at **{{baseU
 - Verify with `chartroom me`: it prints the holder you act as. Every claim, comment and Link is attributed to that holder.
 - Every command prints the API's JSON on stdout. Errors are `{ "error": { "code", "message", "field"? } }` on stderr with exit 1; usage errors exit 2. Codes: `not-found`, `conflict`, `invalid`, `forbidden`, `unauthenticated`, `rate-limited`, `unreachable`.
 - Markdown bodies: pass `--body "…"` for one line, `--body-file <path>` for a file, or `--body-file -` to read stdin (heredoc). The same for `--comment-file`.
-- `issue list`, `issue changes`, `effort list` and `research list` all print `{ "items": [...], "nextCursor": … }`; read the items with `.items[]`. One page holds 50 by default (max `--limit 200`); `--cursor <c>` continues, `--all` follows every cursor and prints every item in the same shape with `nextCursor: null`. Use `--all` for any query a skill walks to the end.
+- `issue list`, `issue changes`, `effort list`, `research list`, `labels`, `holders`, `environments` and `credential-pointers` all print `{ "items": [...], "nextCursor": … }`; read the items with `.items[]`. One page holds 50 by default (max `--limit 200`); `--cursor <c>` continues, `--all` follows every cursor and prints every item in the same shape with `nextCursor: null`. Use `--all` for any query a skill walks to the end.
 
 ## Vocabulary
 

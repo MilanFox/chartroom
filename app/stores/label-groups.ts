@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import type { FreeFormLabel, LabelGroup, LabelGroupInput, LabelGroupMemberInput } from '~/types/api';
+import type { FreeFormLabel, LabelGroup, LabelGroupInput, LabelGroupMemberInput, Page } from '~/types/api';
 
 const moved = (ids: string[], id: string, offset: number) => {
   const from = ids.indexOf(id);
@@ -19,7 +19,7 @@ export const useLabelGroupsStore = defineStore('label-groups', () => {
   const displayLabelOf = (label: string) => displayLabels.value.get(label) ?? label;
 
   const load = async () => {
-    labelGroups.value = await uiFetch<LabelGroup[]>('/labels');
+    labelGroups.value = (await uiFetch<Page<LabelGroup>>('/labels')).items;
   };
 
   const loadFreeForm = async () => {
