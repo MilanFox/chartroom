@@ -11,7 +11,7 @@ type ApiClient = ReturnType<typeof apiClient>;
 type UiClient = ReturnType<typeof uiClient>;
 
 const STAMP = /\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z/.source;
-const ROW_TABLES = ['issues', 'comments', 'changes', 'links', 'issue_labels', 'issue_blockers'] as const;
+const ROW_TABLES = ['issues', 'comments', 'changes', 'links', 'issue_labels', 'issue_blockers', 'research_notes'] as const;
 const sleep = (ms: number) => new Promise(done => setTimeout(done, ms));
 
 const elevatedViewer = async (server: LaunchedServer) => {
@@ -68,6 +68,7 @@ describe('deleting a closed Effort', () => {
     await alice.json('POST', `/issues/${tickets[0]!.number}/comments`, { body: { body: 'First thought' } });
     await alice.json('POST', `/issues/${tickets[1]!.number}/comments`, { body: { body: 'Second thought' } });
     await alice.json('PUT', `/issues/${tickets[1]!.number}/labels/bug`);
+    await alice.json('PUT', `/issues/${tickets[1]!.number}/research/findings`, { body: { body: '# Findings' } });
     await alice.json('POST', `/issues/${effort.number}/links`, { body: { role: 'artifact', type: 'branch', title: 'Branch', url: `git:${name}` } });
     await alice.json('PATCH', `/issues/${spec.number}`, { body: { title: `Spec ${name} renamed` } });
     return { effort, map, spec, tickets, numbers: [effort.number, map.number, spec.number, ...tickets.map(ticket => ticket.number)] };
@@ -94,7 +95,7 @@ describe('deleting a closed Effort', () => {
       title: 'Effort listed-older',
       closedAt: expect.any(String),
       lastActivityAt: expect.any(String),
-      counts: { issues: 4, comments: 2, links: 1, changes: 4, researchNotes: 0 },
+      counts: { issues: 4, comments: 2, links: 1, changes: 5, researchNotes: 1 },
     });
 
     await sleep(5);
@@ -122,7 +123,7 @@ describe('deleting a closed Effort', () => {
       status: 200,
       body: {
         snapshot: { name: expect.stringMatching(new RegExp(`^pre-delete-doomed-${STAMP}$`)), trigger: 'pre-delete', takenAt: expect.any(String), size: expect.any(Number) },
-        deleted: { issues: 4, comments: 2, links: 1, changes: 4, researchNotes: 0 },
+        deleted: { issues: 4, comments: 2, links: 1, changes: 5, researchNotes: 1 },
         vacuumed: true,
       },
     });

@@ -5,7 +5,7 @@ import type { Caller } from './caller';
 import type { IssueCursor, IssueRecord, IssueState, IssueStatus, SortOrder } from './issues';
 import type { LinkRecord, LinkRole, LinkType } from './links';
 import type { ResearchNoteRecord } from './research-notes';
-import type { Snapshot } from './snapshots';
+import type { ClosedEffort, EffortContents, EffortDeletion } from '#shared/api';
 
 export type EffortSort = 'updatedAt' | 'name';
 
@@ -34,29 +34,6 @@ export interface StatusRollup {
   specs: { number: number, tickets: Record<IssueStatus, number> }[]
   triage: Record<string, number>
   open: number
-}
-
-export interface EffortContents {
-  issues: number
-  comments: number
-  links: number
-  changes: number
-  researchNotes: number
-}
-
-export interface ClosedEffort {
-  number: number
-  name: string | null
-  title: string
-  closedAt: string | null
-  lastActivityAt: string
-  counts: EffortContents
-}
-
-export interface EffortDeletion {
-  snapshot: Snapshot
-  deleted: EffortContents
-  vacuumed: boolean
 }
 
 const SORT_COLUMNS = { updatedAt: issues.updatedAt, name: issues.name };
@@ -141,7 +118,7 @@ const contentsOf = (subtree: number[]): EffortContents => ({
   comments: countIn(comments, comments.issue, subtree),
   links: countIn(links, links.issue, subtree),
   changes: countIn(changes, changes.issue, subtree),
-  researchNotes: 0,
+  researchNotes: countIn(researchNotes, researchNotes.issue, subtree),
 });
 
 const lastActivityOf = (subtree: number[]) => {
@@ -150,6 +127,7 @@ const lastActivityOf = (subtree: number[]) => {
     store.select({ at: max(issues.updatedAt) }).from(issues).where(inArray(issues.number, subtree)).get()?.at,
     store.select({ at: max(comments.updatedAt) }).from(comments).where(inArray(comments.issue, subtree)).get()?.at,
     store.select({ at: max(changes.at) }).from(changes).where(inArray(changes.issue, subtree)).get()?.at,
+    store.select({ at: max(researchNotes.updatedAt) }).from(researchNotes).where(inArray(researchNotes.issue, subtree)).get()?.at,
   ];
   return latest.filter(at => typeof at === 'string').sort().at(-1)!;
 };
