@@ -492,6 +492,8 @@
       "blockerClosed": "#{number} ✓",
       "blockerOpenState": ", open",
       "blockerClosedState": ", closed",
+      "preview": "Preview",
+      "previewNamed": "Preview #{number} {title}",
       "claim": "Claim",
       "unclaim": "Unclaim",
       "close": "Close",

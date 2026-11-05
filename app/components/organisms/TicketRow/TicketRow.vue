@@ -2,7 +2,17 @@
   <div class="ticket-row">
     <span class="ticket-row__number">{{ format(strings.dashboard.tickets.number, { number: row.number }) }}</span>
 
-    <button type="button" class="ticket-row__title" aria-haspopup="dialog" @click="emit('open', row.number)">{{ row.title }}</button>
+    <NuxtLink :to="issuePath(row.number)" class="ticket-row__title">{{ row.title }}</NuxtLink>
+
+    <button
+      type="button"
+      class="ticket-row__action"
+      aria-haspopup="dialog"
+      :aria-label="format(strings.dashboard.tickets.previewNamed, { number: row.number, title: row.title })"
+      @click="emit('open', row.number)"
+    >
+      {{ strings.dashboard.tickets.preview }}
+    </button>
 
     <span class="ticket-row__meta">
       <span v-for="label in shownLabels" :key="label" class="ticket-row__label">{{ labelGroupsStore.displayLabelOf(label) }}</span>
@@ -111,15 +121,10 @@ const run = (write: () => Promise<unknown>) => action.run(write, explain);
   &__title {
     flex: 1 1 200px;
     min-width: 0;
-    padding: 0;
-    border: none;
-    background: none;
     color: var(--color-fg);
-    font: inherit;
     font-weight: 500;
-    text-align: left;
+    text-decoration: none;
     overflow-wrap: anywhere;
-    cursor: pointer;
 
     &:hover {
       color: var(--color-accent);
