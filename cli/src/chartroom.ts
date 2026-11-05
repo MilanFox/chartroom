@@ -24,6 +24,7 @@ interface Input {
 
 interface Verb {
   words: string[]
+  summary: string
   method: Method
   path: string
   positionals?: string[]
@@ -74,7 +75,7 @@ const COMMENT_BODY: Partial<Verb> = {
 
 const BLOCKER_BY: Partial<Verb> = { pathFlags: { blocker: 'by' }, flags: valueFlags('by') };
 
-const issueVerb = (command: string, route: string, rest: Partial<Verb> = {}): Verb => {
+const issueVerb = (command: string, route: string, rest: Pick<Verb, 'summary'> & Partial<Verb>): Verb => {
   const [method, path = ''] = route.split(' ');
   return { words: ['issue', ...command.split(' ')], method: method as Method, path: `/issues/{number}${path}`, positionals: ['number'], ...rest };
 };
@@ -103,6 +104,7 @@ const printAdapter = async ({ flags, call, stdout }: PrintInput) => {
 export const VERBS: Verb[] = [
   {
     words: ['issue', 'create'],
+    summary: 'Create an issue and print the Document.',
     method: 'post',
     path: '/issues',
     flags: { ...valueFlags('kind', 'title', 'parent', 'name'), ...inlineOrFileFlags('body'), 'label': { type: 'string', multiple: true }, 'blocked-by': { type: 'string', multiple: true } },
@@ -116,9 +118,10 @@ export const VERBS: Verb[] = [
       name: flags.name,
     }),
   },
-  issueVerb('view', 'get'),
+  issueVerb('view', 'get', { summary: 'Print an issue.' }),
   {
     words: ['issue', 'list'],
+    summary: 'List issues, filtered, sorted and paged; --all follows every page.',
     method: 'get',
     path: '/issues',
     flags: { ...valueFlags(...ISSUE_FILTERS.filter(name => !['label', 'missing', 'q'].includes(name))), label: { type: 'string', multiple: true }, missing: { type: 'string', multiple: true }, q: { type: 'string', short: 'q' } },
@@ -126,6 +129,7 @@ export const VERBS: Verb[] = [
     paged: true,
   },
   issueVerb('edit', 'patch', {
+    summary: 'Edit an issue; --if-version rejects the edit when the issue changed meanwhile.',
     flags: { ...valueFlags('title', 'parent', 'name', 'if-version'), ...inlineOrFileFlags('body', 'test-instructions'), 'no-parent': { type: 'boolean' } },
     ifVersion: true,
     body: async ({ flags, text }) => {
@@ -140,37 +144,42 @@ export const VERBS: Verb[] = [
     },
   }),
   issueVerb('append', 'post /body/append', {
+    summary: 'Append text to a section of an issue body.',
     flags: { ...valueFlags('section'), ...inlineOrFileFlags('text') },
     body: async ({ flags, text }) => ({ section: flags.section, text: await text('text') }),
   }),
-  issueVerb('delete', 'delete'),
-  issueVerb('claim', 'post /claim'),
-  issueVerb('unassign', 'delete /assignee'),
+  issueVerb('delete', 'delete', { summary: 'Delete an issue.' }),
+  issueVerb('claim', 'post /claim', { summary: 'Claim an issue for the calling holder.' }),
+  issueVerb('unassign', 'delete /assignee', { summary: 'Remove the assignee from an issue.' }),
   issueVerb('close', 'post /close', {
+    summary: 'Close an issue, optionally with a comment.',
     flags: inlineOrFileFlags('comment'),
     body: async ({ text }) => ({ comment: await text('comment') }),
   }),
-  issueVerb('reopen', 'post /reopen'),
-  issueVerb('changes', 'get /changes', { flags: valueFlags('field'), query: ['field'], paged: true }),
-  issueVerb('label add', 'put /labels/{label}', { positionals: ['number', 'label'] }),
-  issueVerb('label remove', 'delete /labels/{label}', { positionals: ['number', 'label'] }),
-  issueVerb('block', 'put /blockers/{blocker}', BLOCKER_BY),
-  issueVerb('unblock', 'delete /blockers/{blocker}', BLOCKER_BY),
-  issueVerb('comment', 'post /comments', COMMENT_BODY),
-  issueVerb('comment edit', 'patch /comments/{id}', { ...COMMENT_BODY, positionals: ['number', 'id'] }),
-  issueVerb('comment delete', 'delete /comments/{id}', { positionals: ['number', 'id'] }),
+  issueVerb('reopen', 'post /reopen', { summary: 'Reopen a closed issue.' }),
+  issueVerb('changes', 'get /changes', { summary: 'List the change history of an issue, optionally for one field.', flags: valueFlags('field'), query: ['field'], paged: true }),
+  issueVerb('label add', 'put /labels/{label}', { summary: 'Add a label to an issue.', positionals: ['number', 'label'] }),
+  issueVerb('label remove', 'delete /labels/{label}', { summary: 'Remove a label from an issue.', positionals: ['number', 'label'] }),
+  issueVerb('block', 'put /blockers/{blocker}', { summary: 'Mark an issue as blocked by another.', ...BLOCKER_BY }),
+  issueVerb('unblock', 'delete /blockers/{blocker}', { summary: 'Remove a blocker from an issue.', ...BLOCKER_BY }),
+  issueVerb('comment', 'post /comments', { summary: 'Add a comment to an issue.', ...COMMENT_BODY }),
+  issueVerb('comment edit', 'patch /comments/{id}', { summary: 'Edit a comment on an issue.', ...COMMENT_BODY, positionals: ['number', 'id'] }),
+  issueVerb('comment delete', 'delete /comments/{id}', { summary: 'Delete a comment from an issue.', positionals: ['number', 'id'] }),
   issueVerb('link add', 'post /links', {
+    summary: 'Add a Link to an issue; --url is the Link target.',
     flags: valueFlags(...LINK_FIELDS, 'url'),
     body: async ({ flags }) => ({ role: flags.role, type: flags.type, url: flags.url, title: flags.title }),
   }),
   issueVerb('link edit', 'patch /links/{id}', {
+    summary: 'Edit a Link on an issue.',
     positionals: ['number', 'id'],
     flags: valueFlags(...LINK_FIELDS),
     body: async ({ flags }) => ({ role: flags.role, type: flags.type, title: flags.title }),
   }),
-  issueVerb('link remove', 'delete /links/{id}', { positionals: ['number', 'id'] }),
+  issueVerb('link remove', 'delete /links/{id}', { summary: 'Remove a Link from an issue.', positionals: ['number', 'id'] }),
   {
     words: ['research', 'put'],
+    summary: 'Attach a research file to an issue; the slug defaults to the file name.',
     method: 'put',
     path: '/issues/{number}/research/{slug}',
     positionals: ['number', 'file'],
@@ -178,19 +187,20 @@ export const VERBS: Verb[] = [
     pathValues: researchSlug,
     body: async ({ values, file }) => ({ body: await file(values.file!) }),
   },
-  { words: ['research', 'list'], method: 'get', path: '/issues/{number}/research', positionals: ['number'] },
-  { words: ['research', 'view'], method: 'get', path: '/issues/{number}/research/{slug}', positionals: ['number', 'slug'] },
-  { words: ['effort', 'list'], method: 'get', path: '/efforts', flags: valueFlags('sort', 'order'), query: ['sort', 'order'], paged: true },
-  { words: ['effort', 'view'], method: 'get', path: '/efforts/{handle}', positionals: ['handle'] },
-  { words: ['effort', 'artifacts'], method: 'get', path: '/efforts/{handle}/artifacts.md', positionals: ['handle'], markdown: true },
-  { words: ['environments'], method: 'get', path: '/environments' },
-  { words: ['credential-pointers'], method: 'get', path: '/credential-pointers' },
-  { words: ['labels'], method: 'get', path: '/labels' },
-  { words: ['holders'], method: 'get', path: '/holders' },
-  { words: ['me'], method: 'get', path: '/me' },
-  { words: ['instance'], method: 'get', path: '/instance' },
+  { words: ['research', 'list'], summary: 'List the research attached to an issue.', method: 'get', path: '/issues/{number}/research', positionals: ['number'] },
+  { words: ['research', 'view'], summary: 'Print one research file of an issue.', method: 'get', path: '/issues/{number}/research/{slug}', positionals: ['number', 'slug'] },
+  { words: ['effort', 'list'], summary: 'List efforts, sorted and paged; --all follows every page.', method: 'get', path: '/efforts', flags: valueFlags('sort', 'order'), query: ['sort', 'order'], paged: true },
+  { words: ['effort', 'view'], summary: 'Print an effort.', method: 'get', path: '/efforts/{handle}', positionals: ['handle'] },
+  { words: ['effort', 'artifacts'], summary: 'Print the artifacts of an effort as Markdown.', method: 'get', path: '/efforts/{handle}/artifacts.md', positionals: ['handle'], markdown: true },
+  { words: ['environments'], summary: 'List the environments.', method: 'get', path: '/environments' },
+  { words: ['credential-pointers'], summary: 'List the credential pointers.', method: 'get', path: '/credential-pointers' },
+  { words: ['labels'], summary: 'List the labels.', method: 'get', path: '/labels' },
+  { words: ['holders'], summary: 'List the holders.', method: 'get', path: '/holders' },
+  { words: ['me'], summary: 'Print the calling holder.', method: 'get', path: '/me' },
+  { words: ['instance'], summary: 'Print the instance.', method: 'get', path: '/instance' },
   {
     words: ['adapter'],
+    summary: 'Print the adapter docs the instance serves, or write them to a directory with --write.',
     method: 'get',
     path: ADAPTER_PATHS[0]!,
     paths: ADAPTER_PATHS,
@@ -222,6 +232,16 @@ export const VERB_ROUTES = await Promise.all(VERBS.flatMap(verb => routesOf(verb
   flags: Object.keys(verbOptions(verb)),
 }))));
 
+const INIT_HELP = [
+  'usage: chartroom init [dir]',
+  '',
+  'Write a compose.yaml and .env for a new instance into dir (default .), asking for settings when run in a terminal.',
+  '',
+  'options:',
+  '  --help',
+  '',
+].join('\n');
+
 const usageLine = (verb: Verb) => [
   ...verb.words,
   ...(verb.positionals ?? []).map(name => `<${name}>`),
@@ -242,6 +262,33 @@ const usage = () => [
   ...VERBS.map(verb => `  ${usageLine(verb)}`),
   '',
 ].join('\n');
+
+const optionLine = (name: string, option: { type: string }) => `  --${name}${option.type === 'boolean' ? '' : ' <value>'}`;
+
+const verbHelp = (verb: Verb) => [
+  `usage: chartroom ${usageLine(verb)}`,
+  '',
+  verb.summary,
+  '',
+  'options:',
+  ...Object.entries(verbOptions(verb)).map(([name, option]) => optionLine(name, option)),
+  optionLine('help', { type: 'boolean' }),
+  '',
+].join('\n');
+
+const groupHelp = (verbs: Verb[]) => [
+  ...verbs.flatMap(verb => [`  chartroom ${usageLine(verb)}`, `      ${verb.summary}`]),
+  '',
+].join('\n');
+
+const helpFor = (argv: string[]) => {
+  const flagStart = argv.findIndex(arg => arg.startsWith('-'));
+  const commandWords = flagStart === -1 ? argv : argv.slice(0, flagStart);
+  const [exact] = VERBS.filter(verb => verb.words.every((word, index) => commandWords[index] === word)).sort((a, b) => b.words.length - a.words.length);
+  if (exact) return verbHelp(exact);
+  const group = VERBS.filter(verb => commandWords.every((word, index) => verb.words[index] === word));
+  return group.length ? groupHelp(group) : undefined;
+};
 
 const findVerb = (argv: string[]) => {
   const verb = VERBS
@@ -348,6 +395,14 @@ const dotEnvIn = (cwd: string) => {
 };
 
 const execute = async (context: CliContext) => {
+  const optionsEnd = context.argv.indexOf('--');
+  if (context.argv[0] !== '--help' && context.argv.slice(0, optionsEnd === -1 ? undefined : optionsEnd).includes('--help')) {
+    const help = context.argv[0] === 'init' ? INIT_HELP : helpFor(context.argv);
+    if (help) {
+      context.stdout.write(help);
+      return 0;
+    }
+  }
   if (context.argv[0] === 'init') return initInstance(context);
   if (context.argv[0] === '--version' || context.argv[0] === '-v') {
     context.stdout.write(`${context.version ?? ownVersion()}\n`);

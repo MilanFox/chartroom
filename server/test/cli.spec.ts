@@ -5,7 +5,7 @@ import { join, resolve } from 'node:path';
 import { Readable } from 'node:stream';
 import { promisify } from 'node:util';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { runCli } from '../../cli/src/chartroom';
+import { runCli, VERBS } from '../../cli/src/chartroom';
 import { apiClient, holderSecret } from './clients';
 import { freePort, useTestServer } from './harness';
 import { MANIFEST_MAJOR, MANIFEST_VERSION, NEXT_MAJOR_VERSION } from './manifest-version';
@@ -143,6 +143,26 @@ describe('the CLI', () => {
       expect(result, flag).toMatchObject({ code: 0, stderr: '' });
       expect(result.stdout, flag).toContain('usage: chartroom');
     }
+  });
+
+  it('--help after a command or subcommand prints its usage with exit 0, in any position, without acting', async () => {
+    const before = (await aliceApi.json('GET', '/issues')).body;
+    const commands = [...VERBS.map(verb => verb.words), ['init'], ['issue'], ['issue', 'link'], ['research']];
+
+    for (const words of commands) {
+      for (const argv of [[...words, '--help'], [...words, '--help', '--bogus'], ...VERBS.some(verb => verb.words.join() === words.join()) ? [[...words, '1', '2', '--help']] : []]) {
+        const result = await chartroom(argv);
+
+        expect(result, argv.join(' ')).toMatchObject({ code: 0, stderr: '' });
+        expect(result.stdout, argv.join(' ')).toContain(`chartroom ${words.join(' ')}`);
+      }
+    }
+    const result = await chartroom(['issue', 'create', '--help']);
+    expect(result.stdout).toContain('--title <value>');
+    expect(result.stdout).toContain('--blocked-by <value>');
+    expect((await aliceApi.json('GET', '/issues')).body).toEqual(before);
+    expect(await chartroom(['issue', 'delete', '1', '--help'])).toMatchObject({ code: 0, stderr: '' });
+    expect(await chartroom(['frobnicate', '--help'])).toMatchObject({ code: 2, stdout: '' });
   });
 
   it('a wrong flag, an unknown command or a missing argument is usage on stderr with exit 2', async () => {
