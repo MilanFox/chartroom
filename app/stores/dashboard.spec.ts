@@ -13,7 +13,7 @@ const effortDocument = (overrides: Partial<EffortDocument> = {}): EffortDocument
   ...issueFixture({ number: 1, kind: 'effort', title: 'Agent tracker', parent: null, effort: 1 }),
   name: 'tracker',
   testInstructions: null,
-  statusRollup: { map: { state: 'open', frontier: 1 }, specs: [{ number: 5, tickets: { open: 1, claimed: 0, blocked: 0, closed: 1 } }], triage: { 'needs-triage': 1, 'none': 0 }, open: 4 },
+  statusRollup: { map: { state: 'open', frontier: 1 }, specs: [{ number: 5, tickets: { open: 1, claimed: 0, blocked: 0, closed: 1 }, frontier: 1 }], triage: { 'needs-triage': 1, 'none': 0 }, open: 4 },
   linkRollup: { resource: [], artifact: [] },
   researchRollup: [],
   map: { ...row(2, { kind: 'map', parent: 1 }), excerpt: 'Map body' },

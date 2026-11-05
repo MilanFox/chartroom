@@ -429,6 +429,11 @@ describe('the CLI', () => {
     await printsDocument(['issue', 'reopen', ticketNumber], ticket.number);
     expect(await succeeds(['issue', 'changes', ticketNumber, '--field', 'title'])).toEqual(await servedJson(`/issues/${ticketNumber}/changes?field=title`));
     expect(await succeeds(['issue', 'list', '--view', 'frontier', '--parent', String(map.number)])).toEqual(await servedJson(`/issues?view=frontier&parent=${map.number}`));
+    const spec = await succeeds(['issue', 'create', '--kind', 'spec', '--parent', String(effort.number), '--title', 'Spec']);
+    await succeeds(['issue', 'create', '--kind', 'ticket', '--parent', String(spec.number), '--title', 'Build']);
+    const specFrontier = await succeeds(['issue', 'list', '--view', 'frontier', '--parent', String(spec.number)]);
+    expect(specFrontier.items).toHaveLength(1);
+    expect(specFrontier).toEqual(await servedJson(`/issues?view=frontier&parent=${spec.number}`));
     expect(await succeeds(['effort', 'list'])).toEqual(await servedJson('/efforts'));
     expect(await succeeds(['effort', 'view', 'walk'])).toEqual(await servedJson('/efforts/walk'));
     for (const read of ['environments', 'credential-pointers', 'labels', 'holders', 'me', 'instance']) {

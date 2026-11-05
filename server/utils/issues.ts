@@ -6,7 +6,7 @@ import { changes, issues } from '../db/schema';
 import type { BlockerRef } from './blockers';
 import type { FieldWrite, LoggedValue } from './changes';
 import { conflict, invalid, notFound } from './errors';
-import { blockedCondition, mapFrontierCondition } from './frontier';
+import { blockedCondition, frontierCondition } from './frontier';
 import type { Caller } from './caller';
 import type { Store } from './store';
 import type { IssueState, IssueStatus, IssueView, Kind } from '#shared/domain';
@@ -173,7 +173,7 @@ const sortOrdering = ({ sort, order }: IssueQuery) => {
 
 // eslint-disable-next-line no-unused-vars -- the core rule misreads type-level parameters
 const VIEW_CONDITIONS: Record<IssueView, (query: IssueQuery) => SQL> = {
-  'frontier': mapFrontierCondition,
+  'frontier': frontierCondition,
   'mine': query => and(eq(issues.state, 'open'), eq(issues.assignee, query.holder!))!,
   'needs-triage': () => and(eq(issues.state, 'open'), inArray(issues.number, issuesLabelled('needs-triage')))!,
   'blocked': blockedCondition,

@@ -43,7 +43,7 @@ describe('the Frontier', () => {
     expect(await listed(`?view=frontier&parent=${map.number}`)).toEqual([c.number, d.number]);
   });
 
-  it('spans every map in number order and leaves out spec, Effort and floating tickets', async () => {
+  it('spans every map in number order and spec children, leaving out Effort and floating tickets', async () => {
     const first = await create(alice, { kind: 'effort', title: 'First', name: 'first' });
     const second = await create(alice, { kind: 'effort', title: 'Second', name: 'second' });
     const firstMap = await create(alice, { kind: 'map', title: 'First map', parent: first.number });
@@ -59,11 +59,43 @@ describe('the Frontier', () => {
 
     expect(frontier).toEqual([...frontier].sort((a, b) => a - b));
     expect(frontier).toEqual(expect.arrayContaining([underSecond.number, underFirst.number]));
-    expect(frontier).not.toContain(underSpec.number);
+    expect(frontier).toContain(underSpec.number);
     expect(frontier).not.toContain(underEffort.number);
     expect(frontier).not.toContain(floating.number);
     expect(frontier).not.toContain(firstMap.number);
-    expect(await listed('?view=frontier&effort=first')).toEqual([underFirst.number]);
+    expect(await listed('?view=frontier&effort=first')).toEqual([underSpec.number, underFirst.number]);
+  });
+});
+
+describe('the Frontier of a spec', () => {
+  const server = useTestServer();
+  let alice: Client;
+  let bob: Client;
+
+  beforeAll(async () => {
+    alice = apiClient(server, await holderSecret(server, 'alice', 'Alice'));
+    bob = apiClient(server, await holderSecret(server, 'bob', 'Bob'));
+  });
+
+  const create = async (body: Record<string, unknown>) => (await alice.json('POST', '/issues', { body })).body as Row;
+  const listed = async (query: string) => numbersOf((await alice.json('GET', `/issues${query}`)).body.items);
+
+  it('lists open, unclaimed, unblocked children, and a child joins once its last blocker closes', async () => {
+    const effort = await create({ kind: 'effort', title: 'Spec effort', name: 'spec-effort' });
+    const spec = await create({ kind: 'spec', title: 'Spec', parent: effort.number });
+    const ready = await create({ kind: 'ticket', title: 'Ready', parent: spec.number });
+    const claimed = await create({ kind: 'ticket', title: 'Claimed', parent: spec.number });
+    const closed = await create({ kind: 'ticket', title: 'Closed', parent: spec.number });
+    const blocker = await create({ kind: 'ticket', title: 'Blocker', parent: spec.number });
+    const blocked = await create({ kind: 'ticket', title: 'Blocked', parent: spec.number });
+    await alice.json('PUT', `/issues/${blocked.number}/blockers/${blocker.number}`);
+    await bob.json('POST', `/issues/${claimed.number}/claim`);
+    await alice.json('POST', `/issues/${closed.number}/close`);
+
+    expect(await listed(`?view=frontier&parent=${spec.number}`)).toEqual([ready.number, blocker.number]);
+
+    await alice.json('POST', `/issues/${blocker.number}/close`);
+    expect(await listed(`?view=frontier&parent=${spec.number}`)).toEqual([ready.number, blocked.number]);
   });
 });
 

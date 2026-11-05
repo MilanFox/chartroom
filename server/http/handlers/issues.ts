@@ -257,7 +257,7 @@ export const ISSUE_LIST_PARAMS = [
   queryParam('label', stringList, 'Repeatable; only issues carrying every given label, a Label group member or a free-form label'),
   queryParam('assignee', { type: 'string' }, `A holder slug, or ${UNASSIGNED} for unassigned issues`),
   queryParam('missing', stringList, 'Repeatable Label group ids; only issues carrying no member of any given group'),
-  queryParam('view', { type: 'string', enum: ISSUE_VIEWS }, 'A Saved view; explicit filters narrow within it. frontier: open, unassigned, no open blocker, Parent is a map. mine: open and held by the caller, refused without a Token holder. needs-triage: open and labelled needs-triage. blocked: open with an open blocker. closed-recent: closed in the last 7 days'),
+  queryParam('view', { type: 'string', enum: ISSUE_VIEWS }, 'A Saved view; explicit filters narrow within it. frontier: open, unassigned, no open blocker, Parent is a map or a spec. mine: open and held by the caller, refused without a Token holder. needs-triage: open and labelled needs-triage. blocked: open with an open blocker. closed-recent: closed in the last 7 days'),
   queryParam('sort', { type: 'string', default: 'number' }, `One of ${ISSUE_SORTS.join(', ')}, or a Label group id to order by its member order with issues carrying no member last in either order; number breaks ties`),
   queryParam('order', { type: 'string', enum: SORT_ORDERS, default: 'asc' }, 'The sort direction'),
 ];

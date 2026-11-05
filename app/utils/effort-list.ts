@@ -46,9 +46,11 @@ export const tagsAcross = (efforts: Effort[]) => [...new Set(efforts.flatMap(eff
 
 export const rollupGist = (rollup: StatusRollup) => {
   const specTickets = rollup.specs.flatMap(spec => Object.values(spec.tickets));
+  const mapIsOpen = rollup.map?.state === 'open';
+  const mapFrontier = mapIsOpen ? rollup.map!.frontier : 0;
   return {
     open: rollup.open,
-    frontier: rollup.map?.state === 'open' ? rollup.map.frontier : null,
+    frontier: mapIsOpen || rollup.specs.length > 0 ? mapFrontier + rollup.specs.reduce((sum, spec) => sum + spec.frontier, 0) : null,
     closedTickets: rollup.specs.reduce((sum, spec) => sum + (spec.tickets.closed ?? 0), 0),
     specTickets: specTickets.reduce((sum, count) => sum + count, 0),
   };

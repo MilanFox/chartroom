@@ -104,18 +104,19 @@ describe('rollupGist', () => {
     expect(rollupGist({ map: null, specs: [], triage: { none: 2 }, open: 2 })).toEqual({ open: 2, frontier: null, closedTickets: 0, specTickets: 0 });
   });
 
-  it('adds the Frontier while the map is open and the spec tickets closed out of all', () => {
+  it('adds the Frontier of the open map and of the specs and the spec tickets closed out of all', () => {
     const rollup = {
       map: { state: 'open' as const, frontier: 3 },
       specs: [
-        { number: 5, tickets: { open: 2, claimed: 1, blocked: 1, closed: 2 } },
-        { number: 9, tickets: { open: 1, claimed: 0, blocked: 0, closed: 3 } },
+        { number: 5, tickets: { open: 2, claimed: 1, blocked: 1, closed: 2 }, frontier: 2 },
+        { number: 9, tickets: { open: 1, claimed: 0, blocked: 0, closed: 3 }, frontier: 1 },
       ],
       triage: {},
       open: 9,
     };
 
-    expect(rollupGist(rollup)).toEqual({ open: 9, frontier: 3, closedTickets: 5, specTickets: 10 });
-    expect(rollupGist({ ...rollup, map: { state: 'closed', frontier: 0 } }).frontier).toBeNull();
+    expect(rollupGist(rollup)).toEqual({ open: 9, frontier: 6, closedTickets: 5, specTickets: 10 });
+    expect(rollupGist({ ...rollup, map: { state: 'closed', frontier: 0 } }).frontier).toBe(3);
+    expect(rollupGist({ ...rollup, map: { state: 'closed', frontier: 0 }, specs: [] }).frontier).toBeNull();
   });
 });

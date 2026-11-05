@@ -329,7 +329,7 @@ const STATUS_ROLLUP_SCHEMA = {
   description: 'Computed, never stored',
   properties: {
     map: { oneOf: [{ type: 'object', properties: { state: { type: 'string', enum: ['open', 'closed'] }, frontier: { type: 'integer', description: 'Open, unassigned children of the map with no open blocker' } }, required: ['state', 'frontier'] }, { type: 'null' }] },
-    specs: { type: 'array', items: { type: 'object', properties: { number: { type: 'integer' }, tickets: { ...countRecord, description: 'The children of the spec by status' } }, required: ['number', 'tickets'] } },
+    specs: { type: 'array', items: { type: 'object', properties: { number: { type: 'integer' }, tickets: { ...countRecord, description: 'The children of the spec by status' }, frontier: { type: 'integer', description: 'Open, unassigned children of the spec with no open blocker' } }, required: ['number', 'tickets', 'frontier'] } },
     triage: { ...countRecord, description: 'Tickets parented straight to the Effort, one bucket per triage-state member plus none' },
     open: { type: 'integer', description: 'Open issues in the subtree, the Effort itself excluded' },
   },

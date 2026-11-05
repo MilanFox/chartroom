@@ -31,7 +31,7 @@ export type RolledUpNoteRecord = Pick<ResearchNoteRecord, 'slug' | 'title' | 'si
 
 export interface StatusRollup {
   map: { state: IssueState, frontier: number } | null
-  specs: { number: number, tickets: Record<IssueStatus, number> }[]
+  specs: { number: number, tickets: Record<IssueStatus, number>, frontier: number }[]
   triage: Record<string, number>
   open: number
 }
@@ -104,7 +104,7 @@ export const statusRollupOf = (effort: number): StatusRollup => {
   const map = children.find(child => child.kind === 'map') ?? null;
   return {
     map: map ? { state: map.state as IssueState, frontier: frontierSizeOf(map.number) } : null,
-    specs: children.filter(child => child.kind === 'spec').map(spec => ({ number: spec.number, tickets: countByStatus(childrenOf(spec.number)) })),
+    specs: children.filter(child => child.kind === 'spec').map(spec => ({ number: spec.number, tickets: countByStatus(childrenOf(spec.number)), frontier: frontierSizeOf(spec.number) })),
     triage: triageBuckets(children.filter(child => child.kind === 'ticket')),
     open: openInSubtree(effort),
   };

@@ -35,7 +35,7 @@ export interface Page<T> {
 
 export interface StatusRollup {
   map: { state: IssueState, frontier: number } | null
-  specs: { number: number, tickets: Record<IssueStatus, number> }[]
+  specs: { number: number, tickets: Record<IssueStatus, number>, frontier: number }[]
   triage: Record<string, number>
   open: number
 }
