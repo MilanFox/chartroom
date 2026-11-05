@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { crumbsFor } from './breadcrumb';
 
-const labels = { issues: 'Issues', efforts: 'Efforts', map: 'Map: {title}', spec: 'Spec: {title}', issue: '#{number}' };
+const labels = { issues: 'Issues', efforts: 'Efforts', map: 'Map: {title}', spec: 'Spec: {title}', issue: '#{number}', issueTitled: '#{number} {title}' };
 const tracker = { number: 1, name: 'agent-tracker', title: 'Agent Tracker v1' };
 
 describe('crumbsFor', () => {
@@ -43,5 +43,26 @@ describe('crumbsFor', () => {
 
   it('reads <Efforts> alone on the Effort list', () => {
     expect(crumbsFor({ page: 'efforts' }, labels)).toEqual([{ label: 'Efforts' }]);
+  });
+
+  it('reads Issues › <Effort> › #n <title> › <note> on a Research note, the issue crumb opening its page', () => {
+    const target = { page: 'research', issue: { number: 12, kind: 'ticket', title: 'Transcription' }, effort: tracker, note: { title: 'Local transcription' } } as const;
+
+    expect(crumbsFor(target, labels)).toEqual([
+      { label: 'Issues', to: '/issues' },
+      { label: 'Agent Tracker v1', to: '/efforts/1' },
+      { label: '#12 Transcription', to: '/issues/12' },
+      { label: 'Local transcription' },
+    ]);
+  });
+
+  it('opens the dashboard from the issue crumb of a Research note on the Effort itself', () => {
+    const target = { page: 'research', issue: { number: 1, kind: 'effort', title: 'Agent Tracker v1' }, effort: tracker, note: { title: 'Survey' } } as const;
+
+    expect(crumbsFor(target, labels)).toEqual([
+      { label: 'Issues', to: '/issues' },
+      { label: '#1 Agent Tracker v1', to: '/efforts/1' },
+      { label: 'Survey' },
+    ]);
   });
 });

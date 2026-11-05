@@ -21,6 +21,8 @@
     </FieldRow>
 
     <IssueLinks :issue="issue" />
+
+    <IssueResearch :issue="issue" />
   </aside>
 </template>
 

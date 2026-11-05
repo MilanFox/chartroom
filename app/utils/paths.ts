@@ -8,6 +8,8 @@ export const effortPath = (effort: Pick<EffortRef, 'number'>) => `/efforts/${eff
 
 export const issuePath = (number: number) => `/issues/${number}`;
 
+export const researchNotePath = (issue: number, slug: string) => `${issuePath(issue)}/research/${slug}`;
+
 export const ADMIN_SECTION_IDS = ['settings', 'environments', 'holders', 'labels', 'efforts', 'snapshots', 'about'] as const;
 
 export type AdminSectionId = typeof ADMIN_SECTION_IDS[number];
