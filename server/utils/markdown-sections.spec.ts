@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bodyExcerpt, insertUnderSection } from './markdown-sections';
+import { bodyExcerpt, insertUnderSection, replaceSectionContent } from './markdown-sections';
 
 const body = ['# Title', '', '## Notes', 'first', '', '### Deep', 'nested', '', '## Next', 'last'].join('\n');
 
@@ -32,6 +32,20 @@ describe('insertUnderSection', () => {
 
   it('refuses a section that does not exist, naming the field', () => {
     expect(() => insertUnderSection(body, 'Missing', 'x')).toThrowError(expect.objectContaining({ code: 'invalid', field: 'section' }));
+  });
+});
+
+describe('replaceSectionContent', () => {
+  it('replaces the section content, nested subsections included, and keeps the rest', () => {
+    expect(replaceSectionContent(body, 'Notes', 'new')).toBe(['# Title', '', '## Notes', 'new', '', '## Next', 'last'].join('\n'));
+  });
+
+  it('fills an empty section and trims the trailing whitespace of the text', () => {
+    expect(replaceSectionContent('## A\n\n## B', 'A', 'x\ny\n\n')).toBe('## A\nx\ny\n\n## B');
+  });
+
+  it('refuses a section that does not exist, naming the field', () => {
+    expect(() => replaceSectionContent(body, 'Missing', 'x')).toThrowError(expect.objectContaining({ code: 'invalid', field: 'section' }));
   });
 });
 

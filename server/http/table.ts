@@ -201,6 +201,24 @@ export const routeTable: TableRoute[] = [
   },
   {
     method: 'put',
+    path: '/issues/:number/body/section',
+    handler: issueHandlers.replaceSection,
+    openapi: {
+      summary: 'Replace the content of a body section',
+      tags: ['issues'],
+      description: 'Keeps the heading and every other section; the content runs to the next heading of the same or higher level, so nested subsections are replaced too. Without If-Match the last write wins; a stale version is a conflict. A missing section is never created.',
+      parameters: [ISSUE_NUMBER_PARAM, { name: 'If-Match', in: 'header', schema: { type: 'string' }, description: 'The expected version, quotes optional; stale is conflict with field version' }],
+      requestBody: { type: 'object', properties: { section: { type: 'string', description: 'Heading text, any ATX level, first match wins' }, text: { type: 'string', description: 'The new section content' } }, required: ['section', 'text'] },
+      responses: {
+        200: { description: 'Document', schema: DOCUMENT_SCHEMA },
+        400: { description: 'No such section (field section)' },
+        404: { description: 'No such issue' },
+        409: { description: 'Stale If-Match (field version)' },
+      },
+    },
+  },
+  {
+    method: 'put',
     path: '/issues/:number/labels/:label',
     handler: issueHandlers.labelAdd,
     openapi: {

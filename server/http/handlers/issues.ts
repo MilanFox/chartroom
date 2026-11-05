@@ -73,6 +73,14 @@ const issueAppend = async (event: H3Event, caller: Caller) => {
   return toDocument(event, appendToIssue(number, request, caller));
 };
 
+const issueReplaceSection = async (event: H3Event, caller: Caller) => {
+  const number = issueNumberParam(event);
+  const expectedVersion = expectedVersionFrom(event);
+  const body = await readJsonObject(event);
+  const request = { section: requireString(body, 'section'), text: requireString(body, 'text'), expectedVersion };
+  return toDocument(event, replaceIssueSection(number, request, caller));
+};
+
 const issueClaim = (event: H3Event, caller: Caller) => toDocument(event, claimIssue(issueNumberParam(event), caller));
 
 const issueUnassign = (event: H3Event, caller: Caller) => toDocument(event, unassignIssue(issueNumberParam(event), caller));
@@ -209,6 +217,7 @@ export const issueHandlers = {
   edit: issueEdit,
   remove: issueRemove,
   append: issueAppend,
+  replaceSection: issueReplaceSection,
   claim: issueClaim,
   unassign: issueUnassign,
   close: issueClose,

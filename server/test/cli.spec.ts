@@ -212,6 +212,17 @@ describe('the CLI', () => {
     expectEnvelope(await chartroom(['issue', 'append', String(number), '--section', 'Nowhere', '--text', 'x']), 'invalid');
   });
 
+  it('replace-section swaps one section, takes a file from stdin and refuses a stale version or a missing section', async () => {
+    const { number } = await createTicket('Sections', '--body', '## Notes\nold\n\n## Done\nkeep');
+
+    const replaced = JSON.parse((await chartroom(['issue', 'replace-section', String(number), '--section', 'Notes', '--text-file', '-', '--if-version', '1'], { stdin: 'new' })).stdout);
+
+    expect(replaced).toMatchObject({ body: '## Notes\nnew\n\n## Done\nkeep', version: 2 });
+    expectEnvelope(await chartroom(['issue', 'replace-section', String(number), '--section', 'Notes', '--text', 'x', '--if-version', '1']), 'conflict');
+    expectEnvelope(await chartroom(['issue', 'replace-section', String(number), '--section', 'Nowhere', '--text', 'x']), 'invalid');
+    expect((await printedJson(['issue', 'view', String(number)])).body).toBe('## Notes\nnew\n\n## Done\nkeep');
+  });
+
   describe('issue list on a store larger than one page', () => {
     let bulkNumbers: number[];
 

@@ -148,6 +148,12 @@ export const VERBS: Verb[] = [
     flags: { ...valueFlags('section'), ...inlineOrFileFlags('text') },
     body: async ({ flags, text }) => ({ section: flags.section, text: await text('text') }),
   }),
+  issueVerb('replace-section', 'put /body/section', {
+    summary: 'Replace one ## section of an issue body.',
+    flags: { ...valueFlags('section', 'if-version'), ...inlineOrFileFlags('text') },
+    ifVersion: true,
+    body: async ({ flags, text }) => ({ section: flags.section, text: await text('text') }),
+  }),
   issueVerb('delete', 'delete', { summary: 'Delete an issue.' }),
   issueVerb('claim', 'post /claim', { summary: 'Claim an issue for the calling holder.' }),
   issueVerb('unassign', 'delete /assignee', { summary: 'Remove the assignee from an issue.' }),

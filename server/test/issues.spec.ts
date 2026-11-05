@@ -222,6 +222,23 @@ describe('issue core', () => {
     expect(await api.json('POST', '/issues/999999/body/append', { body: { section: 'Log', text: 'entry' } })).toMatchObject({ status: 404 });
   });
 
+  it('replace-section changes only that section, honours If-Match and logs a body Change', async () => {
+    const issue = (await create({ kind: 'ticket', title: 'Replace', body: '## A\none\n\n## B\ntwo\n\n## C\nthree' })).body;
+    const replaceSection = (section: string, text: string, headers?: Record<string, string>) => api.json('PUT', `/issues/${issue.number}/body/section`, { body: { section, text }, headers });
+
+    const replaced = await replaceSection('B', 'TWO\nmore', { 'if-match': '"1"' });
+    const stale = await replaceSection('B', 'x', { 'if-match': '"1"' });
+    const missing = await replaceSection('Nowhere', 'x');
+
+    expect(replaced.body).toMatchObject({ body: '## A\none\n\n## B\nTWO\nmore\n\n## C\nthree', version: 2 });
+    expect(stale).toMatchObject({ status: 409, body: { error: { code: 'conflict', field: 'version' } } });
+    expect(missing).toMatchObject(invalidOn('section'));
+    expect(await replaceSection('A', '')).toMatchObject(invalidOn('text'));
+    expect((await api.json('GET', `/issues/${issue.number}`)).body).toMatchObject({ body: replaced.body.body, version: 2 });
+    expect((await api.json('GET', `/issues/${issue.number}/changes`)).body.items.at(-1)).toMatchObject({ field: 'body', before: '## A\none\n\n## B\ntwo\n\n## C\nthree', after: replaced.body.body, actor: 'agent', origin: 'api' });
+    expect(await api.json('PUT', '/issues/999999/body/section', { body: { section: 'A', text: 'x' } })).toMatchObject({ status: 404 });
+  });
+
   it('delete with children is conflict carrying the count; without children the issue and its Changes are gone', async () => {
     const tracker = await effort('delete');
     await create({ kind: 'map', title: 'Map', parent: tracker.number });

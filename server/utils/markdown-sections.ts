@@ -7,8 +7,7 @@ const headingOf = (line: string) => {
   return match ? { level: match[1]!.length, text: match[2]!.trim() } : null;
 };
 
-export const insertUnderSection = (body: string, section: string, text: string) => {
-  const lines = body.split('\n');
+const findSection = (lines: string[], section: string) => {
   const wanted = section.trim();
   const start = lines.findIndex(line => headingOf(line)?.text === wanted);
   if (start === -1) throw invalid(`section ${section} does not exist`, 'section');
@@ -28,7 +27,19 @@ export const insertUnderSection = (body: string, section: string, text: string) 
       break;
     }
   }
+  return { start, last };
+};
+
+export const insertUnderSection = (body: string, section: string, text: string) => {
+  const lines = body.split('\n');
+  const { last } = findSection(lines, section);
   return [...lines.slice(0, last + 1), ...text.trimEnd().split('\n'), ...lines.slice(last + 1)].join('\n');
+};
+
+export const replaceSectionContent = (body: string, section: string, text: string) => {
+  const lines = body.split('\n');
+  const { start, last } = findSection(lines, section);
+  return [...lines.slice(0, start + 1), ...text.trimEnd().split('\n'), ...lines.slice(last + 1)].join('\n');
 };
 
 export const bodyExcerpt = (body: string) =>

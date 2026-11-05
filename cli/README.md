@@ -44,6 +44,7 @@ export CHARTROOM_TOKEN=<secret>
 | List issues by filter or view | `chart issue list --view frontier --label bug --all` |
 | Edit fields, optionally guarded by version | `chart issue edit 12 --title "Wire the login page" --if-version 4` |
 | Append text under a body section | `chart issue append 12 --section Notes --text "- decided"` |
+| Replace the content of a body section | `chart issue replace-section 12 --section Notes --text-file notes.md --if-version 4` |
 | Delete an issue | `chart issue delete 12` |
 | Assign yourself | `chart issue claim 12` |
 | Clear the assignee | `chart issue unassign 12` |
