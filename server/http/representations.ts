@@ -40,6 +40,16 @@ export const toRow = (event: H3Event, issue: IssueRecord, relations?: RowRelatio
   };
 };
 
+const toIssueRef = ({ number, title, state }: IssueRecord) => ({ number, title, open: state === 'open' });
+
+const handoffOf = (issue: IssueRecord, effort: number | null): Pick<IssueDocument, 'ledTo' | 'from'> => {
+  const siblings = effort !== null && (issue.kind === 'map' || issue.kind === 'spec') ? childrenOf(effort) : [];
+  return {
+    ledTo: issue.kind === 'map' ? siblings.filter(sibling => sibling.kind === 'spec').map(toIssueRef) : [],
+    from: issue.kind === 'spec' ? siblings.filter(sibling => sibling.kind === 'map').map(toIssueRef)[0] ?? null : null,
+  };
+};
+
 export const toDocument = (event: H3Event, issue: IssueRecord): IssueDocument => {
   const resolution = resolutionOf(issue.number);
   const relations = relationsOf(issue);
@@ -52,7 +62,8 @@ export const toDocument = (event: H3Event, issue: IssueRecord): IssueDocument =>
     version: issue.version,
     blockedBy: relations.blockers,
     blocks: blocksOf(issue.number),
-    children: childrenOf(issue.number).map(({ number, title, state }) => ({ number, title, open: state === 'open' })),
+    children: childrenOf(issue.number).map(toIssueRef),
+    ...handoffOf(issue, relations.effort),
     links: linksOf(issue.number).map(toLink),
     comments: commentsOf(issue.number).map(comment => toComment(event, comment)),
     resolution: resolution === null ? null : toComment(event, resolution),
@@ -200,6 +211,8 @@ const DOCUMENT_PROPERTIES = {
   blockedBy: { ...BLOCKER_LIST, items: issueRef({ title: { type: 'string' }, open: { type: 'boolean' } }) },
   blocks: { type: 'array', items: issueRef({ title: { type: 'string' } }), description: 'The issues this one blocks' },
   children: { type: 'array', items: issueRef({ title: { type: 'string' }, open: { type: 'boolean' } }), description: 'Children by number; open means the child is still open' },
+  ledTo: { type: 'array', items: issueRef({ title: { type: 'string' }, open: { type: 'boolean' } }), description: 'Map only: the specs in the same Effort, derived' },
+  from: { oneOf: [issueRef({ title: { type: 'string' }, open: { type: 'boolean' } }), { type: 'null' }], description: 'Spec only: the map in the same Effort, derived' },
   links: { type: 'array', items: LINK_SCHEMA },
   comments: { type: 'array', items: COMMENT_SCHEMA },
   resolution: { oneOf: [COMMENT_SCHEMA, { type: 'null' }] },

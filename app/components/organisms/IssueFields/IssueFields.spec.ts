@@ -125,6 +125,22 @@ describe('IssueFields', () => {
     await vi.waitFor(() => expect(wrapper.text()).toContain('Claimed by @claude-b'));
   });
 
+  it('links a map to the specs it led to and a spec back to its map, by title', async () => {
+    const { wrapper: mapFields } = await mountFields({ kind: 'map', ledTo: [{ number: 20, title: 'Spec one', open: true }, { number: 21, title: 'Spec two', open: false }] });
+    expect(mapFields.text()).toContain('Led to');
+    expect(mapFields.findAll('a').filter(link => link.text().startsWith('Spec')).map(link => [link.text(), link.attributes('href')])).toEqual([['Spec one', '/issues/20'], ['Spec two', '/issues/21']]);
+
+    const { wrapper: specFields } = await mountFields({ kind: 'spec', from: { number: 2, title: 'Agent Tracker v1', open: true } });
+    expect(specFields.text()).toContain('From');
+    expect(specFields.find('a[href="/issues/2"]').text()).toBe('Agent Tracker v1');
+  });
+
+  it('shows neither Led to nor From without a relation', async () => {
+    const { wrapper } = await mountFields({ kind: 'map' });
+    expect(wrapper.text()).not.toContain('Led to');
+    expect(wrapper.text()).not.toContain('From');
+  });
+
   it('gives a Viewer no write affordance, only copying a Link', async () => {
     useSessionStore().me = viewerSession;
     const { wrapper } = await mountFields({

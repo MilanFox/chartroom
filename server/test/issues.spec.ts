@@ -41,6 +41,8 @@ describe('issue core', () => {
       blockedBy: [],
       blocks: [],
       children: [],
+      ledTo: [],
+      from: null,
       links: [],
       comments: [],
       resolution: null,
@@ -66,6 +68,26 @@ describe('issue core', () => {
     const document = await api.json('GET', `/issues/${tracker.body.number}`);
     expect(document.status).toBe(200);
     expect(document.body).toEqual({ ...tracker.body, children: [map.body, spec.body, underEffort.body].map(({ number, title }) => ({ number, title, open: true })) });
+  });
+
+  it('derives Led to on a map and From on a spec from the shared Effort', async () => {
+    const shared = await create({ kind: 'effort', title: 'Tracker', name: 'handoff' });
+    const map = await create({ kind: 'map', title: 'The map', parent: shared.body.number });
+    const firstSpec = await create({ kind: 'spec', title: 'First spec', parent: shared.body.number });
+    const secondSpec = await create({ kind: 'spec', title: 'Second spec', parent: shared.body.number });
+    const lonelyEffort = await create({ kind: 'effort', title: 'Lonely', name: 'lonely' });
+    const lonelyMap = await create({ kind: 'map', title: 'Lonely map', parent: lonelyEffort.body.number });
+    const lonelySpec = await create({ kind: 'spec', title: 'Lonely spec', parent: lonelyEffort.body.number });
+    const openOf = ({ number, title }: { number: number, title: string }) => ({ number, title, open: true });
+
+    expect((await api.json('GET', `/issues/${map.body.number}`)).body).toMatchObject({ ledTo: [openOf(firstSpec.body), openOf(secondSpec.body)], from: null });
+    expect((await api.json('GET', `/issues/${firstSpec.body.number}`)).body).toMatchObject({ ledTo: [], from: openOf(map.body) });
+    expect((await api.json('GET', `/issues/${lonelyMap.body.number}`)).body).toMatchObject({ ledTo: [lonelySpec.body].map(openOf), from: null });
+    await api.json('DELETE', `/issues/${lonelySpec.body.number}`);
+    expect((await api.json('GET', `/issues/${lonelyMap.body.number}`)).body).toMatchObject({ ledTo: [], from: null });
+    const specOnly = await create({ kind: 'spec', title: 'Mapless', parent: shared.body.number });
+    await api.json('DELETE', `/issues/${map.body.number}`);
+    expect((await api.json('GET', `/issues/${specOnly.body.number}`)).body).toMatchObject({ from: null });
   });
 
   it('is not-found for an unknown or non-numeric number', async () => {
