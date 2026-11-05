@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { basename, join, resolve as resolvePath } from 'node:path';
 import type { AskOptions, CliContext, Handler } from './shared.js';
@@ -165,6 +165,7 @@ const runWizard = async (context: CliContext, ask: NonNullable<CliContext['ask']
   step(3, 'Public URL');
   const baseUrl = await answer({ question: 'Public URL, e.g. https://chartroom.example.com (Enter to skip): ' }, typed => typed === '' || isHttpUrl(typed) ? typed : undefined, 'Enter an http or https URL, or nothing to skip.');
   step(4, 'Host port');
+  say(dim('3000 is the default port of common dev servers (Nuxt, Next, Express, Hono) and may collide with what you are building.'));
   const port = await answer({ question: `Host port (Enter for ${defaults.port}): ` }, typed => typed === '' ? defaults.port : /^\d+$/.test(typed) && Number(typed) >= 1 && Number(typed) <= 65535 ? Number(typed) : undefined, 'Enter a port from 1 to 65535.');
   step(5, 'Update check');
   const updateCheck = await confirm('Check daily for a newer release? [Y/n] ', true);
@@ -199,6 +200,13 @@ const dockerComposeUp = (context: CliContext) => (dir: string) => new Promise<nu
     .on('close', code => resolve(code ?? 1));
 });
 
+const dockerProblem = () => {
+  const daemon = spawnSync('docker', ['info'], { stdio: 'ignore' });
+  if (daemon.error) return `cannot run docker: ${daemon.error.message}`;
+  if (daemon.status !== 0) return 'the Docker daemon is not reachable, start it and try again';
+  return spawnSync('docker', ['compose', 'version'], { stdio: 'ignore' }).status === 0 ? undefined : '`docker compose` is not available, install the Docker Compose plugin';
+};
+
 export const initInstance = async (context: CliContext) => {
   const { positionals } = strictArgs(context.argv.slice(1), {});
   if (positionals.length > 1) throw new UsageError('expected init [dir]');
@@ -208,6 +216,8 @@ export const initInstance = async (context: CliContext) => {
     context.stderr.write(`chartroom: ${taken} already exists\n`);
     return 1;
   }
+  const problem = await (context.checkDocker ?? dockerProblem)();
+  if (problem) throw new CliExit(`${problem}, nothing written`, 1);
   const defaults: InitSettings = { dir, version: context.version ?? ownVersion(), adminPassword: freshPassword(), viewerPassword: freshPassword(), passwordsChosen: false, port: 3000, updateCheck: true };
   const { settings, start } = context.ask ? await runWizard(context, context.ask, defaults) : { settings: defaults, start: false };
   await mkdir(dir, { recursive: true });
