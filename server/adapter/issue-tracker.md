@@ -24,8 +24,9 @@ Issues, maps and specs for this repo live in the Chartroom instance at **{{baseU
 - **Claim.** Assigning an issue to your holder. Refused with `conflict` when another holder has it.
 - **Resolution.** The comment posted by `issue close --comment`; readable as `resolution` on the issue.
 - **Done.** An issue is done when its `state` is `closed`, nothing else. There is no done label, no done status and no done checkbox: never add one. `status` (`open`, `claimed`, `blocked`, `closed`) is computed from `state`, the assignee and the blockers.
-- **Links.** Typed pointers on any issue: role `resource` (used while working) or `artifact` (created while working); type `branch`, `file`, `preview`, `doc`, `external`. Branches and files that a skill creates are Links, never pasted content.
-- **Ids and URLs.** One `#n` sequence across all kinds. Every issue, comment and Link carries a `url`. Refer to issues by title with the link inside: `[title](url)`. A link to a list is `{{baseUrl}}/issues?` plus the same query `issue list` would send: the frontier of a map is `?view=frontier&parent=<map n>`, a picked set is `?numbers=12,45`.
+- **Links.** Typed pointers on any issue: role `resource` (used while working) or `artifact` (created while working); type `branch`, `file`, `preview`, `doc`, `external`. Branches, files, previews and every binary or large artifact a skill creates are Links, never pasted content. Research findings are not Links: they are Research notes.
+- **Research note.** Markdown stored in this instance and attached to one issue of any kind, addressed by issue and slug (`#3/local-transcription`); an issue may hold several. It survives the issue's close, a put with the same slug replaces it, and it is deleted with its issue or {{Effort}}. At most 512 KB of text; binaries and large files stay artifact Links.
+- **Ids and URLs.** One `#n` sequence across all kinds. Every issue, comment, Link and Research note carries a `url`. Refer to issues by title with the link inside: `[title](url)`. A link to a list is `{{baseUrl}}/issues?` plus the same query `issue list` would send: the frontier of a map is `?view=frontier&parent=<map n>`, a picked set is `?numbers=12,45`.
 
 ## Label groups on this instance
 
@@ -48,6 +49,7 @@ Every group is exclusive: adding a member removes its siblings. The seeded group
 - **Claim / unassign**: `chartroom issue claim <n>` / `chartroom issue unassign <n>`.
 - **Block / unblock**: `chartroom issue block <n> --by <m>` / `chartroom issue unblock <n> --by <m>`. Self-blocks and cycles are refused.
 - **Links**: `chartroom issue link add <n> --role artifact|resource --type branch|file|preview|doc|external --url <url> --title "…"`; `link edit <n> <id>`, `link remove <n> <id>`.
+- **Research notes**: `chartroom research put <n> <slug>.md` stores the file on issue `<n>` under the file name as slug and prints the note with its `url`; put it again to correct it. `--slug <slug>` overrides the name, and `-` as the file reads stdin (then `--slug` is required). `chartroom research list <n>` lists an issue's notes, `chartroom research view <n> <slug>` prints one with its body. `chartroom effort view <slug|n>` rolls up every note of the {{Effort}} under `researchRollup`.
 - **Delete**: `chartroom issue delete <n>`. Hard delete, refused while children exist. No confirmation.
 - **{{Efforts}}**: `chartroom effort list`, `chartroom effort view <slug|n>` (roll-ups, map, specs, links), `chartroom effort artifacts <slug|n>` (the hand-off list as markdown).
 - **Who changed a field**: `chartroom issue changes <n>` lists the issue's Changes oldest first, each with `actor`, `at`, `field`, `before` and `after`.
@@ -99,6 +101,6 @@ Used by `/wayfinder`. The **map** is an issue of kind `map` under an {{Effort}};
 - **Claim**: `chartroom issue claim <n>`, the session's first write. A `conflict` error means another session holds it: take the next frontier ticket instead.
 - **Zoom**: `chartroom issue view <n>` for any related or closed ticket; the Resolution is in `resolution`.
 - **Resolve**: `chartroom issue close <n> --comment-file -` with the answer as the comment. Then add the decision with `chartroom issue append <map n> --section "Decisions so far" --text "- [<ticket title>](<ticket url>): <gist>"` straight away. Graduate fog with an edit: `chartroom issue view <map n>`, remove the patch from **Not yet specified**, `chartroom issue edit <map n> --if-version <version> --body-file -` (on `conflict` view again and redo), and create its tickets.
-- **Assets**: a `research/<name>` or `prototype/<name>` branch, a findings file, a deployed preview: `chartroom issue link add <n> --role artifact --type branch|file|preview --url <url> --title "…"`. Never paste the content into the issue.
+- **Assets**: a `prototype/<name>` branch, its files, a deployed preview, any binary or large artifact: `chartroom issue link add <n> --role artifact --type branch|file|preview --url <url> --title "…"`. Never paste the content into the issue.
 - **Out of scope**: `chartroom issue close <n> --comment "Out of scope: <why>"`, then add the line with `chartroom issue append <map n> --section "Out of scope" --text "…"`. Invalidated tickets: `chartroom issue delete <n>` or edit them.
-- **Research findings**: write them to the `research/<name>` branch as the skill says, link the branch as an artifact; nothing wayfinding-related goes under `docs/`.
+- **Research findings**: write them to a Markdown file and store it as a Research note on the ticket: `chartroom research put <ticket n> <slug>.md`. The ticket's Resolution links the printed `url`. No `research/<name>` branch for findings, and nothing wayfinding-related goes under `docs/`. The note survives the close and can be put again to correct it.

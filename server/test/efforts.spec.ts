@@ -40,6 +40,7 @@ describe('efforts', () => {
     expect(bySlug.map).toMatchObject({ number: map.number, kind: 'map', title: 'Map tracker' });
     expect(bySlug.map).not.toHaveProperty('body');
     expect(bySlug.linkRollup).toEqual({ resource: [], artifact: [] });
+    expect(bySlug.researchRollup).toEqual([]);
     expect(bySlug.statusRollup).toMatchObject({ open: 2 });
     expect((await alice.json('GET', `/efforts/${adapter.number}`)).body.map).toBeNull();
     expect(await alice.json('GET', `/efforts/${ticket.number}`)).toMatchObject(invalidOn('handle'));
@@ -91,6 +92,28 @@ describe('efforts', () => {
     expect((await alice.json('GET', '/efforts/rollup')).body.linkRollup.artifact).toHaveLength(1);
     expect(await (await alice.request('GET', `/efforts/${floating.number}/artifacts.md`)).json()).toMatchObject({ error: { code: 'invalid', field: 'handle' } });
     expect((await alice.request('GET', '/efforts/no-such/artifacts.md')).status).toBe(404);
+  });
+
+  it('rolls Research notes up over the subtree, the Effort included, newest updatedAt first', async () => {
+    const { effort, map } = await chart('research');
+    const spec = await create('spec', 'Spec', { parent: effort.number });
+    const ticket = await create('ticket', 'Ticket', { parent: map.number });
+    const floating = await create('ticket', 'Floating');
+    const put = async (number: number, slug: string, body: string) => {
+      await sleep(5);
+      return (await alice.json('PUT', `/issues/${number}/research/${slug}`, { body: { body } })).body;
+    };
+    await put(ticket.number, 'spike', '# Spike');
+    await put(effort.number, 'brief', '# Brief');
+    await put(spec.number, 'audit', 'no heading');
+    await put(floating.number, 'elsewhere', '# Elsewhere');
+    const spike = await put(ticket.number, 'spike', '# Spike, corrected');
+
+    expect((await alice.json('GET', '/efforts/research')).body.researchRollup).toEqual([
+      { issue: { number: ticket.number, title: 'Ticket', kind: 'ticket' }, slug: 'spike', title: 'Spike, corrected', size: 18, updatedAt: spike.updatedAt, url: spike.url },
+      { issue: { number: spec.number, title: 'Spec', kind: 'spec' }, slug: 'audit', title: 'audit', size: 10, updatedAt: expect.any(String), url: `${server.baseUrl}/issues/${spec.number}/research/audit` },
+      { issue: { number: effort.number, title: 'Effort research', kind: 'effort' }, slug: 'brief', title: 'Brief', size: 7, updatedAt: expect.any(String), url: `${server.baseUrl}/issues/${effort.number}/research/brief` },
+    ]);
   });
 
   it('computes the status roll-up: map Frontier, per-spec counts by status, triage buckets for Effort-parented tickets only, open total', async () => {

@@ -313,6 +313,16 @@ describe('the Adapter files', () => {
     expect(doc).toContain('`chartroom issue list --missing triage-state --state open --sort createdAt --all`');
   });
 
+  it('issue-tracker.md sends research findings to a Research note, not a research branch', async () => {
+    const doc = await adapterFile(alice, 'issue-tracker.md');
+
+    expect(doc).toContain('`chartroom research put <ticket n> <slug>.md`');
+    expect(doc).toContain('The ticket\'s Resolution links the printed `url`.');
+    expect(doc).toContain('No `research/<name>` branch for findings');
+    expect(doc).not.toContain('write them to the `research/<name>` branch');
+    expect(doc).not.toMatch(/findings file|research branch/);
+  });
+
   it('triage-labels.md shows the default Display labels with the header', async () => {
     const doc = await adapterFile(alice, 'triage-labels.md');
     const today = new Date().toISOString().slice(0, 10);

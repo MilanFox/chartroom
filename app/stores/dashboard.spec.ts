@@ -15,6 +15,7 @@ const effortDocument = (overrides: Partial<EffortDocument> = {}): EffortDocument
   testInstructions: null,
   statusRollup: { map: { state: 'open', frontier: 1 }, specs: [{ number: 5, tickets: { open: 1, claimed: 0, blocked: 0, closed: 1 } }], triage: { 'needs-triage': 1, 'none': 0 }, open: 4 },
   linkRollup: { resource: [], artifact: [] },
+  researchRollup: [],
   map: { ...row(2, { kind: 'map', parent: 1 }), excerpt: 'Map body' },
   specs: [{ ...row(5, { kind: 'spec', parent: 1 }), excerpt: 'Spec body' }],
   ...overrides,

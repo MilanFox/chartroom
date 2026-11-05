@@ -17,7 +17,9 @@ type Flags = Record<string, string | boolean | (string | boolean)[] | undefined>
 
 interface Input {
   flags: Flags
+  values: Record<string, string>
   text: Handler<[string], Promise<string | undefined>>
+  file: Handler<[string], Promise<string>>
 }
 
 interface Verb {
@@ -26,6 +28,7 @@ interface Verb {
   path: string
   positionals?: string[]
   pathFlags?: Record<string, string>
+  pathValues?: Handler<[Record<string, string>, Flags], Record<string, string>>
   flags?: ParseArgsOptionsConfig
   query?: string[]
   paged?: boolean
@@ -74,6 +77,12 @@ const BLOCKER_BY: Partial<Verb> = { pathFlags: { blocker: 'by' }, flags: valueFl
 const issueVerb = (command: string, route: string, rest: Partial<Verb> = {}): Verb => {
   const [method, path = ''] = route.split(' ');
   return { words: ['issue', ...command.split(' ')], method: method as Method, path: `/issues/{number}${path}`, positionals: ['number'], ...rest };
+};
+
+const researchSlug = ({ file }: Record<string, string>, flags: Flags) => {
+  if (typeof flags.slug === 'string') return { slug: flags.slug };
+  if (file === '-') throw new UsageError('research put - reads stdin and needs --slug');
+  return { slug: basename(file!).replace(/\.md$/, '') };
 };
 
 const ADAPTER_PATHS = ['/instance/adapter/issue-tracker.md', '/instance/adapter/triage-labels.md'];
@@ -160,6 +169,17 @@ export const VERBS: Verb[] = [
     body: async ({ flags }) => ({ role: flags.role, type: flags.type, title: flags.title }),
   }),
   issueVerb('link remove', 'delete /links/{id}', { positionals: ['number', 'id'] }),
+  {
+    words: ['research', 'put'],
+    method: 'put',
+    path: '/issues/{number}/research/{slug}',
+    positionals: ['number', 'file'],
+    flags: valueFlags('slug'),
+    pathValues: researchSlug,
+    body: async ({ values, file }) => ({ body: await file(values.file!) }),
+  },
+  { words: ['research', 'list'], method: 'get', path: '/issues/{number}/research', positionals: ['number'] },
+  { words: ['research', 'view'], method: 'get', path: '/issues/{number}/research/{slug}', positionals: ['number', 'slug'] },
   { words: ['effort', 'list'], method: 'get', path: '/efforts', flags: valueFlags('sort', 'order'), query: ['sort', 'order'], paged: true },
   { words: ['effort', 'view'], method: 'get', path: '/efforts/{handle}', positionals: ['handle'] },
   { words: ['effort', 'artifacts'], method: 'get', path: '/efforts/{handle}/artifacts.md', positionals: ['handle'], markdown: true },
@@ -189,7 +209,8 @@ const SENTINEL = 'sentinel';
 
 const bodyFieldsOf = async (verb: Verb) => {
   const flags = new Proxy({}, { get: (_, name) => name === 'no-parent' ? undefined : [SENTINEL] }) as Flags;
-  return verb.body ? Object.keys(await verb.body({ flags, text: async () => SENTINEL })) : [];
+  const values = new Proxy({}, { get: () => SENTINEL }) as Record<string, string>;
+  return verb.body ? Object.keys(await verb.body({ flags, values, text: async () => SENTINEL, file: async () => SENTINEL })) : [];
 };
 
 export const VERB_ROUTES = await Promise.all(VERBS.flatMap(verb => routesOf(verb).map(async path => ({
@@ -214,7 +235,7 @@ const usage = () => [
   'usage: chartroom <command> [flags]',
   '',
   'Configured by CHARTROOM_URL and CHARTROOM_TOKEN; --url and --token override them, except on issue link add, where --url is the Link target.',
-  'Any *-file flag reads stdin when given -.',
+  'Any *-file flag reads stdin when given -, and so does research put given - as the file, with --slug.',
   '',
   '  init [dir]',
   ...VERBS.map(verb => `  ${usageLine(verb)}`),
@@ -254,6 +275,13 @@ const readAll = async (stream: AsyncIterable<string | Uint8Array>) => {
   return Buffer.concat(chunks).toString('utf8');
 };
 
+const fileReader = (stdin: CliContext['stdin']) => async (file: string) => {
+  if (file === '-') return readAll(stdin);
+  return readFile(file, 'utf8').catch(() => {
+    throw new UsageError(`cannot read ${file}`);
+  });
+};
+
 const textReader = (flags: Flags, stdin: CliContext['stdin']) => {
   const stdinFlags = Object.keys(flags).filter(name => name.endsWith('-file') && flags[name] === '-');
   if (stdinFlags.length > 1) throw new UsageError(`only one flag can read stdin, got ${stdinFlags.map(name => `--${name} -`).join(' and ')}`);
@@ -262,22 +290,22 @@ const textReader = (flags: Flags, stdin: CliContext['stdin']) => {
     const file = flags[`${name}-file`] as string | undefined;
     if (inline !== undefined && file !== undefined) throw new UsageError(`pass --${name} or --${name}-file, not both`);
     if (file === undefined) return inline;
-    if (file === '-') return readAll(stdin);
-    return readFile(file, 'utf8').catch(() => {
-      throw new UsageError(`cannot read ${file}`);
-    });
+    return fileReader(stdin)(file);
   };
 };
 
-const fillPath = (verb: Verb, positionals: string[], flags: Flags) => {
+const pathValuesOf = (verb: Verb, positionals: string[], flags: Flags) => {
   if (positionals.length !== (verb.positionals ?? []).length) throw new UsageError(`expected ${usageLine(verb)}`);
   const values: Record<string, string> = Object.fromEntries((verb.positionals ?? []).map((name, index) => [name, positionals[index]!]));
   for (const [param, flag] of Object.entries(verb.pathFlags ?? {})) {
     if (typeof flags[flag] !== 'string') throw new UsageError(`--${flag} is required`);
     values[param] = flags[flag];
   }
-  return verb.path.replace(/\{(\w+)\}/g, (_, name: string) => encodeURIComponent(values[name]!));
+  return { ...values, ...verb.pathValues?.(values, flags) };
 };
+
+const fillPath = (verb: Verb, values: Record<string, string>) =>
+  verb.path.replace(/\{(\w+)\}/g, (_, name: string) => encodeURIComponent(values[name]!));
 
 const queryOf = (verb: Verb, flags: Flags) => {
   const query = new URLSearchParams();
@@ -322,8 +350,9 @@ const execute = async (context: CliContext) => {
   if (context.argv[0] === 'init') return initInstance(context);
   const verb = findVerb(context.argv);
   const { values: flags, positionals } = parseVerbArgs(verb, context.argv);
-  const path = fillPath(verb, positionals, flags);
-  const body = verb.body && JSON.stringify(await verb.body({ flags, text: textReader(flags, context.stdin) }));
+  const values = pathValuesOf(verb, positionals, flags);
+  const path = fillPath(verb, values);
+  const body = verb.body && JSON.stringify(await verb.body({ flags, values, text: textReader(flags, context.stdin), file: fileReader(context.stdin) }));
   const env = { ...dotEnvIn(context.cwd ?? process.cwd()), ...context.env };
   // issue link add owns --url as the Link target, so its instance URL comes from the environment or ./.env only
   const ownsUrlFlag = 'url' in (verb.flags ?? {});

@@ -104,6 +104,23 @@ export interface IssueLink {
   createdAt: string
 }
 
+export interface ResearchNoteSummary {
+  issue: number
+  slug: string
+  title: string
+  size: number
+  createdAt: string
+  createdBy: string
+  updatedAt: string
+  updatedBy: string
+  origin: Origin
+  url: string
+}
+
+export interface ResearchNote extends ResearchNoteSummary {
+  body: string
+}
+
 export interface IssueDocument extends IssueRow {
   body: string
   createdBy: string
@@ -129,6 +146,15 @@ export interface RolledUpLink {
 
 export type LinkRollup = Record<LinkRole, RolledUpLink[]>;
 
+export interface RolledUpResearchNote {
+  issue: { number: number, title: string, kind: Kind }
+  slug: string
+  title: string
+  size: number
+  updatedAt: string
+  url: string
+}
+
 export interface ExcerptedRow extends IssueRow {
   excerpt: string
 }
@@ -138,6 +164,7 @@ export interface EffortDocument extends IssueDocument {
   testInstructions: string | null
   statusRollup: StatusRollup
   linkRollup: LinkRollup
+  researchRollup: RolledUpResearchNote[]
   map: ExcerptedRow | null
   specs: ExcerptedRow[]
 }

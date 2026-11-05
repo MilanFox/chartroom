@@ -15,6 +15,7 @@ const effort = (overrides: Partial<EffortDocument> = {}): EffortDocument => ({
   testInstructions: null,
   statusRollup: { map: null, specs: [], triage: {}, open: 3 },
   linkRollup: { resource: [], artifact: [] },
+  researchRollup: [],
   map: null,
   specs: [],
   ...overrides,

@@ -1,13 +1,14 @@
 import type { H3Event } from 'h3';
 import type { Caller } from '../utils/caller';
 import { holderRoster } from './handlers/holders';
-import { CHANGE_SCHEMA, COMMENT_SCHEMA, DOCUMENT_SCHEMA, EFFORT_DOCUMENT_SCHEMA, EFFORT_PAGE_SCHEMA, ENVIRONMENT_SCHEMA, ISSUE_PAGE_SCHEMA, LINK_SCHEMA, POINTER_SCHEMA } from './representations';
+import { CHANGE_SCHEMA, COMMENT_SCHEMA, DOCUMENT_SCHEMA, EFFORT_DOCUMENT_SCHEMA, EFFORT_PAGE_SCHEMA, ENVIRONMENT_SCHEMA, ISSUE_PAGE_SCHEMA, LINK_SCHEMA, POINTER_SCHEMA, RESEARCH_NOTE_SCHEMA, RESEARCH_NOTE_SUMMARY_SCHEMA } from './representations';
 import { BLOCKER_NUMBER_PARAM, ISSUE_NUMBER_PARAM, LABEL_PARAM, PAGING_PARAMS, pageSchema } from './schemas';
 import { ISSUE_CREATE_SCHEMA, ISSUE_FIELDS_SCHEMA, ISSUE_LIST_PARAMS, issueHandlers } from './handlers/issues';
 import { EFFORT_HANDLE_PARAM, EFFORT_LIST_PARAMS, effortHandlers } from './handlers/efforts';
 import { COMMENT_BODY_SCHEMA, COMMENT_ID_PARAM, commentHandlers } from './handlers/comments';
 import { LABEL_GROUP_SCHEMA, labelGroupList } from './handlers/labels';
 import { LINK_CREATE_SCHEMA, LINK_FIELDS_SCHEMA, LINK_ID_PARAM, linkHandlers } from './handlers/links';
+import { RESEARCH_NOTE_BODY_SCHEMA, RESEARCH_SLUG_PARAM, researchNoteHandlers } from './handlers/research-notes';
 import { environmentList, pointerList } from './handlers/environments';
 import { adapterFile, INSTANCE_SCHEMA, instanceRead } from './handlers/instance';
 import { API_ME_SCHEMA, me } from './handlers/me';
@@ -332,6 +333,46 @@ export const routeTable: TableRoute[] = [
       tags: ['links'],
       parameters: [ISSUE_NUMBER_PARAM, LINK_ID_PARAM],
       responses: { 204: { description: 'Removed' }, 404: { description: 'No such issue or Link' } },
+    },
+  },
+  {
+    method: 'get',
+    path: '/issues/:number/research',
+    handler: researchNoteHandlers.list,
+    openapi: {
+      summary: 'The Research notes of an issue without their bodies, in slug order',
+      tags: ['research'],
+      parameters: [ISSUE_NUMBER_PARAM],
+      responses: { 200: { description: 'Research notes', schema: { type: 'array', items: RESEARCH_NOTE_SUMMARY_SCHEMA } }, 404: { description: 'No such issue' } },
+    },
+  },
+  {
+    method: 'get',
+    path: '/issues/:number/research/:slug',
+    handler: researchNoteHandlers.read,
+    openapi: {
+      summary: 'Read a Research note with its body',
+      tags: ['research'],
+      parameters: [ISSUE_NUMBER_PARAM, RESEARCH_SLUG_PARAM],
+      responses: { 200: { description: 'Research note', schema: RESEARCH_NOTE_SCHEMA }, 404: { description: 'No such issue or note' } },
+    },
+  },
+  {
+    method: 'put',
+    path: '/issues/:number/research/:slug',
+    handler: researchNoteHandlers.put,
+    openapi: {
+      summary: 'Store a Research note on an issue, replacing the body of an existing one',
+      tags: ['research'],
+      description: 'Any Kind, open or closed. The title is the text of the first # heading, else the slug. Each put records a research Change with the slug and size, never the body. Binaries and large files belong in an artifact Link.',
+      parameters: [ISSUE_NUMBER_PARAM, RESEARCH_SLUG_PARAM],
+      requestBody: RESEARCH_NOTE_BODY_SCHEMA,
+      responses: {
+        200: { description: 'Replaced', schema: RESEARCH_NOTE_SCHEMA },
+        201: { description: 'Created', schema: RESEARCH_NOTE_SCHEMA },
+        400: { description: 'A bad slug (field slug), or a body over 524288 bytes, with a NUL byte or not a string (field body)' },
+        404: { description: 'No such issue' },
+      },
     },
   },
   {
