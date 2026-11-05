@@ -1,5 +1,9 @@
 <template>
-  <DisclosureSection class="dependency-graph" :heading="strings.issue.graph.heading" :expanded="disclosure.expanded.value" @update:expanded="disclosure.toggle">
+  <component
+    :is="bare ? 'div' : DisclosureSection"
+    class="dependency-graph"
+    v-bind="bare ? {} : { 'heading': strings.issue.graph.heading, 'expanded': disclosure.expanded.value, 'onUpdate:expanded': disclosure.toggle }"
+  >
     <template v-if="rows?.length" #meta>
       <span class="dependency-graph__progress">{{ progressText }}</span>
 
@@ -88,11 +92,12 @@
         </svg>
       </div>
     </template>
-  </DisclosureSection>
+  </component>
 </template>
 
 <script setup lang="ts">
 import type { IssueRow, IssueStatus } from '~/types/api';
+import DisclosureSection from '~/components/molecules/DisclosureSection/DisclosureSection.vue';
 import type { DependencyGraphProps } from './DependencyGraph.types';
 
 const props = defineProps<DependencyGraphProps>();

@@ -455,7 +455,12 @@
       "openNamed": "Open map #{number} {title}",
       "counts": "{total} decision tickets · frontier {frontier} · {open} open · {claimed} claimed · {blocked} blocked · {closed} closed",
       "list": "Decision tickets ({count})",
-      "empty": "No decision tickets match."
+      "empty": "No decision tickets match.",
+      "views": {
+        "label": "Decision tickets view",
+        "list": "List",
+        "graph": "Graph"
+      }
     },
     "specs": {
       "heading": "Specs",
