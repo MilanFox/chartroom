@@ -62,11 +62,30 @@ An elevated Admin can permanently delete a closed Effort on the admin page, unde
 
 ## Upgrade
 
-1. Change the image tag in `compose.yaml` to the new version. Pin a version, never `latest`.
-2. `docker compose pull`
-3. `docker compose up -d`
+In order:
+
+1. **Instance.** Change the image tag in `compose.yaml` to the new version. Pin a version, never `latest`. Then `docker compose pull` and `docker compose up -d`.
+2. **CLI.** Install the Instance's major: `npm install -g chartroom-cli@<major>`, or change the `npx -y chartroom-cli@<major>` pin where you use it. The CLI warns on stderr when its major differs from the Instance's.
+3. **Adapter files.** In each connected project run `chartroom adapter --write docs/agents` and commit. Do this on every upgrade: the Adapter text can change in minors.
 
 Migrations are cumulative, so any version jumps straight to any newer one; downtime is the restart. Before migrating, the Instance takes a pre-migrate Snapshot in `/data/backups/`, named `pre-migrate-<old schema>-to-<new version>-<timestamp>.sqlite`, and logs its path. If the Snapshot fails, the boot aborts and nothing is migrated.
+
+### Upgrading from 1.x to 2.0
+
+Breaking changes in the CLI output and the HTTP API:
+
+| Change | 1.x | 2.0 |
+| --- | --- | --- |
+| `issue list --all` and `research list` (`GET /issues/{n}/research`) | bare array | `{ items, nextCursor }`, `nextCursor` is `null` |
+| `issue list` without `--all` | `{ items, nextCursor }` | unchanged |
+| `children` in `issue view` | issue numbers | `{ number, title, open }`, like `blockedBy` |
+| `issue claim` on a ticket already held | succeeds when the holder is the caller's own Token holder | always `conflict`; the Adapter tells agents to stop and ask the user |
+
+Scripts and agents that read these outputs change: `jq '.[]'` becomes `jq '.items[]'`, and `children` entries are read as `.children[].number`. Do not rely on a claim succeeding twice. Adapter files from 1.x describe the old shapes, so refresh them.
+
+Hand this to the coding agent in each connected project:
+
+> Chartroom was upgraded to 2.0. Run `npm install -g chartroom-cli@2` (or change `npx -y chartroom-cli@1` to `@2` where it is pinned). Then run `chartroom adapter --write docs/agents` and commit the changed files with `docs: refresh Chartroom Adapter files for 2.0`. Then search the repo's scripts for uses of `chartroom issue list --all`, `chartroom research list` and `children` from `chartroom issue view`, and change them to read `.items[]` and `.children[].number`. Do not change anything else.
 
 ## Rollback
 
@@ -101,7 +120,7 @@ The first boot creates nothing but the seeded Label groups: no Token holder, no 
    npm install -g chartroom-cli@<major>
    ```
 
-   `<major>` is the Instance's major version, such as `1`; without a global install, prefix commands with `npx -y chartroom-cli@<major>`.
+   `<major>` is the Instance's major version, such as `2`; without a global install, prefix commands with `npx -y chartroom-cli@<major>`.
 5. Run `/setup-matt-pocock-skills` with **Other** as the issue tracker and answer: "Chartroom at `<url>`. Run `chartroom adapter` and write each file it prints, verbatim, to the path in its marker line." After changing settings, refresh the files with `chartroom adapter --write docs/agents`.
 
 ## HTTP API reference

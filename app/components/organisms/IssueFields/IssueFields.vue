@@ -20,6 +20,18 @@
       <p v-else class="issue-fields__none">{{ strings.issue.fields.none }}</p>
     </FieldRow>
 
+    <FieldRow v-if="issue.ledTo.length" :heading="strings.issue.fields.ledTo.heading">
+      <ul class="issue-fields__blocks">
+        <li v-for="spec in issue.ledTo" :key="spec.number">
+          <NuxtLink :to="issuePath(spec.number)" class="issue-fields__link">{{ spec.title }}</NuxtLink>
+        </li>
+      </ul>
+    </FieldRow>
+
+    <FieldRow v-if="issue.from" :heading="strings.issue.fields.from.heading">
+      <NuxtLink :to="issuePath(issue.from.number)" class="issue-fields__link">{{ issue.from.title }}</NuxtLink>
+    </FieldRow>
+
     <IssueLinks :issue="issue" />
 
     <IssueResearch :issue="issue" />

@@ -44,6 +44,7 @@ export CHARTROOM_TOKEN=<secret>
 | List issues by filter or view | `chart issue list --view frontier --label bug --all` |
 | Edit fields, optionally guarded by version | `chart issue edit 12 --title "Wire the login page" --if-version 4` |
 | Append text under a body section | `chart issue append 12 --section Notes --text "- decided"` |
+| Replace the content of a body section | `chart issue replace-section 12 --section Notes --text-file notes.md --if-version 4` |
 | Delete an issue | `chart issue delete 12` |
 | Assign yourself | `chart issue claim 12` |
 | Clear the assignee | `chart issue unassign 12` |
@@ -102,8 +103,8 @@ Repo setup goes through `/setup-matt-pocock-skills`: at "Issue tracker" pick Oth
 | Flag | Meaning |
 | --- | --- |
 | `--body-file -` | Any `*-file` flag reads stdin when given `-`; so does `research put` given `-` as the file, with `--slug`. |
-| `--limit`, `--cursor` | Page through a list verb; output is `{ items, nextCursor }`. |
-| `--all` | Follow every cursor and print a plain array. |
+| `--limit`, `--cursor` | Page through a list verb. `issue list`, `issue changes`, `effort list` and `research list` all print `{ items, nextCursor }`, so `.items[]` reads it; `nextCursor` is `null` on the last page. |
+| `--all` | Follow every cursor and print the same shape with every item and `nextCursor: null`. |
 | `--version`, `-v` | Print the CLI's version and exit; reads no `.env` and calls no Instance. |
 | `--help`, `-h` | Print the usage list on stdout and exit. |
 
@@ -115,7 +116,7 @@ Repo setup goes through `/setup-matt-pocock-skills`: at "Issue tracker" pick Oth
 | `1` | The API's error envelope on stderr, `unreachable` when the Instance cannot be reached, or a one-line error when `./.env` exists but cannot be read. |
 | `2` | Usage error; the usage list follows on stderr. |
 
-When the Instance's major version differs from the CLI's, one line on stderr names the right `npm install -g chartroom-cli@<major>` and `npx -y chartroom-cli@<major>`, then the call proceeds.
+When the Instance's major version differs from the CLI's, one line on stderr names the right `npm install -g chartroom-cli@<major>` and `npx -y chartroom-cli@<major>` and links the upgrade guide, then the call proceeds.
 
 ## API reference
 

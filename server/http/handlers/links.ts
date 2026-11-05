@@ -24,7 +24,8 @@ const linkList = (event: H3Event) => {
 const linkCreate = async (event: H3Event, caller: Caller) => {
   const number = issueNumberParam(event);
   const body = await readJsonObject(event);
-  const input = { role: oneOf(body.role, 'role', LINK_ROLES), type: oneOf(body.type, 'type', LINK_TYPES), url: absoluteUrl(body), title: requireText(body, 'title') };
+  const type = oneOf(body.type, 'type', LINK_TYPES);
+  const input = { role: oneOf(body.role, 'role', LINK_ROLES), type, url: linkTarget(body, type), title: requireText(body, 'title') };
   setResponseStatus(event, 201);
   return toLink(createLink(number, input, caller));
 };
@@ -48,5 +49,5 @@ export const linkHandlers = {
 
 export const LINK_ID_PARAM = { name: 'id', in: 'path' as const, required: true, schema: { type: 'integer' } };
 
-export const LINK_CREATE_SCHEMA = { type: 'object', properties: { ...LINK_FIELDS, url: { type: 'string', format: 'uri', description: 'Absolute; unique per issue' } }, required: ['role', 'type', 'url', 'title'] };
+export const LINK_CREATE_SCHEMA = { type: 'object', properties: { ...LINK_FIELDS, url: { type: 'string', description: 'Absolute, unique per issue; a branch Link may be a branch name and a file Link a repo-relative path' } }, required: ['role', 'type', 'url', 'title'] };
 export const LINK_FIELDS_SCHEMA = { type: 'object', properties: LINK_FIELDS };

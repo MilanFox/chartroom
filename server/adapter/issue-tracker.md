@@ -12,7 +12,7 @@ Issues, maps and specs for this repo live in the Chartroom instance at **{{baseU
 - Verify with `chartroom me`: it prints the holder you act as. Every claim, comment and Link is attributed to that holder.
 - Every command prints the API's JSON on stdout. Errors are `{ "error": { "code", "message", "field"? } }` on stderr with exit 1; usage errors exit 2. Codes: `not-found`, `conflict`, `invalid`, `forbidden`, `unauthenticated`, `rate-limited`, `unreachable`.
 - Markdown bodies: pass `--body "…"` for one line, `--body-file <path>` for a file, or `--body-file -` to read stdin (heredoc). The same for `--comment-file`.
-- Lists print one page `{ "items": [...], "nextCursor": … }` (default 50, max `--limit 200`); `--cursor <c>` continues, `--all` follows every cursor and prints a plain array. Use `--all` for any query a skill walks to the end.
+- `issue list`, `issue changes`, `effort list` and `research list` all print `{ "items": [...], "nextCursor": … }`; read the items with `.items[]`. One page holds 50 by default (max `--limit 200`); `--cursor <c>` continues, `--all` follows every cursor and prints every item in the same shape with `nextCursor: null`. Use `--all` for any query a skill walks to the end.
 
 ## Vocabulary
 
@@ -21,12 +21,12 @@ Issues, maps and specs for this repo live in the Chartroom instance at **{{baseU
 - **Parent.** One native field. A map or spec must have an {{Effort}} as parent. A ticket's parent is a map (wayfinder decision ticket), a spec (implementation ticket), an {{Effort}} (raw work or triage), or none. Never write `Part of #n`, `## Parent` or `## Blocked by` into a body; the fields replace them.
 - **Blocking.** Native, both directions, visible in the UI. An issue is blocked while any blocker is open.
 - **Labels.** Free-form strings. Three fixed groups are exclusive, so adding one member removes its siblings: `triage-category` (`bug`, `enhancement`), `triage-state` (see `triage-labels.md`), `wayfinder-type` (`wayfinder:research`, `wayfinder:prototype`, `wayfinder:grilling`, `wayfinder:task`). There is no `wayfinder:map` label: a map is kind `map`.
-- **Claim.** Assigning an issue to your holder. Refused with `conflict` when another holder has it.
+- **Claim.** Assigning an issue to your holder. Refused with `conflict` when any holder has it, your own included.
 - **Resolution.** The comment posted by `issue close --comment`; readable as `resolution` on the issue.
 - **Done.** An issue is done when its `state` is `closed`, nothing else. There is no done label, no done status and no done checkbox: never add one. `status` (`open`, `claimed`, `blocked`, `closed`) is computed from `state`, the assignee and the blockers.
 - **Links.** Typed pointers on any issue: role `resource` (used while working) or `artifact` (created while working); type `branch`, `file`, `preview`, `doc`, `external`. Branches, files, previews and every binary or large artifact a skill creates are Links, never pasted content. Research findings are not Links: they are Research notes.
 - **Research note.** Markdown stored in this instance and attached to one issue of any kind, addressed by issue and slug (`#3/local-transcription`); an issue may hold several. It survives the issue's close, a put with the same slug replaces it, and it is deleted with its issue or {{Effort}}. At most 512 KB of text; binaries and large files stay artifact Links.
-- **Ids and URLs.** One `#n` sequence across all kinds. Every issue, comment, Link and Research note carries a `url`. Refer to issues by title with the link inside: `[title](url)`. A link to a list is `{{baseUrl}}/issues?` plus the same query `issue list` would send: the frontier of a map is `?view=frontier&parent=<map n>`, a picked set is `?numbers=12,45`.
+- **Ids and URLs.** One `#n` sequence across all kinds. Every issue, comment, Link and Research note carries a `url`. Refer to issues by title with the link inside: `[title](url)`. A link to a list is `{{baseUrl}}/issues?` plus the same query `issue list` would send: the frontier of a map or spec is `?view=frontier&parent=<n>`, a picked set is `?numbers=12,45`.
 
 ## Label groups on this instance
 
@@ -39,16 +39,17 @@ Every group is exclusive: adding a member removes its siblings. The seeded group
 ## Conventions
 
 - **Create an issue**: `chartroom issue create --kind <kind> --title "…" --body-file - [--parent <n>] [--label <l>]… [--blocked-by <n>]… [--name <slug>]`. `--name` only for an {{Effort}}.
-- **Read an issue**: `chartroom issue view <n>`. The document carries `body`, `labels`, `assignee`, `createdBy`, `createdAt`, `updatedAt`, `blockedBy` (with each blocker's `open` state), `blocks`, `children`, `links`, `comments` (oldest first) and `resolution`.
+- **Read an issue**: `chartroom issue view <n>`. The document carries `body`, `labels`, `assignee`, `createdBy`, `createdAt`, `updatedAt`, `blockedBy` and `children` (both `[{ number, title, open }]`), `ledTo` (a map: the specs filed beside it, same shape) and `from` (a spec: the map filed beside it, or null), `blocks`, `links`, `comments` (oldest first) and `resolution`.
 - **List issues**: `chartroom issue list` with any of `--kind`, `--state open|closed`, `--label <l>` (repeatable, AND), `--parent <n>`, `--effort <slug|n>` (whole subtree), `--assignee <slug|none>`, `--missing <group>` (repeatable, AND; issues carrying no member of the group), `--numbers 1,2,3`, `-q <text>`, `--sort number|createdAt|updatedAt|title|state|<group>`, `--order asc|desc`, `--view frontier|mine|needs-triage|blocked|closed-recent`. A view sets its own defaults; other filters narrow within it.
 - **Edit a body**: `chartroom issue view <n>` first and note its `version`, edit the markdown, then `chartroom issue edit <n> --if-version <version> --body-file -`. A `conflict` error means someone wrote in between: view the issue again, redo the edit on the fresh body and retry. Always pass `--if-version`; without it the edit is last-write-wins. `issue edit` also takes `--title`, `--parent <n>` / `--no-parent`, `--name`, `--test-instructions` ({{Effort}} only).
 - **Append under a heading**: `chartroom issue append <n> --section "<heading>" --text-file -`. Atomic, so no view first and no `--if-version`; the heading text must match exactly and the section must exist (a missing one is `invalid`, never created).
+- **Replace a section**: `chartroom issue replace-section <n> --section "<heading>" --if-version <version> --text-file -`. The new content replaces everything under the heading up to the next heading of the same or higher level (nested subsections included); the heading and all other sections stay. View first for the `version`; a `conflict` means view again and redo. A missing section is `invalid`, the body unchanged.
 - **Comment**: `chartroom issue comment <n> --body-file -`. Your own comments: `comment edit <n> <id> --body …`, `comment delete <n> <id>`.
 - **Apply / remove labels**: `chartroom issue label add <n> <label>` / `chartroom issue label remove <n> <label>`.
 - **Close with a comment**: `chartroom issue close <n> --comment-file -`. One operation; the comment becomes the Resolution. `chartroom issue reopen <n>` reopens.
 - **Claim / unassign**: `chartroom issue claim <n>` / `chartroom issue unassign <n>`.
 - **Block / unblock**: `chartroom issue block <n> --by <m>` / `chartroom issue unblock <n> --by <m>`. Self-blocks and cycles are refused.
-- **Links**: `chartroom issue link add <n> --role artifact|resource --type branch|file|preview|doc|external --url <url> --title "…"`; `link edit <n> <id>`, `link remove <n> <id>`.
+- **Links**: `chartroom issue link add <n> --role artifact|resource --type branch|file|preview|doc|external --url <url> --title "…"`; `link edit <n> <id>`, `link remove <n> <id>`. Link a local branch (no remote) with `--type branch --url <branch name>`, and a file with `--type file --url <repo-relative path>` such as `docs/adr/0003-x.md`; never build a `file://` or other machine-specific URL. Other types need an absolute URL.
 - **Research notes**: `chartroom research put <n> <slug>.md` stores the file on issue `<n>` under the file name as slug and prints the note with its `url`; put it again to correct it. `--slug <slug>` overrides the name, and `-` as the file reads stdin (then `--slug` is required). `chartroom research list <n>` lists an issue's notes, `chartroom research view <n> <slug>` prints one with its body. `chartroom effort view <slug|n>` rolls up every note of the {{Effort}} under `researchRollup`.
 - **Delete**: `chartroom issue delete <n>`. Hard delete, refused while children exist. No confirmation.
 - **{{Efforts}}**: `chartroom effort list`, `chartroom effort view <slug|n>` (roll-ups, map, specs, links), `chartroom effort artifacts <slug|n>` (the hand-off list as markdown).
@@ -72,12 +73,14 @@ Create the issue under its {{Effort}}. Find it with `chartroom effort view <slug
 
 `chartroom issue view <n>`. The user normally passes the number or the URL; the number is the last path segment of the URL.
 
+If you are about to work the ticket, claim it right after viewing it: `chartroom issue claim <n>`. A `conflict` means it is already held, even when the holder named is your own (another session may share your holder): stop and ask the user. If you give the work up, `chartroom issue unassign <n>`. When the work is done, close the ticket (see below).
+
 ## When a ticket's work is finished
 
-A ticket whose work is on the main branch but whose `state` is still `open` reads as unfinished to every later session, and keeps every ticket it blocks blocked. Close it in the same session that merged the work, after the merge:
+A ticket whose work is on the main branch but whose `state` is still `open` reads as unfinished to every later session, and keeps every ticket it blocks blocked. Close it in the same session, once the work is on the main branch, whether it got there by merge or by direct commit:
 
-1. `chartroom issue link add <n> --role artifact --type branch --url <branch or PR url> --title "…"` for the branch or PR, if not linked yet.
-2. `chartroom issue close <n> --comment-file -` with a short Resolution: what landed, the merge commit or PR link, anything beyond the ticket's list, and known gaps for later tickets.
+1. `chartroom issue link add <n> --role artifact --type branch --url <branch or PR url> --title "…"` for the branch, if there is one and it is not linked yet.
+2. `chartroom issue close <n> --comment-file -` with a short Resolution: what landed, the commit or merge reference, anything beyond the ticket's list, and known gaps for later tickets.
 
 Closing is the only done signal; the `ready-for-agent` label stays as it is and nothing else is edited. Do not close the parent spec, map or {{Effort}}; the human does that, or the skill that owns it. A ticket closed by mistake is reopened with `chartroom issue reopen <n>`.
 
@@ -94,13 +97,13 @@ Closing is the only done signal; the `ready-for-agent` label stays as it is and 
 Used by `/wayfinder`. The **map** is an issue of kind `map` under an {{Effort}}; its tickets are issues of kind `ticket` whose parent is the map.
 
 - **{{Effort}}**: ensure the {{Effort}} exists before charting (see "publish"). Its `name` is the effort slug.
-- **Map**: `chartroom issue create --kind map --parent <effort n> --title "Map: <idea>" --body-file -` with the Destination / Notes / Decisions-so-far / Not-yet-specified / Out-of-scope body. Its headings are exactly `## Destination`, `## Notes`, `## Decisions so far`, `## Not yet specified` and `## Out of scope`; `issue append` finds them by that text. An {{Effort}} holds at most one map; a second is refused with `conflict`.
+- **Map**: `chartroom issue create --kind map --parent <effort n> --title "Map: <idea>" --body-file -` with the Destination / Notes / Decisions-so-far / Not-yet-specified / Out-of-scope body. Its headings are exactly `## Destination`, `## Notes`, `## Decisions so far`, `## Not yet specified` and `## Out of scope`; `issue append` and `issue replace-section` find them by that text. An {{Effort}} holds at most one map; a second is refused with `conflict`.
 - **Child ticket**: `chartroom issue create --kind ticket --parent <map n> --label wayfinder:<type> --title "…" --body-file -` with the `## Question` body. Types: `wayfinder:research`, `wayfinder:prototype`, `wayfinder:grilling`, `wayfinder:task`.
 - **Blocking**: native. Pass `--blocked-by <n>` at creation when the blocker already exists, or wire afterwards with `chartroom issue block <child> --by <blocker>`. A ticket is unblocked when every blocker is closed.
-- **Frontier**: `chartroom issue list --view frontier --parent <map n> --all` returns the open, unassigned, unblocked children in number order. Take the first.
-- **Claim**: `chartroom issue claim <n>`, the session's first write. A `conflict` error means another session holds it: take the next frontier ticket instead.
+- **Frontier**: applies to maps and specs. `chartroom issue list --view frontier --parent <map or spec n> --all` returns the open, unassigned children with no open blocker, in number order. Claimed and blocked children are not on the frontier. Take the first.
+- **Claim**: `chartroom issue claim <n>`, the session's first write. A `conflict` error means the ticket is already held, even when the holder named is your own (another session may share your holder): stop and ask the user.
 - **Zoom**: `chartroom issue view <n>` for any related or closed ticket; the Resolution is in `resolution`.
-- **Resolve**: `chartroom issue close <n> --comment-file -` with the answer as the comment. Then add the decision with `chartroom issue append <map n> --section "Decisions so far" --text "- [<ticket title>](<ticket url>): <gist>"` straight away. Graduate fog with an edit: `chartroom issue view <map n>`, remove the patch from **Not yet specified**, `chartroom issue edit <map n> --if-version <version> --body-file -` (on `conflict` view again and redo), and create its tickets.
+- **Resolve**: `chartroom issue close <n> --comment-file -` with the answer as the comment. Then add the decision with `chartroom issue append <map n> --section "Decisions so far" --text "- [<ticket title>](<ticket url>): <gist>"` straight away. Graduate fog by replacing that section: `chartroom issue view <map n>`, take the **Not yet specified** content without the patch, `chartroom issue replace-section <map n> --section "Not yet specified" --if-version <version> --text-file -` (on `conflict` view again and redo), and create its tickets. Change any other map section the same way; never rewrite the full body to change one section.
 - **Assets**: a `prototype/<name>` branch, its files, a deployed preview, any binary or large artifact: `chartroom issue link add <n> --role artifact --type branch|file|preview --url <url> --title "…"`. Never paste the content into the issue.
 - **Out of scope**: `chartroom issue close <n> --comment "Out of scope: <why>"`, then add the line with `chartroom issue append <map n> --section "Out of scope" --text "…"`. Invalidated tickets: `chartroom issue delete <n>` or edit them.
 - **Research findings**: write them to a Markdown file and store it as a Research note on the ticket: `chartroom research put <ticket n> <slug>.md`. The ticket's Resolution links the printed `url`. No `research/<name>` branch for findings, and nothing wayfinding-related goes under `docs/`. The note survives the close and can be put again to correct it.

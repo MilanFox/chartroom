@@ -12,12 +12,12 @@ const openBlockerExists = () =>
 
 export const takeableCondition = () => and(eq(issues.state, 'open'), isNull(issues.assignee), notExists(openBlockerExists()))!;
 
-const parentIsMap = () =>
-  inArray(issues.parent, useStore().select({ number: parentIssue.number }).from(parentIssue).where(eq(parentIssue.kind, 'map')));
+const parentIsMapOrSpec = () =>
+  inArray(issues.parent, useStore().select({ number: parentIssue.number }).from(parentIssue).where(inArray(parentIssue.kind, ['map', 'spec'])));
 
 export const blockedCondition = () => and(eq(issues.state, 'open'), exists(openBlockerExists()))!;
 
-export const mapFrontierCondition = () => and(takeableCondition(), parentIsMap())!;
+export const frontierCondition = () => and(takeableCondition(), parentIsMapOrSpec())!;
 
-export const frontierSizeOf = (map: number) =>
-  useStore().select({ number: issues.number }).from(issues).where(and(eq(issues.parent, map), takeableCondition())).all().length;
+export const frontierSizeOf = (parent: number) =>
+  useStore().select({ number: issues.number }).from(issues).where(and(eq(issues.parent, parent), takeableCondition())).all().length;

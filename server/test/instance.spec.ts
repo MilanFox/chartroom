@@ -305,11 +305,12 @@ describe('the Adapter files', () => {
     expect(doc).toContain('the newest comment\'s `author` equals the issue\'s `createdBy`');
     expect(doc).not.toMatch(/system comment/i);
     expect(doc).toContain('`chartroom issue changes <n>`');
-    expect(doc).toContain(`A link to a list is \`${server.baseUrl}/issues?\` plus the same query \`issue list\` would send: the frontier of a map is \`?view=frontier&parent=<map n>\`, a picked set is \`?numbers=12,45\`.`);
+    expect(doc).toContain(`A link to a list is \`${server.baseUrl}/issues?\` plus the same query \`issue list\` would send: the frontier of a map or spec is \`?view=frontier&parent=<n>\`, a picked set is \`?numbers=12,45\`.`);
     expect(doc).toContain('**PRs as a request surface: no.**');
     expect(doc).toContain('## When a ticket\'s work is finished');
     expect(doc).toContain('- **Done.** An issue is done when its `state` is `closed`, nothing else.');
-    expect(doc).toContain('`chartroom issue list --view frontier --parent <map n> --all`');
+    expect(doc).toContain('`chartroom issue list --view frontier --parent <map or spec n> --all`');
+    expect(doc).toContain('applies to maps and specs');
     expect(doc).toContain('`chartroom issue list --missing triage-state --state open --sort createdAt --all`');
   });
 

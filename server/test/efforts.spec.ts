@@ -36,7 +36,7 @@ describe('efforts', () => {
     const bySlug = (await alice.json('GET', '/efforts/tracker')).body;
     const byNumber = (await alice.json('GET', `/efforts/${tracker.number}`)).body;
     expect(bySlug).toEqual(byNumber);
-    expect(bySlug).toMatchObject({ number: tracker.number, kind: 'effort', name: 'tracker', testInstructions: null, children: [map.number], specs: [], links: [] });
+    expect(bySlug).toMatchObject({ number: tracker.number, kind: 'effort', name: 'tracker', testInstructions: null, children: [{ number: map.number, title: map.title, open: true }], specs: [], links: [] });
     expect(bySlug.map).toMatchObject({ number: map.number, kind: 'map', title: 'Map tracker' });
     expect(bySlug.map).not.toHaveProperty('body');
     expect(bySlug.linkRollup).toEqual({ resource: [], artifact: [] });
@@ -131,7 +131,7 @@ describe('efforts', () => {
     const rollup = async () => (await alice.json('GET', '/efforts/status')).body.statusRollup;
     expect(await rollup()).toEqual({
       map: { state: 'open', frontier: 1 },
-      specs: [{ number: spec.number, tickets: { open: 2, claimed: 0, blocked: 1, closed: 0 } }],
+      specs: [{ number: spec.number, tickets: { open: 2, claimed: 0, blocked: 1, closed: 0 }, frontier: 2 }],
       triage: { 'needs-triage': 1, 'needs-info': 0, 'ready-for-agent': 0, 'ready-for-human': 0, 'wontfix': 0, 'none': 1 },
       open: 9,
     });
@@ -140,7 +140,7 @@ describe('efforts', () => {
     await alice.json('POST', `/issues/${a.number}/close`);
     await alice.json('POST', `/issues/${s3.number}/close`);
     await alice.json('PUT', `/issues/${bug.number}/labels/wontfix`);
-    expect(await rollup()).toMatchObject({ map: { state: 'open', frontier: 1 }, specs: [{ tickets: { open: 0, claimed: 1, blocked: 1, closed: 1 } }], triage: { 'needs-triage': 0, 'wontfix': 1, 'none': 1 }, open: 7 });
+    expect(await rollup()).toMatchObject({ map: { state: 'open', frontier: 1 }, specs: [{ tickets: { open: 0, claimed: 1, blocked: 1, closed: 1 }, frontier: 0 }], triage: { 'needs-triage': 0, 'wontfix': 1, 'none': 1 }, open: 7 });
     expect((await alice.json('GET', '/efforts?sort=name')).body.items.find((item: { name: string }) => item.name === 'status').statusRollup.open).toBe(7);
 
     await alice.json('POST', `/issues/${map.number}/close`);

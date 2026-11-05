@@ -6,7 +6,7 @@ import { changes, issues } from '../db/schema';
 import type { BlockerRef } from './blockers';
 import type { FieldWrite, LoggedValue } from './changes';
 import { conflict, invalid, notFound } from './errors';
-import { blockedCondition, mapFrontierCondition } from './frontier';
+import { blockedCondition, frontierCondition } from './frontier';
 import type { Caller } from './caller';
 import type { Store } from './store';
 import type { IssueState, IssueStatus, IssueView, Kind } from '#shared/domain';
@@ -48,6 +48,10 @@ export interface PatchRequest {
 export interface AppendRequest {
   section: string
   text: string
+}
+
+export interface ReplaceSectionRequest extends AppendRequest {
+  expectedVersion?: number | null
 }
 
 export interface ChangeQuery {
@@ -110,8 +114,6 @@ export const touchIssue = (tx: Store, number: number, at: string) => {
 export const childrenOf = (parent: number): IssueRecord[] =>
   useStore().select().from(issues).where(eq(issues.parent, parent)).orderBy(asc(issues.number)).all();
 
-export const childNumbers = (number: number) => childrenOf(number).map(child => child.number);
-
 export const effortNumberOf = (issue: IssueRecord): number | null => effortsByIssue([issue.number]).get(issue.number) ?? null;
 
 export const subtreeNumbers = (root: number) => {
@@ -171,7 +173,7 @@ const sortOrdering = ({ sort, order }: IssueQuery) => {
 
 // eslint-disable-next-line no-unused-vars -- the core rule misreads type-level parameters
 const VIEW_CONDITIONS: Record<IssueView, (query: IssueQuery) => SQL> = {
-  'frontier': mapFrontierCondition,
+  'frontier': frontierCondition,
   'mine': query => and(eq(issues.state, 'open'), eq(issues.assignee, query.holder!))!,
   'needs-triage': () => and(eq(issues.state, 'open'), inArray(issues.number, issuesLabelled('needs-triage')))!,
   'blocked': blockedCondition,
@@ -295,12 +297,16 @@ const pendingWrites = (issue: IssueRecord, fields: IssueFields): FieldWrite[] =>
     .filter(field => fields[field] !== undefined && fields[field] !== issue[field])
     .map(field => ({ field, before: issue[field], after: fields[field] as LoggedValue }));
 
-export const patchIssue = (number: number, { fields, expectedVersion }: PatchRequest, caller: Caller) => {
-  const issue = requireIssue(number);
+const assertExpectedVersion = (issue: IssueRecord, expectedVersion: number | null | undefined) => {
   if (isSet(expectedVersion) && expectedVersion !== issue.version) {
     const { lastWrittenBy, lastWrittenAt } = describeLastWrite(issue);
-    throw conflict(`issue #${number} is at version ${issue.version}, last written by ${lastWrittenBy} at ${lastWrittenAt}`, 'version', { version: issue.version, lastWrittenBy, lastWrittenAt });
+    throw conflict(`issue #${issue.number} is at version ${issue.version}, last written by ${lastWrittenBy} at ${lastWrittenAt}`, 'version', { version: issue.version, lastWrittenBy, lastWrittenAt });
   }
+};
+
+export const patchIssue = (number: number, { fields, expectedVersion }: PatchRequest, caller: Caller) => {
+  const issue = requireIssue(number);
+  assertExpectedVersion(issue, expectedVersion);
   const kind = issue.kind as Kind;
   assertEffortOnlyFields(kind, fields);
   if (fields.parent !== undefined) assertParentAllowed(kind, fields.parent, number);
@@ -328,7 +334,6 @@ export const claimIssue = (number: number, caller: Caller) => {
   const issue = requireIssue(number);
   const actor = actorSlug(caller);
   if (issue.state === 'closed') throw invalid(`issue #${number} is closed`, 'state');
-  if (issue.assignee === actor) return issue;
   if (issue.assignee !== null) throw conflict(`issue #${number} is held by ${issue.assignee}`, 'assignee', { assignee: issue.assignee });
   return writeField(number, { field: 'assignee', before: null, after: actor }, caller);
 };
@@ -358,6 +363,18 @@ export const reopenIssue = (number: number, caller: Caller) => {
 export const appendToIssue = (number: number, { section, text }: AppendRequest, caller: Caller) => {
   const issue = requireIssue(number);
   const body = insertUnderSection(issue.body, section, text);
+  recordIssueWrite(number, caller, (tx) => {
+    tx.update(issues).set({ body, version: issue.version + 1 }).where(eq(issues.number, number)).run();
+    return [{ field: 'body', before: issue.body, after: body }];
+  });
+  return requireIssue(number);
+};
+
+export const replaceIssueSection = (number: number, { section, text, expectedVersion }: ReplaceSectionRequest, caller: Caller) => {
+  const issue = requireIssue(number);
+  assertExpectedVersion(issue, expectedVersion);
+  const body = replaceSectionContent(issue.body, section, text);
+  if (body === issue.body) return issue;
   recordIssueWrite(number, caller, (tx) => {
     tx.update(issues).set({ body, version: issue.version + 1 }).where(eq(issues.number, number)).run();
     return [{ field: 'body', before: issue.body, after: body }];

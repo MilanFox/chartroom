@@ -3,7 +3,7 @@ import type { Caller } from '../../utils/caller';
 import { toResearchNote, toResearchNoteSummary } from '../representations';
 import { issueNumberParam, textParam } from './params';
 
-const noteList = (event: H3Event) => notesOf(issueNumberParam(event)).map(note => toResearchNoteSummary(event, note));
+const noteList = (event: H3Event) => ({ items: notesOf(issueNumberParam(event)).map(note => toResearchNoteSummary(event, note)), nextCursor: null });
 
 const noteRead = (event: H3Event) => toResearchNote(event, requireNote(issueNumberParam(event), textParam(event, 'slug')));
 

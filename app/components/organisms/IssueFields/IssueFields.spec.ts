@@ -114,6 +114,24 @@ describe('IssueFields', () => {
     expect(wrapper.get('.issue-links__link').find('button[aria-label="Copy link: Preview"]').exists()).toBe(true);
   });
 
+  it('shows a name-only branch Link and a relative file Link as text, and an absolute URL as a link', async () => {
+    const link = { issue: 12, role: 'artifact', addedBy: 'milan', origin: 'ui', createdAt: '2026-11-04T09:00:00.000Z' } as const;
+    const { wrapper } = await mountFields({
+      links: [
+        { ...link, id: 1, type: 'branch', url: 'prototype/auth', title: 'Prototype' },
+        { ...link, id: 2, type: 'file', url: 'docs/adr/0003-x.md', title: 'ADR' },
+        { ...link, id: 3, type: 'preview', url: 'https://preview.example.com', title: 'Preview' },
+      ]
+    });
+
+    const [branch, file, preview] = wrapper.findAll('.issue-links__link');
+    expect(branch!.find('a').exists()).toBe(false);
+    expect(branch!.get('code').text()).toBe('prototype/auth');
+    expect(file!.find('a').exists()).toBe(false);
+    expect(file!.get('code').text()).toBe('docs/adr/0003-x.md');
+    expect(preview!.get('a').attributes('href')).toBe('https://preview.example.com');
+  });
+
   it('names the holder when someone else claimed first', async () => {
     endpoint('/ui/issues/12/claim', { method: 'POST', handler: apiFailure(409, { code: 'conflict', message: 'issue #12 is held by claude-b', field: 'assignee', details: { assignee: 'claude-b' } }) });
     const { wrapper, serve } = await mountFields();
@@ -123,6 +141,22 @@ describe('IssueFields', () => {
 
     await vi.waitFor(() => expect(wrapper.text()).toContain('Already claimed by @claude-b.'));
     await vi.waitFor(() => expect(wrapper.text()).toContain('Claimed by @claude-b'));
+  });
+
+  it('links a map to the specs it led to and a spec back to its map, by title', async () => {
+    const { wrapper: mapFields } = await mountFields({ kind: 'map', ledTo: [{ number: 20, title: 'Spec one', open: true }, { number: 21, title: 'Spec two', open: false }] });
+    expect(mapFields.text()).toContain('Led to');
+    expect(mapFields.findAll('a').filter(link => link.text().startsWith('Spec')).map(link => [link.text(), link.attributes('href')])).toEqual([['Spec one', '/issues/20'], ['Spec two', '/issues/21']]);
+
+    const { wrapper: specFields } = await mountFields({ kind: 'spec', from: { number: 2, title: 'Agent Tracker v1', open: true } });
+    expect(specFields.text()).toContain('From');
+    expect(specFields.find('a[href="/issues/2"]').text()).toBe('Agent Tracker v1');
+  });
+
+  it('shows neither Led to nor From without a relation', async () => {
+    const { wrapper } = await mountFields({ kind: 'map' });
+    expect(wrapper.text()).not.toContain('Led to');
+    expect(wrapper.text()).not.toContain('From');
   });
 
   it('gives a Viewer no write affordance, only copying a Link', async () => {

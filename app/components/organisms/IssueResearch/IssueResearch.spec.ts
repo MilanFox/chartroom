@@ -21,7 +21,7 @@ const noteSummary = (overrides: Pick<ResearchNoteSummary, 'issue' | 'slug' | 'ti
 });
 
 const mountResearch = async (number: number, notes: ResearchNoteSummary[]) => {
-  endpoint(`/ui/issues/${number}/research`, () => notes);
+  endpoint(`/ui/issues/${number}/research`, () => ({ items: notes, nextCursor: null }));
   return mountSuspended(IssueResearch, { props: { issue: issueFixture({ number }) } });
 };
 

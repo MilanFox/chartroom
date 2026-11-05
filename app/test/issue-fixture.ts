@@ -21,6 +21,8 @@ export const issueFixture = (overrides: Partial<IssueDocument> = {}): IssueDocum
   blockedBy: [],
   blocks: [],
   children: [],
+  ledTo: [],
+  from: null,
   links: [],
   comments: [],
   resolution: null,

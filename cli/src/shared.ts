@@ -20,6 +20,7 @@ export interface CliContext {
   stderr: Output
   version?: string
   ask?: Handler<[string, AskOptions?], Promise<string | null>>
+  checkDocker?: Handler<[], Promise<string | undefined> | string | undefined>
   startInstance?: Handler<[string], Promise<number>>
 }
 

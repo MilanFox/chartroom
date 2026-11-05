@@ -40,6 +40,16 @@ export const toRow = (event: H3Event, issue: IssueRecord, relations?: RowRelatio
   };
 };
 
+const toIssueRef = ({ number, title, state }: IssueRecord) => ({ number, title, open: state === 'open' });
+
+const handoffOf = (issue: IssueRecord, effort: number | null): Pick<IssueDocument, 'ledTo' | 'from'> => {
+  const siblings = effort !== null && (issue.kind === 'map' || issue.kind === 'spec') ? childrenOf(effort) : [];
+  return {
+    ledTo: issue.kind === 'map' ? siblings.filter(sibling => sibling.kind === 'spec').map(toIssueRef) : [],
+    from: issue.kind === 'spec' ? siblings.filter(sibling => sibling.kind === 'map').map(toIssueRef)[0] ?? null : null,
+  };
+};
+
 export const toDocument = (event: H3Event, issue: IssueRecord): IssueDocument => {
   const resolution = resolutionOf(issue.number);
   const relations = relationsOf(issue);
@@ -52,7 +62,8 @@ export const toDocument = (event: H3Event, issue: IssueRecord): IssueDocument =>
     version: issue.version,
     blockedBy: relations.blockers,
     blocks: blocksOf(issue.number),
-    children: childNumbers(issue.number),
+    children: childrenOf(issue.number).map(toIssueRef),
+    ...handoffOf(issue, relations.effort),
     links: linksOf(issue.number).map(toLink),
     comments: commentsOf(issue.number).map(comment => toComment(event, comment)),
     resolution: resolution === null ? null : toComment(event, resolution),
@@ -116,7 +127,7 @@ const LINK_PROPERTIES = {
   id: { type: 'integer' },
   issue: { type: 'integer' },
   ...LINK_FIELDS,
-  url: { type: 'string', format: 'uri', description: 'The target; a Link has no tracker address' },
+  url: { type: 'string', description: 'The target: an absolute URL, or for branch and file Links a branch name or repo-relative path; a Link has no tracker address' },
   addedBy: { type: 'string' },
   origin: { type: 'string', enum: ['ui', 'api'] },
   createdAt: { type: 'string', format: 'date-time' },
@@ -199,7 +210,9 @@ const DOCUMENT_PROPERTIES = {
   version: { type: 'integer' },
   blockedBy: { ...BLOCKER_LIST, items: issueRef({ title: { type: 'string' }, open: { type: 'boolean' } }) },
   blocks: { type: 'array', items: issueRef({ title: { type: 'string' } }), description: 'The issues this one blocks' },
-  children: { type: 'array', items: { type: 'integer' } },
+  children: { type: 'array', items: issueRef({ title: { type: 'string' }, open: { type: 'boolean' } }), description: 'Children by number; open means the child is still open' },
+  ledTo: { type: 'array', items: issueRef({ title: { type: 'string' }, open: { type: 'boolean' } }), description: 'Map only: the specs in the same Effort, derived' },
+  from: { oneOf: [issueRef({ title: { type: 'string' }, open: { type: 'boolean' } }), { type: 'null' }], description: 'Spec only: the map in the same Effort, derived' },
   links: { type: 'array', items: LINK_SCHEMA },
   comments: { type: 'array', items: COMMENT_SCHEMA },
   resolution: { oneOf: [COMMENT_SCHEMA, { type: 'null' }] },
@@ -329,7 +342,7 @@ const STATUS_ROLLUP_SCHEMA = {
   description: 'Computed, never stored',
   properties: {
     map: { oneOf: [{ type: 'object', properties: { state: { type: 'string', enum: ['open', 'closed'] }, frontier: { type: 'integer', description: 'Open, unassigned children of the map with no open blocker' } }, required: ['state', 'frontier'] }, { type: 'null' }] },
-    specs: { type: 'array', items: { type: 'object', properties: { number: { type: 'integer' }, tickets: { ...countRecord, description: 'The children of the spec by status' } }, required: ['number', 'tickets'] } },
+    specs: { type: 'array', items: { type: 'object', properties: { number: { type: 'integer' }, tickets: { ...countRecord, description: 'The children of the spec by status' }, frontier: { type: 'integer', description: 'Open, unassigned children of the spec with no open blocker' } }, required: ['number', 'tickets', 'frontier'] } },
     triage: { ...countRecord, description: 'Tickets parented straight to the Effort, one bucket per triage-state member plus none' },
     open: { type: 'integer', description: 'Open issues in the subtree, the Effort itself excluded' },
   },

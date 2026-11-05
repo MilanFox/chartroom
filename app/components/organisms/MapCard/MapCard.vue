@@ -34,15 +34,32 @@
       :heading="format(strings.dashboard.map.list, { count: children.length })"
       @update:expanded="disclosure.toggle"
     >
-      <TicketFilters v-model="filter" class="map-card__filters" :search-label="format(strings.dashboard.map.list, { count: children.length })" />
+      <div class="map-card__views" role="group" :aria-label="strings.dashboard.map.views.label">
+        <button
+          v-for="option in VIEW_OPTIONS"
+          :key="option"
+          type="button"
+          class="map-card__view"
+          :aria-pressed="view === option"
+          @click="view = option"
+        >
+          {{ strings.dashboard.map.views[option] }}
+        </button>
+      </div>
 
-      <ul v-if="decisions.length" class="map-card__rows" :aria-label="format(strings.dashboard.map.list, { count: children.length })">
-        <li v-for="row in decisions" :key="row.number" class="map-card__row">
-          <TicketRow :row="row" decision @open="emit('open', $event)" />
-        </li>
-      </ul>
+      <DependencyGraph v-if="view === 'graph'" :issue="map" bare />
 
-      <p v-else class="map-card__empty">{{ strings.dashboard.map.empty }}</p>
+      <template v-else>
+        <TicketFilters v-model="filter" class="map-card__filters" :search-label="format(strings.dashboard.map.list, { count: children.length })" />
+
+        <ul v-if="decisions.length" class="map-card__rows" :aria-label="format(strings.dashboard.map.list, { count: children.length })">
+          <li v-for="row in decisions" :key="row.number" class="map-card__row">
+            <TicketRow :row="row" decision @open="emit('open', $event)" />
+          </li>
+        </ul>
+
+        <p v-else class="map-card__empty">{{ strings.dashboard.map.empty }}</p>
+      </template>
     </DisclosureSection>
   </div>
 </template>
@@ -54,9 +71,12 @@ const props = defineProps<MapCardProps>();
 
 const emit = defineEmits<{ open: [number: number] }>();
 
+const VIEW_OPTIONS = ['list', 'graph'] as const;
+
 const { strings, format } = useStrings();
 const titleId = useId();
 const filter = ref({ ...DEFAULT_TICKET_FILTER });
+const view = ref<(typeof VIEW_OPTIONS)[number]>('list');
 const disclosure = useMapListDisclosure(props.map.number, () => props.map.state);
 
 const children = computed(() => props.rows.filter(row => row.parent === props.map.number));
@@ -119,6 +139,31 @@ const decisions = computed(() => decisionTickets(props.map.number, props.rows, f
     margin: $space-1 0 0;
     color: var(--color-muted);
     font-size: $font-size-meta;
+  }
+
+  &__views {
+    display: inline-flex;
+    margin-bottom: $space-2;
+  }
+
+  &__view {
+    @include button-secondary;
+    border-radius: 0;
+
+    &:first-child {
+      border-radius: $radius-control 0 0 $radius-control;
+    }
+
+    &:last-child {
+      margin-left: -1px;
+      border-radius: 0 $radius-control $radius-control 0;
+    }
+
+    &[aria-pressed='true'] {
+      border-color: var(--color-accent);
+      background: var(--color-accent);
+      color: var(--color-on-accent);
+    }
   }
 
   &__filters {

@@ -5,7 +5,7 @@ import { join, resolve } from 'node:path';
 import { Readable } from 'node:stream';
 import { promisify } from 'node:util';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { runCli } from '../../cli/src/chartroom';
+import { runCli, VERBS } from '../../cli/src/chartroom';
 import { apiClient, holderSecret } from './clients';
 import { freePort, useTestServer } from './harness';
 import { MANIFEST_MAJOR, MANIFEST_VERSION, NEXT_MAJOR_VERSION } from './manifest-version';
@@ -145,6 +145,26 @@ describe('the CLI', () => {
     }
   });
 
+  it('--help after a command or subcommand prints its usage with exit 0, in any position, without acting', async () => {
+    const before = (await aliceApi.json('GET', '/issues')).body;
+    const commands = [...VERBS.map(verb => verb.words), ['init'], ['issue'], ['issue', 'link'], ['research']];
+
+    for (const words of commands) {
+      for (const argv of [[...words, '--help'], [...words, '--help', '--bogus'], ...VERBS.some(verb => verb.words.join() === words.join()) ? [[...words, '1', '2', '--help']] : []]) {
+        const result = await chartroom(argv);
+
+        expect(result, argv.join(' ')).toMatchObject({ code: 0, stderr: '' });
+        expect(result.stdout, argv.join(' ')).toContain(`chartroom ${words.join(' ')}`);
+      }
+    }
+    const result = await chartroom(['issue', 'create', '--help']);
+    expect(result.stdout).toContain('--title <value>');
+    expect(result.stdout).toContain('--blocked-by <value>');
+    expect((await aliceApi.json('GET', '/issues')).body).toEqual(before);
+    expect(await chartroom(['issue', 'delete', '1', '--help'])).toMatchObject({ code: 0, stderr: '' });
+    expect(await chartroom(['frobnicate', '--help'])).toMatchObject({ code: 2, stdout: '' });
+  });
+
   it('a wrong flag, an unknown command or a missing argument is usage on stderr with exit 2', async () => {
     for (const argv of [['me', '--bogus'], ['frobnicate'], [], ['issue', 'view'], ['issue', 'view', '1', '2'], ['issue', 'block', '1'], ['research', 'put', '1']]) {
       const result = await chartroom(argv);
@@ -192,6 +212,17 @@ describe('the CLI', () => {
     expectEnvelope(await chartroom(['issue', 'append', String(number), '--section', 'Nowhere', '--text', 'x']), 'invalid');
   });
 
+  it('replace-section swaps one section, takes a file from stdin and refuses a stale version or a missing section', async () => {
+    const { number } = await createTicket('Sections', '--body', '## Notes\nold\n\n## Done\nkeep');
+
+    const replaced = JSON.parse((await chartroom(['issue', 'replace-section', String(number), '--section', 'Notes', '--text-file', '-', '--if-version', '1'], { stdin: 'new' })).stdout);
+
+    expect(replaced).toMatchObject({ body: '## Notes\nnew\n\n## Done\nkeep', version: 2 });
+    expectEnvelope(await chartroom(['issue', 'replace-section', String(number), '--section', 'Notes', '--text', 'x', '--if-version', '1']), 'conflict');
+    expectEnvelope(await chartroom(['issue', 'replace-section', String(number), '--section', 'Nowhere', '--text', 'x']), 'invalid');
+    expect((await printedJson(['issue', 'view', String(number)])).body).toBe('## Notes\nnew\n\n## Done\nkeep');
+  });
+
   describe('issue list on a store larger than one page', () => {
     let bulkNumbers: number[];
 
@@ -215,11 +246,14 @@ describe('the CLI', () => {
       expect(secondPage.nextCursor).toBeNull();
     });
 
-    it('--all follows every cursor and prints one plain array', async () => {
+    it('--all follows every cursor and prints one page shape holding every item, its nextCursor null', async () => {
       const result = await chartroom(['issue', 'list', '--label', 'bulk', '--all']);
+      const allPages = JSON.parse(result.stdout);
 
       expect(result.code).toBe(0);
-      expect(rowNumbers(JSON.parse(result.stdout))).toEqual(bulkNumbers);
+      expect(Object.keys(allPages)).toEqual(Object.keys(await printedJson(['issue', 'list', '--label', 'bulk'])));
+      expect(rowNumbers(allPages.items)).toEqual(bulkNumbers);
+      expect(allPages.nextCursor).toBeNull();
     });
   });
 
@@ -249,7 +283,7 @@ describe('the CLI', () => {
 
       writeFileSync(file, '# Local transcription, revised\n');
       expect(JSON.parse((await chartroom(['research', 'put', String(ticket.number), file])).stdout)).toMatchObject({ title: 'Local transcription, revised' });
-      expect((await aliceApi.json('GET', `/issues/${ticket.number}/research`)).body).toHaveLength(1);
+      expect((await aliceApi.json('GET', `/issues/${ticket.number}/research`)).body.items).toHaveLength(1);
     });
 
     it('put - reads stdin under --slug; without --slug it is a usage error that writes nothing', async () => {
@@ -261,7 +295,7 @@ describe('the CLI', () => {
 
       const piped = JSON.parse((await chartroom(['research', 'put', String(ticket.number), '-', '--slug', 'piped-notes'], { stdin: '# Piped' })).stdout);
       expect(piped).toMatchObject({ slug: 'piped-notes', title: 'Piped', body: '# Piped' });
-      expect((await aliceApi.json('GET', `/issues/${ticket.number}/research`)).body.map((note: { slug: string }) => note.slug)).toEqual(['piped-notes']);
+      expect((await aliceApi.json('GET', `/issues/${ticket.number}/research`)).body.items.map((note: { slug: string }) => note.slug)).toEqual(['piped-notes']);
     });
 
     it('--slug overrides the file name; list and view print what the API serves', async () => {
@@ -274,7 +308,7 @@ describe('the CLI', () => {
       const viewed = await chartroom(['research', 'view', String(ticket.number), 'final']);
 
       expect(JSON.parse(listed.stdout)).toEqual((await aliceApi.json('GET', `/issues/${ticket.number}/research`)).body);
-      expect(JSON.parse(listed.stdout)).toMatchObject([{ slug: 'final', title: 'final' }]);
+      expect(JSON.parse(listed.stdout)).toMatchObject({ items: [{ slug: 'final', title: 'final' }], nextCursor: null });
       expect(JSON.parse(viewed.stdout)).toEqual((await aliceApi.json('GET', `/issues/${ticket.number}/research/final`)).body);
       expectEnvelope(await chartroom(['research', 'view', String(ticket.number), 'missing']), 'not-found');
     });
@@ -353,7 +387,7 @@ describe('the CLI', () => {
 
     expect(result.code).toBe(0);
     expect(JSON.parse(result.stdout)).toEqual({ slug: 'alice', displayName: 'Alice' });
-    expect(result.stderr).toBe(`chartroom: the instance runs ${MANIFEST_VERSION} but this CLI is ${NEXT_MAJOR_VERSION}; install chartroom-cli@${MANIFEST_MAJOR} (npm install -g chartroom-cli@${MANIFEST_MAJOR}) or use npx -y chartroom-cli@${MANIFEST_MAJOR}\n`);
+    expect(result.stderr).toBe(`chartroom: the instance runs ${MANIFEST_VERSION} but this CLI is ${NEXT_MAJOR_VERSION}; install chartroom-cli@${MANIFEST_MAJOR} (npm install -g chartroom-cli@${MANIFEST_MAJOR}) or use npx -y chartroom-cli@${MANIFEST_MAJOR}; upgrade guide: https://github.com/MilanFox/chartroom/blob/main/docs/operating.md#upgrade\n`);
   });
 
   it('every verb reaches its route and prints the API JSON unchanged; writes without a body print nothing', async () => {
@@ -387,6 +421,11 @@ describe('the CLI', () => {
     await printsNothing(['issue', 'comment', 'delete', ticketNumber, String(comment.id)]);
     const link = await succeeds(['issue', 'link', 'add', ticketNumber, '--role', 'resource', '--type', 'doc', '--url', 'https://docs.example/brief', '--title', 'Brief']);
     expect(await succeeds(['issue', 'link', 'edit', ticketNumber, String(link.id), '--title', 'Brief v2'])).toEqual({ ...link, title: 'Brief v2' });
+    const branchLink = await succeeds(['issue', 'link', 'add', ticketNumber, '--role', 'artifact', '--type', 'branch', '--url', 'prototype/auth', '--title', 'Prototype']);
+    const fileLink = await succeeds(['issue', 'link', 'add', ticketNumber, '--role', 'artifact', '--type', 'file', '--url', 'docs/adr/0003-x.md', '--title', 'ADR']);
+    expect([branchLink.url, fileLink.url]).toEqual(['prototype/auth', 'docs/adr/0003-x.md']);
+    await printsNothing(['issue', 'link', 'remove', ticketNumber, String(branchLink.id)]);
+    await printsNothing(['issue', 'link', 'remove', ticketNumber, String(fileLink.id)]);
     await printsNothing(['issue', 'link', 'remove', ticketNumber, String(link.id)]);
     expect((await servedJson(`/issues/${ticketNumber}`)).links).toEqual([]);
     await printsDocument(['issue', 'claim', ticketNumber], ticket.number);
@@ -395,6 +434,11 @@ describe('the CLI', () => {
     await printsDocument(['issue', 'reopen', ticketNumber], ticket.number);
     expect(await succeeds(['issue', 'changes', ticketNumber, '--field', 'title'])).toEqual(await servedJson(`/issues/${ticketNumber}/changes?field=title`));
     expect(await succeeds(['issue', 'list', '--view', 'frontier', '--parent', String(map.number)])).toEqual(await servedJson(`/issues?view=frontier&parent=${map.number}`));
+    const spec = await succeeds(['issue', 'create', '--kind', 'spec', '--parent', String(effort.number), '--title', 'Spec']);
+    await succeeds(['issue', 'create', '--kind', 'ticket', '--parent', String(spec.number), '--title', 'Build']);
+    const specFrontier = await succeeds(['issue', 'list', '--view', 'frontier', '--parent', String(spec.number)]);
+    expect(specFrontier.items).toHaveLength(1);
+    expect(specFrontier).toEqual(await servedJson(`/issues?view=frontier&parent=${spec.number}`));
     expect(await succeeds(['effort', 'list'])).toEqual(await servedJson('/efforts'));
     expect(await succeeds(['effort', 'view', 'walk'])).toEqual(await servedJson('/efforts/walk'));
     for (const read of ['environments', 'credential-pointers', 'labels', 'holders', 'me', 'instance']) {

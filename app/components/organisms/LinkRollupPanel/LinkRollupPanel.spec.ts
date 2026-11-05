@@ -35,6 +35,24 @@ describe('LinkRollupPanel', () => {
     expect(sources.findAll('a').map(link => [link.attributes('href'), link.text()])).toEqual([['/issues/3', '#3'], ['/issues/4', '#4 (closed)']]);
   });
 
+  it('shows a name-only branch Link and a relative file Link as text and an absolute URL as a link', async () => {
+    const linkRollup = {
+      resource: [], artifact: [
+        { url: 'prototype/auth', title: 'Prototype', type: 'branch' as const, sources: [3] },
+        { url: 'docs/adr/0003-x.md', title: 'ADR', type: 'file' as const, sources: [3] },
+        { url: 'https://example.test/adr', title: 'ADR 0001', type: 'doc' as const, sources: [3] },
+      ]
+    };
+    const wrapper = await mountSuspended(LinkRollupPanel, { props: { effort: { ...effort, linkRollup }, rows: [row(3)] } });
+
+    const [branch, file, absolute] = wrapper.findAll('.link-rollup__link');
+    expect(branch!.get('.link-rollup__target').find('a').exists()).toBe(false);
+    expect(branch!.get('.link-rollup__url').text()).toBe('prototype/auth');
+    expect(file!.get('.link-rollup__target').find('a').exists()).toBe(false);
+    expect(file!.get('.link-rollup__url').text()).toBe('docs/adr/0003-x.md');
+    expect(absolute!.get('.link-rollup__target a').attributes('href')).toBe('https://example.test/adr');
+  });
+
   it('offers a copy button per Link, named by its title', async () => {
     const wrapper = await mountSuspended(LinkRollupPanel, { props: { effort, rows: [row(3), row(4)] } });
 

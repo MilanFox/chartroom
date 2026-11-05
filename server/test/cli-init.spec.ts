@@ -23,6 +23,7 @@ interface Terminal {
   isTTY?: boolean
   columns?: number
   env?: Record<string, string>
+  dockerProblem?: string
 }
 
 const chartroom = async (argv: string[], version = '7.3.1', terminal?: Terminal) => {
@@ -38,6 +39,7 @@ const chartroom = async (argv: string[], version = '7.3.1', terminal?: Terminal)
     stdout: { write: (chunk: string) => (stdout += chunk, true), isTTY, columns },
     stderr: { write: (chunk: string) => (stderr += chunk, true), isTTY, columns },
     version,
+    checkDocker: () => terminal?.dockerProblem,
     ...terminal && {
       ask: async (question: string, options?: { hidden?: boolean }) => {
         questions.push({ question, hidden: options?.hidden ?? false });
@@ -122,6 +124,23 @@ describe('chartroom init', () => {
     }
   });
 
+  it('exits 1 naming the problem and writes nothing when Docker is unavailable', async () => {
+    for (const problem of ['the Docker daemon is not reachable', '`docker compose` is not available']) {
+      const dir = join(freshDir(), 'nested');
+
+      const result = await chartroom(['init', dir], '7.3.1', { answers: [], dockerProblem: problem });
+
+      expect(result, problem).toMatchObject({ code: 1, stdout: '', stderr: `chartroom: ${problem}, nothing written\n` });
+      expect(existsSync(dir), problem).toBe(false);
+    }
+  });
+
+  it('checks Docker before asking anything in a terminal', async () => {
+    const result = await chartroom(['init', freshDir()], '7.3.1', { answers: [], dockerProblem: 'the Docker daemon is not reachable' });
+
+    expect(result).toMatchObject({ code: 1, questions: [] });
+  });
+
   it('creates a missing directory and prints the first-start checklist with the local URL and the CLI major', async () => {
     const dir = join(freshDir(), 'nested', 'chartroom');
 
@@ -155,7 +174,10 @@ describe('chartroom init', () => {
     const dir = freshDir();
     const { version } = JSON.parse(readFileSync(join(CLI_ROOT, 'package.json'), 'utf8'));
 
-    const { stdout } = await execFileAsync(process.execPath, [join(CLI_ROOT, 'dist', 'chartroom.js'), 'init'], { cwd: dir, env: {} });
+    const fakeDockerDir = freshDir();
+    writeFileSync(join(fakeDockerDir, 'docker'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+
+    const { stdout } = await execFileAsync(process.execPath, [join(CLI_ROOT, 'dist', 'chartroom.js'), 'init'], { cwd: dir, env: { PATH: fakeDockerDir } });
 
     expect(stdout).toContain('1. docker compose up -d\n');
     expect(readFileSync(join(dir, 'compose.yaml'), 'utf8')).toContain(`image: ghcr.io/milanfox/chartroom:${version}\n`);
@@ -292,6 +314,12 @@ describe('chartroom init', () => {
   });
 
   describe('in a terminal', () => {
+    it('warns at the port step that 3000 may collide with common dev servers', async () => {
+      const result = await chartroom(['init', freshDir()], '7.3.1', { answers: ['a', 'a', 'b', 'b', '', '', '', '', ''] });
+
+      expect(result.stderr).toMatch(/Host port[^\n]*\n[^\n]*3000[^\n]*Nuxt, Next, Express, Hono[^\n]*collide/);
+    });
+
     it('walks seven steps and writes the chosen passwords, public URL, port and update choice', async () => {
       const dir = join(freshDir(), 'acme-shop');
 

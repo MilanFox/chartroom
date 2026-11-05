@@ -14,6 +14,8 @@ From an empty machine to agents filing and closing tickets in Chartroom, for a r
 npx -y chartroom-cli@latest init my-chartroom
 ```
 
+Run it outside your project repo, for example next to it. A `docker compose down` run in the repo root would otherwise take the tracker down with the project's own containers.
+
 The wizard asks for the admin and viewer passwords, the public URL and the port, then offers to start the container. If you don't let it start, run `cd my-chartroom && docker compose up -d`. The Instance listens on `http://localhost:3000` by default.
 
 For TLS, a reverse proxy and production use, see [Operating an Instance](operating.md).
@@ -29,12 +31,12 @@ Every write is recorded under the Token holder whose secret made it. One holder 
 ## 4. Install the CLI
 
 ```sh
-npm install -g chartroom-cli@1
+npm install -g chartroom-cli@2
 ```
 
-Use the Instance's major version, `0` today. `chartroom instance` or **Admin → About** shows the Instance's version. Node 24 or newer.
+Use the Instance's major version, `2` today. `chartroom instance` or **Admin → About** shows the Instance's version. Node 24 or newer.
 
-The Adapter files tell agents to run `chartroom …`, so the binary must be on the `PATH`. Without a global install, `npx -y chartroom-cli@1 <command>` runs the same thing.
+The Adapter files tell agents to run `chartroom …`, so the binary must be on the `PATH`. Without a global install, `npx -y chartroom-cli@2 <command>` runs the same thing.
 
 Not using the CLI for a script or another tool? Every command is one route of the HTTP API: the OpenAPI document is at `<your Instance>/api/v1/openapi.json`, and a Token holder's secret is the bearer token. Agents should still use the CLI; the Adapter files are written for it.
 
@@ -65,9 +67,9 @@ The agent runs `chartroom adapter`, which prints this Instance's reference for b
 
 **c. After changing settings.** When you change the Effort's Display label, the triage Display labels or the Label groups on the admin page, refresh the files with `chartroom adapter --write docs/agents`, or re-run the setup skill.
 
-## 6. Let Claude Code run it without prompting (optional)
+## 6. Let Claude Code run it without prompting (recommended)
 
-Add this to the project settings, `.claude/settings.json` (committed, shared) or `.claude/settings.local.json` (just you), or to the user settings, `~/.claude/settings.json` (all your projects):
+Without an allow rule, Claude Code's auto mode can block a `chartroom` write, such as a comment on an issue, as an external system write when your intent wasn't explicit. Add this to the project settings, `.claude/settings.json` (committed, shared) or `.claude/settings.local.json` (just you), or to the user settings, `~/.claude/settings.json` (all your projects):
 
 ```json
 {

@@ -51,12 +51,26 @@ describe('links', () => {
     expect(await alice.json('GET', '/issues/999999/links')).toMatchObject(notFound);
   });
 
+  it('keeps a branch name or a repo-relative file path as the Link url, and still takes absolute URLs for both', async () => {
+    const ticket = await createTicket(alice, 'T');
+    const branch = await addLink(alice, ticket.number, { type: 'branch', url: 'prototype/auth', title: 'Prototype' });
+    const file = await addLink(alice, ticket.number, { type: 'file', url: ' docs/adr/0003-x.md ', title: 'ADR' });
+    expect(branch).toMatchObject({ status: 201, body: { type: 'branch', url: 'prototype/auth' } });
+    expect(file).toMatchObject({ status: 201, body: { type: 'file', url: 'docs/adr/0003-x.md' } });
+    expect((await addLink(alice, ticket.number, { type: 'file', url: 'file:///repo/x.md', title: 'Abs' })).status).toBe(201);
+    expect((await alice.json('GET', `/issues/${ticket.number}`)).body.links.map((link: { url: string }) => link.url)).toEqual(['prototype/auth', 'docs/adr/0003-x.md', 'file:///repo/x.md']);
+    expect(await addLink(alice, ticket.number, { type: 'branch', url: 'prototype/auth', title: 'Again' })).toMatchObject(conflict);
+  });
+
   it('refuses a bad role, type, url or title as invalid naming the field; the same URL on the same issue is conflict, on another issue fine', async () => {
     const ticket = await createTicket(alice, 'T');
     const other = await createTicket(alice, 'U');
     expect(await addLink(alice, ticket.number, { role: 'owner' })).toMatchObject(invalidOn('role'));
     expect(await addLink(alice, ticket.number, { type: 'video' })).toMatchObject(invalidOn('type'));
-    expect(await addLink(alice, ticket.number, { url: 'repo#prototype/auth' })).toMatchObject(invalidOn('url'));
+    expect(await addLink(alice, ticket.number, { type: 'doc', url: 'repo#prototype/auth' })).toMatchObject(invalidOn('url'));
+    expect(await addLink(alice, ticket.number, { type: 'preview', url: 'docs/spec.md' })).toMatchObject(invalidOn('url'));
+    expect(await addLink(alice, ticket.number, { type: 'file', url: '/Users/me/spec.md' })).toMatchObject(invalidOn('url'));
+    expect(await addLink(alice, ticket.number, { type: 'branch', url: ' ' })).toMatchObject(invalidOn('url'));
     expect(await addLink(alice, ticket.number, { url: '/relative' })).toMatchObject(invalidOn('url'));
     expect(await addLink(alice, ticket.number, { title: ' ' })).toMatchObject(invalidOn('title'));
     expect(await alice.json('POST', `/issues/${ticket.number}/links`, { body: { type: 'doc', url: 'https://x.example', title: 'x' } })).toMatchObject(invalidOn('role'));
