@@ -108,6 +108,12 @@ describe('IssueFields', () => {
     expect(wrapper.get('.issue-links__link').text()).toContain('manual');
   });
 
+  it('offers a copy button on every Link, named by its title', async () => {
+    const { wrapper } = await mountFields({ links: [{ id: 1, issue: 12, role: 'artifact', type: 'preview', url: 'https://preview.example.com', title: 'Preview', addedBy: 'milan', origin: 'ui', createdAt: '2026-11-04T09:00:00.000Z' }] });
+
+    expect(wrapper.get('.issue-links__link').find('button[aria-label="Copy link: Preview"]').exists()).toBe(true);
+  });
+
   it('names the holder when someone else claimed first', async () => {
     endpoint('/ui/issues/12/claim', { method: 'POST', handler: apiFailure(409, { code: 'conflict', message: 'issue #12 is held by claude-b', field: 'assignee', details: { assignee: 'claude-b' } }) });
     const { wrapper, serve } = await mountFields();
@@ -119,7 +125,7 @@ describe('IssueFields', () => {
     await vi.waitFor(() => expect(wrapper.text()).toContain('Claimed by @claude-b'));
   });
 
-  it('gives a Viewer no write affordance', async () => {
+  it('gives a Viewer no write affordance, only copying a Link', async () => {
     useSessionStore().me = viewerSession;
     const { wrapper } = await mountFields({
       labels: ['needs-triage', 'frontend'],
@@ -127,7 +133,7 @@ describe('IssueFields', () => {
       links: [{ id: 1, issue: 12, role: 'resource', type: 'doc', url: 'https://example.com', title: 'Brief', addedBy: 'claude-a', origin: 'api', createdAt: '2026-11-04T09:00:00.000Z' }],
     });
 
-    expect(wrapper.findAll('button, select, input, textarea, form')).toHaveLength(0);
+    expect(wrapper.findAll('button, select, input, textarea, form').map(control => control.attributes('aria-label'))).toEqual(['Copy link: Brief']);
     expect(wrapper.text()).toContain('Needs triage');
   });
 });
