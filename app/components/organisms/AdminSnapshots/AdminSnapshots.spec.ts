@@ -17,7 +17,7 @@ describe('AdminSnapshots', () => {
     useSessionStore().me = { ...viewerSession, admin: { until: new Date(Date.now() + 3_600_000).toISOString() } };
   });
 
-  it('lists trigger, time and size under column headers, Download on every row and Delete on manual rows only', async () => {
+  it('lists trigger, time and size under column headers, Download and Delete on every row', async () => {
     useAdminStore().snapshots = [manual, preMigrate];
     const wrapper = await mountSuspended(AdminSnapshots);
 
@@ -29,7 +29,36 @@ describe('AdminSnapshots', () => {
     expect(rows[0]!.findAll('button').map(button => button.text())).toEqual(['Delete']);
     expect(rows[1]!.get('td').text()).toBe('Before upgrade');
     expect(rows[1]!.get('a').text()).toBe('Download');
-    expect(rows[1]!.findAll('button')).toHaveLength(0);
+    expect(rows[1]!.findAll('button').map(button => button.text())).toEqual(['Delete']);
+  });
+
+  it('shows the total size of the listed Snapshots in the heading', async () => {
+    useAdminStore().snapshots = [manual, preMigrate];
+    const wrapper = await mountSuspended(AdminSnapshots);
+
+    expect(wrapper.get('h2').text()).toBe('Snapshots · 1.5 MB');
+  });
+
+  it('shows no total while the list is hidden', async () => {
+    useSessionStore().me = viewerSession;
+    useAdminStore().snapshots = null;
+    const wrapper = await mountSuspended(AdminSnapshots);
+
+    expect(wrapper.get('h2').text()).toBe('Snapshots');
+  });
+
+  it('warns that a pre-migrate Snapshot is the rollback path for its upgrade', async () => {
+    useAdminStore().snapshots = [manual, preMigrate];
+    const wrapper = await mountSuspended(AdminSnapshots);
+
+    await wrapper.findAll('tbody tr')[1]!.get('button').trigger('click');
+    const preMigrateMessage = wrapper.get('[role="group"]').text();
+    await wrapper.findAll('tbody tr')[0]!.get('button').trigger('click');
+    const manualMessage = wrapper.get('[role="group"]').text();
+
+    expect(preMigrateMessage).toContain(`Delete the Snapshot ${preMigrate.name}?`);
+    expect(preMigrateMessage).toContain('rollback path for that upgrade');
+    expect(manualMessage).not.toContain('rollback');
   });
 
   it('shows a failed Snapshot as a status message at the button', async () => {

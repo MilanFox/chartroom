@@ -687,7 +687,8 @@
       }
     },
     "snapshots": {
-      "intro": "Copies of the whole store as SQLite files in backups/. Pre-migrate Snapshots are taken at upgrade and cannot be deleted here.",
+      "intro": "Copies of the whole store as SQLite files in backups/. The Instance never deletes one, so deleting here is the only way the folder shrinks. A Snapshot taken before an upgrade is what a rollback of that upgrade restores.",
+      "heading": "{heading} · {total}",
       "hidden": "Snapshots need admin elevation.",
       "empty": "No Snapshots yet.",
       "caption": "Snapshots",
@@ -706,6 +707,7 @@
       "delete": "Delete",
       "keep": "Keep",
       "confirmDelete": "Delete the Snapshot {name}? Its file is removed from backups/.",
+      "confirmDeletePreMigrate": "Delete the Snapshot {name}? Its file is removed from backups/, and it is the rollback path for that upgrade: without it, the upgrade cannot be undone.",
       "errors": {
         "failed": "Snapshot failed. Try again.",
         "deleteFailed": "Deleting failed. Try again."

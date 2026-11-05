@@ -52,7 +52,7 @@ Plain lines on stdout and stderr, nothing written to the volume. `docker compose
 - Only the Instance process opens the file. Never `cp` the live file, even with the container stopped: the `-wal` sibling may hold writes the main file does not.
 - A consistent copy is a Snapshot. "Take Snapshot now" on the admin page writes one to `/data/backups/`, and every row there has a Download. From the shell: `docker compose cp chartroom:/data/backups/<name>.sqlite .`
 
-The Instance never deletes a Snapshot; prune `/data/backups/` by hand when it grows.
+The Instance never deletes a Snapshot by itself. An elevated Admin deletes them on the admin page, where each row shows its size and the section header the total; a pre-migrate Snapshot deleted there can no longer roll its upgrade back. From the shell, `rm` files in `/data/backups/` works too.
 
 ## Upgrade
 
@@ -64,7 +64,7 @@ Migrations are cumulative, so any version jumps straight to any newer one; downt
 
 ## Rollback
 
-Migrations are forward-only, so rollback restores the pre-migrate Snapshot. Started on an older image without the swap, the container exits and names the Snapshot to restore.
+Migrations are forward-only, so rollback restores the pre-migrate Snapshot. Started on an older image without the swap, the container exits and names the Snapshot to restore, or says none from its schema or older is left.
 
 The swap runs in a throwaway container from the same image, so the files stay owned by `node`. Compose prefixes the volume with the project name, by default the directory holding `compose.yaml`; `docker volume ls` shows it. With project `chartroom`:
 
@@ -78,7 +78,7 @@ docker run --rm -v chartroom_chartroom-data:/data ghcr.io/milanfox/chartroom:<pr
 
 Then pin `<previous>` in `compose.yaml` and `docker compose up -d`.
 
-Guarantee: you never lose the state you had before the upgrade; you may lose what was written after it.
+Guarantee: as long as its pre-migrate Snapshot is kept, you never lose the state you had before the upgrade; you may lose what was written after it.
 
 Restoring any other Snapshot is the same swap with its file name.
 

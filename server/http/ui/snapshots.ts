@@ -83,9 +83,9 @@ export const snapshotAdminRoutes: MountRoute[] = [
     handler: snapshotDelete,
     elevated: true,
     openapi: {
-      summary: 'Delete a manual Snapshot',
+      summary: 'Delete a Snapshot',
       tags: ['snapshots'],
-      responses: { 204: { description: 'Deleted' }, 400: { description: 'A pre-migrate Snapshot (field name)' }, 404: NO_SUCH_SNAPSHOT },
+      responses: { 204: { description: 'Deleted' }, 404: NO_SUCH_SNAPSHOT },
     },
   },
 ];
