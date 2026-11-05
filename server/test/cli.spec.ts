@@ -387,7 +387,7 @@ describe('the CLI', () => {
 
     expect(result.code).toBe(0);
     expect(JSON.parse(result.stdout)).toEqual({ slug: 'alice', displayName: 'Alice' });
-    expect(result.stderr).toBe(`chartroom: the instance runs ${MANIFEST_VERSION} but this CLI is ${NEXT_MAJOR_VERSION}; install chartroom-cli@${MANIFEST_MAJOR} (npm install -g chartroom-cli@${MANIFEST_MAJOR}) or use npx -y chartroom-cli@${MANIFEST_MAJOR}\n`);
+    expect(result.stderr).toBe(`chartroom: the instance runs ${MANIFEST_VERSION} but this CLI is ${NEXT_MAJOR_VERSION}; install chartroom-cli@${MANIFEST_MAJOR} (npm install -g chartroom-cli@${MANIFEST_MAJOR}) or use npx -y chartroom-cli@${MANIFEST_MAJOR}; upgrade guide: https://github.com/MilanFox/chartroom/blob/main/docs/operating.md#upgrade\n`);
   });
 
   it('every verb reaches its route and prints the API JSON unchanged; writes without a body print nothing', async () => {

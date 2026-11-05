@@ -385,7 +385,7 @@ const warnOnMajorMismatch = async (root: string, context: CliContext) => {
   const cliVersion = context.version ?? ownVersion();
   if (typeof instanceVersion === 'string' && majorOf(instanceVersion) !== majorOf(cliVersion)) {
     const major = majorOf(instanceVersion);
-    context.stderr.write(`chartroom: the instance runs ${instanceVersion} but this CLI is ${cliVersion}; install chartroom-cli@${major} (npm install -g chartroom-cli@${major}) or use npx -y chartroom-cli@${major}\n`);
+    context.stderr.write(`chartroom: the instance runs ${instanceVersion} but this CLI is ${cliVersion}; install chartroom-cli@${major} (npm install -g chartroom-cli@${major}) or use npx -y chartroom-cli@${major}; upgrade guide: https://github.com/MilanFox/chartroom/blob/main/docs/operating.md#upgrade\n`);
   }
 };
 

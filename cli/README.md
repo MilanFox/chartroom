@@ -116,7 +116,7 @@ Repo setup goes through `/setup-matt-pocock-skills`: at "Issue tracker" pick Oth
 | `1` | The API's error envelope on stderr, `unreachable` when the Instance cannot be reached, or a one-line error when `./.env` exists but cannot be read. |
 | `2` | Usage error; the usage list follows on stderr. |
 
-When the Instance's major version differs from the CLI's, one line on stderr names the right `npm install -g chartroom-cli@<major>` and `npx -y chartroom-cli@<major>`, then the call proceeds.
+When the Instance's major version differs from the CLI's, one line on stderr names the right `npm install -g chartroom-cli@<major>` and `npx -y chartroom-cli@<major>` and links the upgrade guide, then the call proceeds.
 
 ## API reference
 

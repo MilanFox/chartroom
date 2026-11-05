@@ -31,12 +31,12 @@ Every write is recorded under the Token holder whose secret made it. One holder 
 ## 4. Install the CLI
 
 ```sh
-npm install -g chartroom-cli@1
+npm install -g chartroom-cli@2
 ```
 
-Use the Instance's major version, `0` today. `chartroom instance` or **Admin → About** shows the Instance's version. Node 24 or newer.
+Use the Instance's major version, `2` today. `chartroom instance` or **Admin → About** shows the Instance's version. Node 24 or newer.
 
-The Adapter files tell agents to run `chartroom …`, so the binary must be on the `PATH`. Without a global install, `npx -y chartroom-cli@1 <command>` runs the same thing.
+The Adapter files tell agents to run `chartroom …`, so the binary must be on the `PATH`. Without a global install, `npx -y chartroom-cli@2 <command>` runs the same thing.
 
 Not using the CLI for a script or another tool? Every command is one route of the HTTP API: the OpenAPI document is at `<your Instance>/api/v1/openapi.json`, and a Token holder's secret is the bearer token. Agents should still use the CLI; the Adapter files are written for it.
 
