@@ -23,6 +23,7 @@ const readsFor = ({ pointers, holders, snapshots = forbidden }: { pointers: () =
   endpoint('/ui/labels', { method: 'GET', handler: () => [seeded] });
   endpoint('/ui/labels/free-form', { method: 'GET', handler: () => [{ label: 'urgent', count: 2 }] });
   endpoint('/ui/snapshots', { method: 'GET', handler: snapshots });
+  endpoint('/ui/admin/closed-efforts', { method: 'GET', handler: forbidden });
   endpoint('/ui/environments', { method: 'GET', handler: () => [staging] });
   endpoint('/ui/credential-pointers', { method: 'GET', handler: pointers });
   endpoint('/ui/holders', { method: 'GET', handler: holders });
@@ -47,6 +48,7 @@ describe('useAdminStore', () => {
     expect(admin.runtimeSettings).toEqual(runtimeSettings);
     expect(admin.firstRun).toBe(true);
     expect(admin.snapshots).toBeNull();
+    expect(admin.closedEfforts).toBeNull();
     expect(useLabelGroupsStore().labelGroups).toEqual([seeded]);
     expect(useLabelGroupsStore().freeFormLabels).toEqual([{ label: 'urgent', count: 2 }]);
   });

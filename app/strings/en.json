@@ -20,6 +20,7 @@
       "environments": "Environments & credentials",
       "holders": "Token holders",
       "labels": "Labels",
+      "efforts": "Closed {efforts}",
       "snapshots": "Snapshots",
       "about": "About"
     },
@@ -686,8 +687,43 @@
         "failed": "That did not work. Try again."
       }
     },
+    "efforts": {
+      "intro": "Everything in a {effort} is process material. Deleting a closed one removes it for good with its maps, specs, tickets, comments, Links, Changes and Research notes. A Snapshot is taken first, so restoring that Snapshot brings it back; the store is then compacted.",
+      "hidden": "Closed {efforts} need admin elevation.",
+      "empty": "No closed {efforts}.",
+      "caption": "Closed {efforts}, oldest last activity first",
+      "effort": "{effort}",
+      "closed": "Closed",
+      "lastActivity": "Last activity",
+      "contents": "Contents",
+      "actions": "Actions",
+      "named": "#{number} {title} ({slug})",
+      "namedWithoutSlug": "#{number} {title}",
+      "summary": "{issues}, {comments}, {links}, {changes}, {researchNotes}",
+      "counts": {
+        "issues": "{count} issues",
+        "issuesOne": "1 issue",
+        "comments": "{count} comments",
+        "commentsOne": "1 comment",
+        "links": "{count} Links",
+        "linksOne": "1 Link",
+        "changes": "{count} Changes",
+        "changesOne": "1 Change",
+        "researchNotes": "{count} Research notes",
+        "researchNotesOne": "1 Research note"
+      },
+      "delete": "Delete",
+      "deleteNamed": "Delete {name}",
+      "keep": "Keep",
+      "confirmDelete": "Delete {name} with {issues}, {comments}, {links}, {changes} and {researchNotes}? A Snapshot is taken first; the store is then compacted.",
+      "deleted": "Deleted {name}. Snapshot {snapshot} taken.",
+      "deletedUncompacted": "Deleted {name}. Snapshot {snapshot} taken. Compacting the store failed, so its file has not shrunk yet.",
+      "errors": {
+        "deleteFailed": "Deleting failed. Try again."
+      }
+    },
     "snapshots": {
-      "intro": "Copies of the whole store as SQLite files in backups/. The Instance never deletes one, so deleting here is the only way the folder shrinks. A Snapshot taken before an upgrade is what a rollback of that upgrade restores.",
+      "intro": "Copies of the whole store as SQLite files in backups/. The Instance takes one before an upgrade and before deleting a closed {effort}, and never deletes one, so deleting here is the only way the folder shrinks. A Snapshot taken before an upgrade is what a rollback of that upgrade restores.",
       "heading": "{heading} · {total}",
       "hidden": "Snapshots need admin elevation.",
       "empty": "No Snapshots yet.",
@@ -695,7 +731,8 @@
       "trigger": "Trigger",
       "triggers": {
         "manual": "Manual",
-        "pre-migrate": "Before upgrade"
+        "pre-migrate": "Before upgrade",
+        "pre-delete": "Before deletion"
       },
       "time": "Time",
       "size": "Size",
