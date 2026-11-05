@@ -64,6 +64,7 @@ describe('the OpenAPI document', () => {
     expect(Object.keys(document.paths['/issues/{number}/research/{slug}']!)).toEqual(['get', 'put']);
     expect(Object.keys(document.paths['/efforts']!)).toEqual(['get']);
     expect(Object.keys(document.paths['/efforts/{handle}']!)).toEqual(['get']);
+    expect(document.paths['/admin/closed-efforts']).toBeUndefined();
     expect(Object.keys(document.paths['/efforts/{handle}/artifacts.md']!)).toEqual(['get']);
     expect(Object.keys(document.paths['/labels']!)).toEqual(['get']);
     expect(Object.keys(document.paths['/instance']!)).toEqual(['get']);
@@ -148,6 +149,8 @@ describe('the OpenAPI document', () => {
     expect(Object.keys(document.paths['/labels/free-form']!)).toEqual(['get']);
     expect(Object.keys(document.paths['/snapshots']!)).toEqual(['get', 'post']);
     expect(Object.keys(document.paths['/snapshots/{name}']!)).toEqual(['get', 'delete']);
+    expect(Object.keys(document.paths['/admin/closed-efforts']!)).toEqual(['get']);
+    expect(Object.keys(document.paths['/efforts/{handle}']!)).toEqual(['get', 'delete']);
     expect(document.security).toEqual([{ session: [] }]);
     expect(document.components.securitySchemes).toEqual({ session: { type: 'apiKey', in: 'cookie', name: 'chartroom_session' } });
   });

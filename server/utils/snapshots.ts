@@ -4,7 +4,7 @@ import Database from 'better-sqlite3';
 import { sql } from 'drizzle-orm';
 import type { Store } from './store';
 
-export type SnapshotTrigger = 'pre-migrate' | 'manual';
+export type SnapshotTrigger = 'pre-migrate' | 'pre-delete' | 'manual';
 
 export interface Snapshot {
   name: string
@@ -13,7 +13,7 @@ export interface Snapshot {
   size: number
 }
 
-const SNAPSHOT_FILE_NAME = /^(?<trigger>pre-migrate-(?<oldSchema>\d{4})-to-.+|manual)-(?<date>\d{4}-\d{2}-\d{2})T(?<hours>\d{2})-(?<minutes>\d{2})-(?<seconds>\d{2})-(?<millis>\d{3})Z\.sqlite$/;
+const SNAPSHOT_FILE_NAME = /^(?<trigger>pre-migrate-(?<oldSchema>\d{4})-to-.+|pre-delete-.+|manual)-(?<date>\d{4}-\d{2}-\d{2})T(?<hours>\d{2})-(?<minutes>\d{2})-(?<seconds>\d{2})-(?<millis>\d{3})Z\.sqlite$/;
 
 export const snapshotsDir = (dataDir: string) => join(dataDir, 'backups');
 
@@ -25,13 +25,20 @@ export const preMigrateStem = (lastAppliedIndex: string, newVersion: string) => 
 
 export const manualStem = () => `manual-${stampOf(new Date())}`;
 
+export const preDeleteStem = (effortSlug: string) => `pre-delete-${effortSlug}-${stampOf(new Date())}`;
+
+const triggerOf = (matched: string): SnapshotTrigger => {
+  if (matched === 'manual') return 'manual';
+  return matched.startsWith('pre-delete-') ? 'pre-delete' : 'pre-migrate';
+};
+
 const describeSnapshot = (dataDir: string, fileName: string): Snapshot | null => {
   const match = SNAPSHOT_FILE_NAME.exec(fileName);
   if (!match?.groups) return null;
   const { trigger, date, hours, minutes, seconds, millis } = match.groups;
   return {
     name: fileName.slice(0, -'.sqlite'.length),
-    trigger: trigger === 'manual' ? 'manual' : 'pre-migrate',
+    trigger: triggerOf(trigger!),
     takenAt: `${date}T${hours}:${minutes}:${seconds}.${millis}Z`,
     size: statSync(join(snapshotsDir(dataDir), fileName)).size,
   };
