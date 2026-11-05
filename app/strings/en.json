@@ -197,6 +197,8 @@
         "by": "by {holder} · {date}",
         "edit": "Edit link {title}",
         "remove": "Remove link {title}",
+        "copy": "Copy link: {title}",
+        "copied": "Copied link: {title}",
         "editHeading": "Edit link",
         "addHeading": "Add Link",
         "role": "Role",

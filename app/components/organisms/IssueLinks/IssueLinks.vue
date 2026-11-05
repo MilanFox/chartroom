@@ -31,6 +31,8 @@
 
           <ManualChip :origin="link.origin" />
 
+          <LinkCopyButton :url="link.url" :title="link.title" />
+
           <span v-if="!session.isViewer" class="issue-links__actions">
             <button
               :ref="(element) => editButtons.set(link.id, element as HTMLButtonElement)"
@@ -142,6 +144,11 @@ const remove = (link: IssueLink) => action.run(() => issuesStore.removeLink(prop
     flex-wrap: wrap;
     align-items: center;
     gap: $space-1;
+
+    &:hover,
+    &:focus-within {
+      --link-copy-opacity: 1;
+    }
   }
 
   &__chip {

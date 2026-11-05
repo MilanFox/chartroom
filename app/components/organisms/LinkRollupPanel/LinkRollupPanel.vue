@@ -24,7 +24,19 @@
             <span class="link-rollup__url">{{ link.url }}</span>
           </span>
 
-          <span class="link-rollup__sources">{{ format(strings.dashboard.links.from, { sources: sourcesOf(link.sources) }) }}</span>
+          <span class="link-rollup__sources">
+            <span v-if="sourcesPrefix">{{ sourcesPrefix }}</span>
+
+            <template v-for="(source, index) in link.sources" :key="source.number">
+              <span v-if="index">{{ strings.dashboard.tiles.separator }}</span>
+
+              <NuxtLink :to="issuePath(source.number)" class="link-rollup__source">{{ sourceLabel(source) }}</NuxtLink>
+            </template>
+
+            <span v-if="sourcesSuffix">{{ sourcesSuffix }}</span>
+          </span>
+
+          <LinkCopyButton :url="link.url" :title="link.title" />
         </li>
       </ul>
 
@@ -65,9 +77,12 @@ const copyMessage = ref('');
 
 const sections = computed(() => rollupSections(props.effort.linkRollup, props.effort, props.rows));
 
-const sourcesOf = (sources: { number: number, closed: boolean }[]) => sources
-  .map(({ number, closed }) => format(closed ? strings.value.dashboard.links.sourceClosed : strings.value.dashboard.links.source, { number }))
-  .join(strings.value.dashboard.tiles.separator);
+const sourcesParts = computed(() => strings.value.dashboard.links.from.split('{sources}'));
+const sourcesPrefix = computed(() => sourcesParts.value[0]);
+const sourcesSuffix = computed(() => sourcesParts.value[1]);
+
+const sourceLabel = ({ number, closed }: { number: number, closed: boolean }) =>
+  format(closed ? strings.value.dashboard.links.sourceClosed : strings.value.dashboard.links.source, { number });
 
 const copyArtifacts = async () => {
   copyMessage.value = '';
@@ -140,6 +155,11 @@ const add = async (draft: LinkDraft) => {
     & + & {
       border-top: 1px dashed var(--color-rule);
     }
+
+    &:hover,
+    &:focus-within {
+      --link-copy-opacity: 1;
+    }
   }
 
   &__type {
@@ -164,6 +184,10 @@ const add = async (draft: LinkDraft) => {
     color: var(--color-muted);
     font-size: $font-size-meta;
     overflow-wrap: anywhere;
+  }
+
+  &__source {
+    color: inherit;
   }
 
   &__none,
