@@ -31,6 +31,7 @@ interface Verb {
   pathFlags?: Record<string, string>
   pathValues?: Handler<[Record<string, string>, Flags], Record<string, string>>
   flags?: ParseArgsOptionsConfig
+  optionDescriptions?: Record<string, string>
   query?: string[]
   paged?: boolean
   body?: Handler<[Input], Promise<Record<string, unknown>>>
@@ -174,6 +175,7 @@ export const VERBS: Verb[] = [
   issueVerb('link add', 'post /links', {
     summary: 'Add a Link to an issue; --url is the Link target.',
     flags: valueFlags(...LINK_FIELDS, 'url'),
+    optionDescriptions: { url: 'Link target: an absolute URL; for branch and file Links also a branch name or repo-relative path.' },
     body: async ({ flags }) => ({ role: flags.role, type: flags.type, url: flags.url, title: flags.title }),
   }),
   issueVerb('link edit', 'patch /links/{id}', {
@@ -195,7 +197,7 @@ export const VERBS: Verb[] = [
   },
   { words: ['research', 'list'], summary: 'List the research attached to an issue.', method: 'get', path: '/issues/{number}/research', positionals: ['number'] },
   { words: ['research', 'view'], summary: 'Print one research file of an issue.', method: 'get', path: '/issues/{number}/research/{slug}', positionals: ['number', 'slug'] },
-  { words: ['effort', 'list'], summary: 'List efforts, sorted and paged; --all follows every page.', method: 'get', path: '/efforts', flags: valueFlags('sort', 'order'), query: ['sort', 'order'], paged: true },
+  { words: ['effort', 'list'], summary: 'List efforts, sorted and paged; --all follows every page.', method: 'get', path: '/efforts', flags: valueFlags('sort', 'order'), optionDescriptions: { sort: 'Sort key: updatedAt or name.' }, query: ['sort', 'order'], paged: true },
   { words: ['effort', 'view'], summary: 'Print an effort.', method: 'get', path: '/efforts/{handle}', positionals: ['handle'] },
   { words: ['effort', 'artifacts'], summary: 'Print the artifacts of an effort as Markdown.', method: 'get', path: '/efforts/{handle}/artifacts.md', positionals: ['handle'], markdown: true },
   { words: ['environments'], summary: 'List the environments.', method: 'get', path: '/environments' },
@@ -269,7 +271,46 @@ const usage = () => [
   '',
 ].join('\n');
 
-const optionLine = (name: string, option: { type: string }) => `  --${name}${option.type === 'boolean' ? '' : ' <value>'}`;
+const OPTION_DESCRIPTIONS: Record<string, string> = {
+  'url': 'Instance base URL, overriding CHARTROOM_URL.',
+  'token': 'A Token holder\'s secret, overriding CHARTROOM_TOKEN.',
+  'help': 'Print this help.',
+  'kind': 'Issue kind: effort, map, spec or ticket.',
+  'title': 'One-line title of the issue; on a Link, its label.',
+  'parent': 'Number of the parent issue; a map or spec needs an Effort as parent.',
+  'no-parent': 'Clear the parent.',
+  'name': 'Effort slug (lowercase, hyphenated) that resolves the Effort like its number; Effort only.',
+  'body': 'Markdown body of the issue or comment.',
+  'test-instructions': 'Test instructions of an Effort, in Markdown.',
+  'label': 'Label string, e.g. bug; repeat for several (all must match on list).',
+  'blocked-by': 'Number of an issue that blocks this one; repeat for several.',
+  'state': 'Issue state: open or closed.',
+  'effort': 'Effort slug or number; matches the whole subtree.',
+  'assignee': 'Holder slug of the assignee, or none for unassigned.',
+  'missing': 'Label group id; keeps issues with no member of it, e.g. triage-state; repeat for several.',
+  'numbers': 'Comma-separated issue numbers, e.g. 12,45.',
+  'q': 'Free-text search over issues.',
+  'view': 'Saved view: frontier, mine, needs-triage, blocked or closed-recent.',
+  'sort': 'Sort key: number, createdAt, updatedAt, title, state or a label group id.',
+  'order': 'Sort direction: asc or desc.',
+  'limit': 'Page size.',
+  'cursor': 'Cursor of the page to fetch, from the previous page.',
+  'all': 'Follow every page and print all rows.',
+  'if-version': 'Version from issue view; the edit is rejected with conflict when the issue changed since.',
+  'section': 'Exact text of the ## heading of the body section.',
+  'text': 'Markdown to add under the section, or to replace its content with.',
+  'comment': 'Comment added to the issue as it closes.',
+  'field': 'Only Changes to this field: title, body, parent, name, testInstructions, state, assignee, comment, label, blocker, link or research.',
+  'role': 'Link role: resource (used while working) or artifact (created while working).',
+  'type': 'Link type: branch, file, preview, doc or external.',
+  'by': 'Number of the blocking issue.',
+  'slug': 'Slug of the Research note; defaults to the file name.',
+  'write': 'Directory to write the Adapter files to instead of printing them.',
+};
+
+const describeOption = (verb: Verb, name: string) => verb.optionDescriptions?.[name] ?? (name.endsWith('-file') ? `Like --${name.slice(0, -5)}, read from a file; - reads stdin.` : OPTION_DESCRIPTIONS[name]);
+
+const optionLine = (name: string, option: { type: string }, description: string | undefined) => [`  --${name}${option.type === 'boolean' ? '' : ' <value>'}`, `      ${description}`].join('\n');
 
 const verbHelp = (verb: Verb) => [
   `usage: chartroom ${usageLine(verb)}`,
@@ -277,8 +318,8 @@ const verbHelp = (verb: Verb) => [
   verb.summary,
   '',
   'options:',
-  ...Object.entries(verbOptions(verb)).map(([name, option]) => optionLine(name, option)),
-  optionLine('help', { type: 'boolean' }),
+  ...Object.entries(verbOptions(verb)).map(([name, option]) => optionLine(name, option, describeOption(verb, name))),
+  optionLine('help', { type: 'boolean' }, describeOption(verb, 'help')),
   '',
 ].join('\n');
 
