@@ -114,6 +114,24 @@ describe('IssueFields', () => {
     expect(wrapper.get('.issue-links__link').find('button[aria-label="Copy link: Preview"]').exists()).toBe(true);
   });
 
+  it('shows a name-only branch Link and a relative file Link as text, and an absolute URL as a link', async () => {
+    const link = { issue: 12, role: 'artifact', addedBy: 'milan', origin: 'ui', createdAt: '2026-11-04T09:00:00.000Z' } as const;
+    const { wrapper } = await mountFields({
+      links: [
+        { ...link, id: 1, type: 'branch', url: 'prototype/auth', title: 'Prototype' },
+        { ...link, id: 2, type: 'file', url: 'docs/adr/0003-x.md', title: 'ADR' },
+        { ...link, id: 3, type: 'preview', url: 'https://preview.example.com', title: 'Preview' },
+      ]
+    });
+
+    const [branch, file, preview] = wrapper.findAll('.issue-links__link');
+    expect(branch!.find('a').exists()).toBe(false);
+    expect(branch!.get('code').text()).toBe('prototype/auth');
+    expect(file!.find('a').exists()).toBe(false);
+    expect(file!.get('code').text()).toBe('docs/adr/0003-x.md');
+    expect(preview!.get('a').attributes('href')).toBe('https://preview.example.com');
+  });
+
   it('names the holder when someone else claimed first', async () => {
     endpoint('/ui/issues/12/claim', { method: 'POST', handler: apiFailure(409, { code: 'conflict', message: 'issue #12 is held by claude-b', field: 'assignee', details: { assignee: 'claude-b' } }) });
     const { wrapper, serve } = await mountFields();

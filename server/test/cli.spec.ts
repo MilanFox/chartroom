@@ -421,6 +421,11 @@ describe('the CLI', () => {
     await printsNothing(['issue', 'comment', 'delete', ticketNumber, String(comment.id)]);
     const link = await succeeds(['issue', 'link', 'add', ticketNumber, '--role', 'resource', '--type', 'doc', '--url', 'https://docs.example/brief', '--title', 'Brief']);
     expect(await succeeds(['issue', 'link', 'edit', ticketNumber, String(link.id), '--title', 'Brief v2'])).toEqual({ ...link, title: 'Brief v2' });
+    const branchLink = await succeeds(['issue', 'link', 'add', ticketNumber, '--role', 'artifact', '--type', 'branch', '--url', 'prototype/auth', '--title', 'Prototype']);
+    const fileLink = await succeeds(['issue', 'link', 'add', ticketNumber, '--role', 'artifact', '--type', 'file', '--url', 'docs/adr/0003-x.md', '--title', 'ADR']);
+    expect([branchLink.url, fileLink.url]).toEqual(['prototype/auth', 'docs/adr/0003-x.md']);
+    await printsNothing(['issue', 'link', 'remove', ticketNumber, String(branchLink.id)]);
+    await printsNothing(['issue', 'link', 'remove', ticketNumber, String(fileLink.id)]);
     await printsNothing(['issue', 'link', 'remove', ticketNumber, String(link.id)]);
     expect((await servedJson(`/issues/${ticketNumber}`)).links).toEqual([]);
     await printsDocument(['issue', 'claim', ticketNumber], ticket.number);

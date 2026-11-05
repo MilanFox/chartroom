@@ -1,4 +1,5 @@
 import type { H3Event } from 'h3';
+import type { LinkType } from '#shared/domain';
 
 export type JsonObject = Record<string, unknown>;
 
@@ -50,6 +51,12 @@ export const absoluteUrl = (body: JsonObject) => {
   const value = body.url;
   if (typeof value !== 'string' || !URL.canParse(value)) throw invalid('url must be an absolute URL', 'url');
   return value;
+};
+
+export const linkTarget = (body: JsonObject, type: LinkType) => {
+  const value = body.url;
+  const nameOrPath = typeof value === 'string' && value.trim() !== '' && !value.startsWith('/') && /^(branch|file)$/.test(type);
+  return nameOrPath ? value.trim() : absoluteUrl(body);
 };
 
 export const optionalText = (body: JsonObject, field: string) => (body[field] ?? null) === null ? null : requireText(body, field);

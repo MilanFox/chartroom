@@ -25,7 +25,11 @@
 
           <a v-if="safeHref(link.url)" :href="safeHref(link.url)!" class="issue-links__target" target="_blank" rel="noopener noreferrer">{{ link.title }}</a>
 
-          <span v-else class="issue-links__target">{{ link.title }}</span>
+          <template v-else>
+            <span class="issue-links__target">{{ link.title }}</span>
+
+            <code class="issue-links__name">{{ link.url }}</code>
+          </template>
 
           <span class="issue-links__meta">{{ format(strings.issue.fields.links.by, { holder: link.addedBy, date: formatDate(link.createdAt) }) }}</span>
 
@@ -157,6 +161,10 @@ const remove = (link: IssueLink) => action.run(() => issuesStore.removeLink(prop
 
   &__target {
     color: var(--color-accent);
+    overflow-wrap: anywhere;
+  }
+
+  &__name {
     overflow-wrap: anywhere;
   }
 

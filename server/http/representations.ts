@@ -127,7 +127,7 @@ const LINK_PROPERTIES = {
   id: { type: 'integer' },
   issue: { type: 'integer' },
   ...LINK_FIELDS,
-  url: { type: 'string', format: 'uri', description: 'The target; a Link has no tracker address' },
+  url: { type: 'string', description: 'The target: an absolute URL, or for branch and file Links a branch name or repo-relative path; a Link has no tracker address' },
   addedBy: { type: 'string' },
   origin: { type: 'string', enum: ['ui', 'api'] },
   createdAt: { type: 'string', format: 'date-time' },
