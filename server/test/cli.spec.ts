@@ -133,6 +133,18 @@ describe('the CLI', () => {
     });
   });
 
+  it('--version and -v print the CLI version, --help and -h the usage, on stdout with exit 0', async () => {
+    for (const flag of ['--version', '-v']) {
+      expect(await chartroom([flag], { version: '9.8.7' }), flag).toEqual({ code: 0, stdout: '9.8.7\n', stderr: '' });
+    }
+    for (const flag of ['--help', '-h']) {
+      const result = await chartroom([flag]);
+
+      expect(result, flag).toMatchObject({ code: 0, stderr: '' });
+      expect(result.stdout, flag).toContain('usage: chartroom');
+    }
+  });
+
   it('a wrong flag, an unknown command or a missing argument is usage on stderr with exit 2', async () => {
     for (const argv of [['me', '--bogus'], ['frobnicate'], [], ['issue', 'view'], ['issue', 'view', '1', '2'], ['issue', 'block', '1'], ['research', 'put', '1']]) {
       const result = await chartroom(argv);

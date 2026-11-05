@@ -233,6 +233,7 @@ const usageLine = (verb: Verb) => [
 
 const usage = () => [
   'usage: chartroom <command> [flags]',
+  '       chartroom --version | --help',
   '',
   'Configured by CHARTROOM_URL and CHARTROOM_TOKEN; --url and --token override them, except on issue link add, where --url is the Link target.',
   'Any *-file flag reads stdin when given -, and so does research put given - as the file, with --slug.',
@@ -348,6 +349,14 @@ const dotEnvIn = (cwd: string) => {
 
 const execute = async (context: CliContext) => {
   if (context.argv[0] === 'init') return initInstance(context);
+  if (context.argv[0] === '--version' || context.argv[0] === '-v') {
+    context.stdout.write(`${context.version ?? ownVersion()}\n`);
+    return 0;
+  }
+  if (context.argv[0] === '--help' || context.argv[0] === '-h') {
+    context.stdout.write(usage());
+    return 0;
+  }
   const verb = findVerb(context.argv);
   const { values: flags, positionals } = parseVerbArgs(verb, context.argv);
   const values = pathValuesOf(verb, positionals, flags);

@@ -104,12 +104,14 @@ Repo setup goes through `/setup-matt-pocock-skills`: at "Issue tracker" pick Oth
 | `--body-file -` | Any `*-file` flag reads stdin when given `-`; so does `research put` given `-` as the file, with `--slug`. |
 | `--limit`, `--cursor` | Page through a list verb; output is `{ items, nextCursor }`. |
 | `--all` | Follow every cursor and print a plain array. |
+| `--version`, `-v` | Print the CLI's version and exit; reads no `.env` and calls no Instance. |
+| `--help`, `-h` | Print the usage list on stdout and exit. |
 
 ## Output and exit codes
 
 | Exit | Meaning |
 | --- | --- |
-| `0` | Success. JSON on stdout; `effort artifacts` and `adapter` print markdown, `init` prints its checklist as plain text. |
+| `0` | Success. JSON on stdout; `--version` and `--help` print plain text; `effort artifacts` and `adapter` print markdown, `init` prints its checklist as plain text. |
 | `1` | The API's error envelope on stderr, `unreachable` when the Instance cannot be reached, or a one-line error when `./.env` exists but cannot be read. |
 | `2` | Usage error; the usage list follows on stderr. |
 
