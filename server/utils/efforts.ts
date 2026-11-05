@@ -1,8 +1,11 @@
-import { and, asc, desc, eq, inArray, ne } from 'drizzle-orm';
-import { issues, links, researchNotes } from '../db/schema';
+import { and, asc, count, desc, eq, inArray, max, ne, notInArray, sql } from 'drizzle-orm';
+import type { SQLiteColumn, SQLiteTable } from 'drizzle-orm/sqlite-core';
+import { changes, comments, issueBlockers, issues, links, researchNotes } from '../db/schema';
+import type { Caller } from './caller';
 import type { IssueCursor, IssueRecord, IssueState, IssueStatus, SortOrder } from './issues';
 import type { LinkRecord, LinkRole, LinkType } from './links';
 import type { ResearchNoteRecord } from './research-notes';
+import type { ClosedEffort, EffortContents, EffortDeletion } from '#shared/api';
 
 export type EffortSort = 'updatedAt' | 'name';
 
@@ -105,4 +108,73 @@ export const statusRollupOf = (effort: number): StatusRollup => {
     triage: triageBuckets(children.filter(child => child.kind === 'ticket')),
     open: openInSubtree(effort),
   };
+};
+
+const countIn = (table: SQLiteTable, column: SQLiteColumn, subtree: number[]) =>
+  useStore().select({ total: count() }).from(table).where(inArray(column, subtree)).get()!.total;
+
+const contentsOf = (subtree: number[]): EffortContents => ({
+  issues: subtree.length - 1,
+  comments: countIn(comments, comments.issue, subtree),
+  links: countIn(links, links.issue, subtree),
+  changes: countIn(changes, changes.issue, subtree),
+  researchNotes: countIn(researchNotes, researchNotes.issue, subtree),
+});
+
+const lastActivityOf = (subtree: number[]) => {
+  const store = useStore();
+  const latest = [
+    store.select({ at: max(issues.updatedAt) }).from(issues).where(inArray(issues.number, subtree)).get()?.at,
+    store.select({ at: max(comments.updatedAt) }).from(comments).where(inArray(comments.issue, subtree)).get()?.at,
+    store.select({ at: max(changes.at) }).from(changes).where(inArray(changes.issue, subtree)).get()?.at,
+    store.select({ at: max(researchNotes.updatedAt) }).from(researchNotes).where(inArray(researchNotes.issue, subtree)).get()?.at,
+  ];
+  return latest.filter(at => typeof at === 'string').sort().at(-1)!;
+};
+
+export const listClosedEfforts = (): ClosedEffort[] =>
+  useStore().select().from(issues).where(and(eq(issues.kind, 'effort'), eq(issues.state, 'closed'))).all()
+    .map((effort) => {
+      const subtree = subtreeNumbers(effort.number);
+      return { number: effort.number, name: effort.name, title: effort.title, closedAt: effort.closedAt, lastActivityAt: lastActivityOf(subtree), counts: contentsOf(subtree) };
+    })
+    .sort((first, second) => first.lastActivityAt.localeCompare(second.lastActivityAt) || first.number - second.number);
+
+const snapshotBeforeDeleting = (effort: IssueRecord) => {
+  try {
+    return takeSnapshot(useStore(), useDeploymentConfig().dataDir, preDeleteStem(effort.name ?? String(effort.number)));
+  }
+  catch (error) {
+    throw internalError(`Snapshot failed: ${error instanceof Error ? error.message : String(error)}`);
+  }
+};
+
+const vacuumStore = () => {
+  try {
+    useStore().run(sql`VACUUM`);
+    useStore().run(sql`PRAGMA wal_checkpoint(TRUNCATE)`);
+    return true;
+  }
+  catch {
+    return false;
+  }
+};
+
+export const deleteEffort = (slugOrNumber: string, caller: Caller): EffortDeletion => {
+  const effort = resolveEffort(slugOrNumber);
+  if (effort.state !== 'closed') throw conflict(`effort #${effort.number} is open; close the Effort first`, 'state');
+  const subtree = subtreeNumbers(effort.number);
+  const deleted = contentsOf(subtree);
+  const snapshot = snapshotBeforeDeleting(effort);
+  const stamp = stampFor(caller);
+  useStore().transaction((tx) => {
+    const blockedOutside = tx.select({ issue: issueBlockers.issue, blocker: issues.number, title: issues.title }).from(issueBlockers)
+      .innerJoin(issues, eq(issues.number, issueBlockers.blocker))
+      .where(and(inArray(issueBlockers.blocker, subtree), notInArray(issueBlockers.issue, subtree))).all();
+    tx.delete(issues).where(inArray(issues.number, subtree)).run();
+    for (const { issue, blocker, title } of blockedOutside) {
+      recordWrites(tx, { ...stamp, issue }, [{ field: 'blocker', before: `#${blocker} ${title}`, after: null }]);
+    }
+  });
+  return { snapshot, deleted, vacuumed: vacuumStore() };
 };

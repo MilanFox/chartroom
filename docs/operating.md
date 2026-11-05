@@ -54,6 +54,12 @@ Plain lines on stdout and stderr, nothing written to the volume. `docker compose
 
 The Instance never deletes a Snapshot by itself. An elevated Admin deletes them on the admin page, where each row shows its size and the section header the total; a pre-migrate Snapshot deleted there can no longer roll its upgrade back. From the shell, `rm` files in `/data/backups/` works too.
 
+Besides "Take Snapshot now", the Instance takes a Snapshot by itself before an upgrade (below) and before deleting a closed Effort.
+
+### Deleting closed Efforts
+
+An elevated Admin can permanently delete a closed Effort on the admin page, under Closed Efforts: the Effort goes with its maps, specs, tickets, comments, Links, Changes and Research notes. The Instance first takes a Snapshot named `pre-delete-<slug>-<timestamp>.sqlite`; if that fails, nothing is deleted. After the deletion it compacts the store (`VACUUM`), so the file actually shrinks. To get a deleted Effort back, restore its `pre-delete-…` Snapshot: the same file swap as for any other Snapshot (see Rollback), losing whatever was written after it.
+
 ## Upgrade
 
 1. Change the image tag in `compose.yaml` to the new version. Pin a version, never `latest`.

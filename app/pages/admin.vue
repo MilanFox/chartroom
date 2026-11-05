@@ -25,6 +25,8 @@
 
       <AdminLabels />
 
+      <AdminEfforts />
+
       <AdminSnapshots />
 
       <AdminAbout />

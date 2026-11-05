@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { snapshotsDir, deleteSnapshot, findSnapshot, listSnapshots, manualStem, preMigrateStem, snapshotToRestore } from './snapshots';
+import { snapshotsDir, deleteSnapshot, findSnapshot, listSnapshots, manualStem, preDeleteStem, preMigrateStem, snapshotToRestore } from './snapshots';
 
 let dataDir: string;
 
@@ -37,7 +37,15 @@ describe('Snapshot names', () => {
   it('round-trips the stems it generates', () => {
     addFile(`${manualStem()}.sqlite`);
     addFile(`${preMigrateStem('0007', '1.2.3-rc.1')}.sqlite`);
-    expect(listSnapshots(dataDir).map(snapshot => snapshot.trigger).sort()).toEqual(['manual', 'pre-migrate']);
+    addFile(`${preDeleteStem('local-transcription')}.sqlite`);
+    expect(listSnapshots(dataDir).map(snapshot => snapshot.trigger).sort()).toEqual(['manual', 'pre-delete', 'pre-migrate']);
+  });
+
+  it('parses a pre-delete Snapshot whose Effort slug looks like a date', () => {
+    addFile('pre-delete-2026-03-04-2026-03-05T05-06-07-089Z.sqlite');
+    expect(listSnapshots(dataDir)).toEqual([
+      { name: 'pre-delete-2026-03-04-2026-03-05T05-06-07-089Z', trigger: 'pre-delete', takenAt: '2026-03-05T05:06:07.089Z', size: 1 },
+    ]);
   });
 
   it('finds a Snapshot by name', () => {
@@ -55,6 +63,7 @@ describe('snapshotToRestore', () => {
     addFile(`${oldest}.sqlite`);
     addFile(`${newest}.sqlite`);
     addFile('manual-2026-03-01T00-00-00-000Z.sqlite');
+    addFile('pre-delete-tracker-2026-03-02T00-00-00-000Z.sqlite');
   });
 
   it('prefers the pre-migrate Snapshot taken from exactly the image schema', () => {

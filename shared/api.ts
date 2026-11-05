@@ -248,9 +248,32 @@ export interface LabelGroupInput {
 
 export interface Snapshot {
   name: string
-  trigger: 'pre-migrate' | 'manual'
+  trigger: 'pre-migrate' | 'pre-delete' | 'manual'
   takenAt: string
   size: number
+}
+
+export interface EffortContents {
+  issues: number
+  comments: number
+  links: number
+  changes: number
+  researchNotes: number
+}
+
+export interface ClosedEffort {
+  number: number
+  name: string | null
+  title: string
+  closedAt: string | null
+  lastActivityAt: string
+  counts: EffortContents
+}
+
+export interface EffortDeletion {
+  snapshot: Snapshot
+  deleted: EffortContents
+  vacuumed: boolean
 }
 
 export interface IssueChange {
