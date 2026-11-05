@@ -18,7 +18,7 @@ describe('AdminHolders', () => {
 
   it('shows a new holder\'s secret once, gone after Done', async () => {
     const roster: unknown[] = [];
-    endpoint('/ui/holders', { method: 'GET', handler: () => roster });
+    endpoint('/ui/holders', { method: 'GET', handler: () => ({ items: roster, nextCursor: null }) });
     endpoint('/ui/holders', {
       method: 'POST', handler: () => {
         roster.push(alice);
@@ -56,7 +56,7 @@ describe('AdminHolders', () => {
   });
 
   it('follows the display name again after a holder is created from an edited slug', async () => {
-    endpoint('/ui/holders', { method: 'GET', handler: () => [alice] });
+    endpoint('/ui/holders', { method: 'GET', handler: () => ({ items: [alice], nextCursor: null }) });
     endpoint('/ui/holders', { method: 'POST', handler: () => ({ ...alice, secret: 'chr_alice_onetime' }) });
     useHoldersStore().holders = [];
     const wrapper = await mountSuspended(AdminHolders);
@@ -72,7 +72,7 @@ describe('AdminHolders', () => {
   });
 
   it('revokes only after an inline confirmation, striking the row through and keeping it listed', async () => {
-    endpoint('/ui/holders', { method: 'GET', handler: () => [{ ...alice, revoked: true, revokedAt: '2026-11-04T10:00:00.000Z' }] });
+    endpoint('/ui/holders', { method: 'GET', handler: () => ({ items: [{ ...alice, revoked: true, revokedAt: '2026-11-04T10:00:00.000Z' }], nextCursor: null }) });
     endpoint('/ui/holders/alice/revoke', { method: 'POST', handler: () => ({ ...alice, revoked: true }) });
     useHoldersStore().holders = [alice];
     const wrapper = await mountSuspended(AdminHolders);

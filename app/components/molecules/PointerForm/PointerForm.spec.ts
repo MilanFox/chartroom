@@ -47,8 +47,8 @@ describe('PointerForm', () => {
         return {};
       },
     });
-    endpoint('/ui/credential-pointers', { method: 'GET', handler: () => [] });
-    endpoint('/ui/environments', { method: 'GET', handler: () => [dev] });
+    endpoint('/ui/credential-pointers', { method: 'GET', handler: () => ({ items: [], nextCursor: null }) });
+    endpoint('/ui/environments', { method: 'GET', handler: () => ({ items: [dev], nextCursor: null }) });
     useEnvironmentsStore().environments = [dev];
     const wrapper = await mountSuspended(PointerForm);
 
@@ -69,8 +69,8 @@ describe('PointerForm', () => {
         return {};
       },
     });
-    endpoint('/ui/credential-pointers', { method: 'GET', handler: () => [] });
-    endpoint('/ui/environments', { method: 'GET', handler: () => [] });
+    endpoint('/ui/credential-pointers', { method: 'GET', handler: () => ({ items: [], nextCursor: null }) });
+    endpoint('/ui/environments', { method: 'GET', handler: () => ({ items: [], nextCursor: null }) });
     const session = useSessionStore();
     session.me = lapsed;
     const wrapper = await mountSuspended(PointerForm);

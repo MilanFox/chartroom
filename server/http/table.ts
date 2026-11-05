@@ -54,7 +54,7 @@ export const routeTable: TableRoute[] = [
     openapi: {
       summary: 'The Token holder roster',
       tags: ['holders'],
-      responses: { 200: { description: 'Holders', schema: { type: 'array', items: { type: 'object', properties: { slug: { type: 'string' }, displayName: { type: ['string', 'null'] }, revoked: { type: 'boolean' } }, required: ['slug', 'displayName', 'revoked'] } } }, 403: { description: 'A non-elevated Viewer' } },
+      responses: { 200: { description: 'Holders; nextCursor is always null', schema: pageSchema({ type: 'object', properties: { slug: { type: 'string' }, displayName: { type: ['string', 'null'] }, revoked: { type: 'boolean' } }, required: ['slug', 'displayName', 'revoked'] }) }, 403: { description: 'A non-elevated Viewer' } },
     },
   },
   {
@@ -444,7 +444,7 @@ export const routeTable: TableRoute[] = [
     openapi: {
       summary: 'The Label groups in group order, seeded groups first',
       tags: ['labels'],
-      responses: { 200: { description: 'Label groups', schema: { type: 'array', items: LABEL_GROUP_SCHEMA } } },
+      responses: { 200: { description: 'Label groups; nextCursor is always null', schema: pageSchema(LABEL_GROUP_SCHEMA) } },
     },
   },
   {
@@ -475,7 +475,7 @@ export const routeTable: TableRoute[] = [
     openapi: {
       summary: 'The Environments with their Credential pointers',
       tags: ['instance'],
-      responses: { 200: { description: 'Environments', schema: { type: 'array', items: ENVIRONMENT_SCHEMA } } },
+      responses: { 200: { description: 'Environments; nextCursor is always null', schema: pageSchema(ENVIRONMENT_SCHEMA) } },
     },
   },
   {
@@ -485,7 +485,7 @@ export const routeTable: TableRoute[] = [
     openapi: {
       summary: 'Every Credential pointer, bound or not',
       tags: ['instance'],
-      responses: { 200: { description: 'Credential pointers', schema: { type: 'array', items: POINTER_SCHEMA } }, 403: { description: 'A non-elevated Viewer' } },
+      responses: { 200: { description: 'Credential pointers; nextCursor is always null', schema: pageSchema(POINTER_SCHEMA) }, 403: { description: 'A non-elevated Viewer' } },
     },
   },
 ];

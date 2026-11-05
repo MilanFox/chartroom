@@ -32,7 +32,7 @@ describe('admin-defined Label groups', () => {
     const { labels, version, updatedAt } = (await alice.json('GET', `/issues/${number}`)).body;
     return { labels, version, updatedAt, changes: (await alice.json('GET', `/issues/${number}/changes`)).body.items };
   };
-  const groupsListed = async () => (await alice.json('GET', '/labels')).body as Group[];
+  const groupsListed = async () => (await alice.json('GET', '/labels')).body.items as Group[];
 
   it('an elevated session creates a priority group with ordered members; GET /labels lists it after the seeded groups', async () => {
     const admin = await elevatedViewer(server);

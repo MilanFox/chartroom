@@ -23,7 +23,7 @@ const IssueFieldsOfStore = defineComponent(() => {
 
 const mountFields = async (overrides: Partial<IssueDocument> = {}) => {
   let current = issueFixture(overrides);
-  endpoint('/ui/labels', () => labelGroups);
+  endpoint('/ui/labels', () => ({ items: labelGroups, nextCursor: null }));
   const containers = [{ number: 1, kind: 'effort', title: 'Tracker' }, { number: 2, kind: 'map', title: 'Agent Tracker v1' }];
   endpoint('/ui/issues', (event) => {
     const kind = searchOf(event).get('kind');

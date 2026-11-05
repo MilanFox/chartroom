@@ -165,6 +165,16 @@ describe('the CLI', () => {
     expect(await chartroom(['frobnicate', '--help'])).toMatchObject({ code: 2, stdout: '' });
   });
 
+  it('--help describes every option of every command', async () => {
+    for (const verb of VERBS) {
+      const lines = (await chartroom([...verb.words, '--help'])).stdout.split('\n');
+      const optionIndexes = lines.flatMap((line, index) => line.startsWith('  --') ? [index] : []);
+
+      expect(optionIndexes.length, verb.words.join(' ')).toBeGreaterThan(0);
+      for (const index of optionIndexes) expect(lines[index + 1], `${verb.words.join(' ')} ${lines[index]}`).toMatch(/^ {6}(?!undefined)\S/);
+    }
+  });
+
   it('a wrong flag, an unknown command or a missing argument is usage on stderr with exit 2', async () => {
     for (const argv of [['me', '--bogus'], ['frobnicate'], [], ['issue', 'view'], ['issue', 'view', '1', '2'], ['issue', 'block', '1'], ['research', 'put', '1']]) {
       const result = await chartroom(argv);

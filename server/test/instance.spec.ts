@@ -65,7 +65,7 @@ describe('instance settings', () => {
       effortName: { singular: 'Initiative', plural: 'Initiatives' },
       triageLabels: { ...DEFAULT_TRIAGE_LABELS, 'needs-info': 'Waiting on reporter' },
     });
-    const triageState = (await alice.json('GET', '/labels')).body.find((group: { id: string }) => group.id === 'triage-state');
+    const triageState = (await alice.json('GET', '/labels')).body.items.find((group: { id: string }) => group.id === 'triage-state');
     expect(triageState.labels).toContainEqual({ id: 'needs-info', displayLabel: 'Waiting on reporter' });
 
     await admin.json('PATCH', '/instance', { body: { effortName: { singular: 'Story', plural: 'Stories' } } });
@@ -130,21 +130,24 @@ describe('environments and credential pointers', () => {
     const listed = await alice.json('GET', '/environments');
     expect(listed).toEqual({
       status: 200,
-      body: [{
-        id: staging.body.id,
-        name: 'Staging EU',
-        url: 'https://staging.example.com',
-        notes: 'Reset nightly',
-        credentialPointers: [{ id: pointer.body.id, label: 'QA admin', accountName: 'qa-lead', whereToFind: 'Team vault, entry "Staging QA"', environment: staging.body.id }],
-      }],
+      body: {
+        items: [{
+          id: staging.body.id,
+          name: 'Staging EU',
+          url: 'https://staging.example.com',
+          notes: 'Reset nightly',
+          credentialPointers: [{ id: pointer.body.id, label: 'QA admin', accountName: 'qa-lead', whereToFind: 'Team vault, entry "Staging QA"', environment: staging.body.id }],
+        }],
+        nextCursor: null,
+      },
     });
 
     expect(await admin.json('DELETE', `/environments/${staging.body.id}`)).toMatchObject({ status: 204 });
-    expect((await alice.json('GET', '/environments')).body).toEqual([]);
-    expect((await alice.json('GET', '/credential-pointers')).body).toEqual([expect.objectContaining({ id: pointer.body.id, environment: null })]);
+    expect((await alice.json('GET', '/environments')).body).toEqual({ items: [], nextCursor: null });
+    expect((await alice.json('GET', '/credential-pointers')).body).toEqual({ items: [expect.objectContaining({ id: pointer.body.id, environment: null })], nextCursor: null });
 
     expect(await admin.json('DELETE', `/credential-pointers/${pointer.body.id}`)).toMatchObject({ status: 204 });
-    expect((await alice.json('GET', '/credential-pointers')).body).toEqual([]);
+    expect((await alice.json('GET', '/credential-pointers')).body).toEqual({ items: [], nextCursor: null });
   });
 
   it('a pointer rebinds to another Environment and unbinds with null; unknown ids are not-found', async () => {
@@ -179,16 +182,16 @@ describe('environments and credential pointers', () => {
     const holder = uiClient(server);
     await holder.login(await holderSecret(server, 'carol'));
 
-    const viewerEnvironments = (await viewer.json('GET', '/environments')).body;
+    const viewerEnvironments = (await viewer.json('GET', '/environments')).body.items;
     expect(viewerEnvironments.find((listed: { id: number }) => listed.id === environment.id)).toEqual({ id: environment.id, name: 'Review', url: 'https://review.example.com', notes: null });
     expect(await viewer.json('GET', '/credential-pointers')).toMatchObject({ status: 403, body: { error: { code: 'forbidden' } } });
 
     for (const reader of [alice, holder, admin]) {
-      const listed = (await reader.json('GET', '/environments')).body.find((candidate: { id: number }) => candidate.id === environment.id);
+      const listed = (await reader.json('GET', '/environments')).body.items.find((candidate: { id: number }) => candidate.id === environment.id);
       expect(listed.credentialPointers).toContainEqual(expect.objectContaining({ id: bound.id, accountName: 'reviewer' }));
       const pointers = await reader.json('GET', '/credential-pointers');
       expect(pointers.status).toBe(200);
-      expect(pointers.body).toContainEqual(expect.objectContaining({ id: bound.id, environment: environment.id }));
+      expect(pointers.body.items).toContainEqual(expect.objectContaining({ id: bound.id, environment: environment.id }));
     }
   });
 
@@ -243,7 +246,7 @@ describe('secret-looking input', () => {
       expect(await admin.json('POST', '/environments', { body: { name: 'Prod', url: 'https://example.com', notes: secret } }), secret).toMatchObject(invalidOn('notes'));
       expect(await admin.json('PATCH', `/environments/${environment.id}`, { body: { notes: secret } }), secret).toMatchObject(invalidOn('notes'));
     }
-    expect((await admin.json('GET', '/credential-pointers')).body).toHaveLength(1);
+    expect((await admin.json('GET', '/credential-pointers')).body.items).toHaveLength(1);
   });
 
   it('lets an ordinary account name and a long sentence through', async () => {

@@ -1,4 +1,4 @@
-export const labelGroupList = () => listLabelGroups();
+export const labelGroupList = () => ({ items: listLabelGroups(), nextCursor: null });
 
 const LABEL_GROUP_PROPERTIES = {
   id: { type: 'string' },

@@ -4,18 +4,11 @@
     class="dependency-graph"
     v-bind="bare ? {} : { 'heading': strings.issue.graph.heading, 'expanded': disclosure.expanded.value, 'onUpdate:expanded': disclosure.toggle }"
   >
-    <template v-if="rows?.length" #meta>
-      <span class="dependency-graph__progress">{{ progressText }}</span>
-
-      <span class="dependency-graph__bar" aria-hidden="true">
-        <span
-          v-for="status in BAR_ORDER"
-          :key="status"
-          :class="`dependency-graph__segment dependency-graph__segment--${status}`"
-          :style="{ width: `${(progress[status] / progress.total) * 100}%` }"
-        />
-      </span>
+    <template v-if="rows?.length && !bare" #meta>
+      <DependencyGraphProgress :text="progressText" :progress="progress" />
     </template>
+
+    <DependencyGraphProgress v-if="rows?.length && bare" class="dependency-graph__header" :text="progressText" :progress="progress" />
 
     <p v-if="failed" role="alert" class="dependency-graph__note">{{ strings.issue.graph.loadFailed }}</p>
 
@@ -96,13 +89,12 @@
 </template>
 
 <script setup lang="ts">
-import type { IssueRow, IssueStatus } from '~/types/api';
+import type { IssueRow } from '~/types/api';
 import DisclosureSection from '~/components/molecules/DisclosureSection/DisclosureSection.vue';
 import type { DependencyGraphProps } from './DependencyGraph.types';
+import DependencyGraphProgress from './DependencyGraphProgress.vue';
 
 const props = defineProps<DependencyGraphProps>();
-
-const BAR_ORDER: IssueStatus[] = ['closed', 'claimed', 'blocked', 'open'];
 
 const { strings, format } = useStrings();
 const clipId = useId();
@@ -133,31 +125,8 @@ const glyphOf = (row: IssueRow) => {
 
 <style lang="scss" scoped>
 .dependency-graph {
-  &__progress {
-    margin-left: auto;
-    color: var(--color-muted);
-    font-size: $font-size-meta;
-    font-weight: 400;
-  }
-
-  &__bar {
-    display: flex;
-    flex: none;
-    width: 120px;
-    height: 6px;
-    overflow: hidden;
-    border-radius: $radius-pill;
-    background: var(--color-surface-alt);
-  }
-
-  @each $status in open, claimed, blocked, closed {
-    &__segment--#{$status} {
-      background: var(--color-state-#{$status});
-    }
-  }
-
-  &__segment--closed {
-    opacity: 0.5;
+  &__header {
+    margin-bottom: $space-2;
   }
 
   &__toolbar {

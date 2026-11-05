@@ -197,12 +197,12 @@ describe('labels', () => {
     expect(groups.status).toBe(200);
     const member = (id: string) => ({ id, displayLabel: id });
     const triageLabels = { 'needs-triage': 'Needs triage', 'needs-info': 'Needs info', 'ready-for-agent': 'Ready for agent', 'ready-for-human': 'Ready for human', 'wontfix': 'Won\'t fix' };
-    expect(groups.body.slice(0, 3)).toEqual([
+    expect(groups.body.items.slice(0, 3)).toEqual([
       { id: 'triage-category', displayName: 'triage-category', seeded: true, exclusive: true, labels: ['bug', 'enhancement'].map(member) },
       { id: 'triage-state', displayName: 'triage-state', seeded: true, exclusive: true, labels: Object.entries(triageLabels).map(([id, displayLabel]) => ({ id, displayLabel })) },
       { id: 'wayfinder-type', displayName: 'wayfinder-type', seeded: true, exclusive: true, labels: ['wayfinder:research', 'wayfinder:prototype', 'wayfinder:grilling', 'wayfinder:task'].map(member) },
     ]);
-    expect(groups.body).toHaveLength(3);
+    expect(groups.body.items).toHaveLength(3);
   });
 });
 
@@ -264,6 +264,6 @@ describe('timestamps and the Viewer wall', () => {
     expect(await viewer.json('DELETE', `/issues/${b.number}/labels/bug`)).toMatchObject(forbidden);
     const groups = await viewer.json('GET', '/labels');
     expect(groups.status).toBe(200);
-    expect(groups.body.map((group: { id: string }) => group.id)).toEqual(['triage-category', 'triage-state', 'wayfinder-type']);
+    expect(groups.body.items.map((group: { id: string }) => group.id)).toEqual(['triage-category', 'triage-state', 'wayfinder-type']);
   });
 });

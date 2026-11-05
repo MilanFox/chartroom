@@ -78,7 +78,7 @@ describe('AdminLabels', () => {
         return {};
       },
     });
-    endpoint('/ui/labels', { method: 'GET', handler: () => [seeded, { ...priority, labels: [priority.labels[1]] }] });
+    endpoint('/ui/labels', { method: 'GET', handler: () => ({ items: [seeded, { ...priority, labels: [priority.labels[1]] }], nextCursor: null }) });
     endpoint('/ui/labels/free-form', { method: 'GET', handler: () => [{ label: 'high', count: 1 }] });
     const wrapper = await mountSuspended(AdminLabels);
 
@@ -112,7 +112,7 @@ describe('AdminLabels', () => {
       },
     });
     endpoint('/ui/label-groups/priority/labels/high', { method: 'PATCH', handler: apiFailure(400, { code: 'invalid', message: 'displayLabel must be a non-empty string', field: 'displayLabel' }) });
-    endpoint('/ui/labels', { method: 'GET', handler: () => [seeded, { ...priority, displayName: groupName }] });
+    endpoint('/ui/labels', { method: 'GET', handler: () => ({ items: [seeded, { ...priority, displayName: groupName }], nextCursor: null }) });
     endpoint('/ui/labels/free-form', { method: 'GET', handler: () => [] });
     const wrapper = await mountSuspended(AdminLabels);
 
@@ -132,7 +132,7 @@ describe('AdminLabels', () => {
     const effortSize = { id: 'effort-size', displayName: 'Effort size', seeded: false, exclusive: true as const, labels: [{ id: 'small', displayLabel: 'Small' }] };
     useLabelGroupsStore().labelGroups = [seeded, priority, effortSize];
     endpoint('/ui/label-groups/effort-size/labels', { method: 'POST', handler: () => ({}) });
-    endpoint('/ui/labels', { method: 'GET', handler: () => [seeded, { ...priority, labels: [{ id: 'high', displayLabel: 'High' }, { id: 'low', displayLabel: 'Lowest' }] }, { ...effortSize, labels: [...effortSize.labels, { id: 'large', displayLabel: 'Large' }] }] });
+    endpoint('/ui/labels', { method: 'GET', handler: () => ({ items: [seeded, { ...priority, labels: [{ id: 'high', displayLabel: 'High' }, { id: 'low', displayLabel: 'Lowest' }] }, { ...effortSize, labels: [...effortSize.labels, { id: 'large', displayLabel: 'Large' }] }], nextCursor: null }) });
     endpoint('/ui/labels/free-form', { method: 'GET', handler: () => [] });
     const wrapper = await mountSuspended(AdminLabels);
 
