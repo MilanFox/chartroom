@@ -57,6 +57,8 @@ describe('MapCard view toggle', () => {
     await viewButton('Graph').trigger('click');
     await vi.waitFor(() => expect(wrapper.findAll('.dependency-graph__canvas a')).toHaveLength(CHILDREN.length));
     expect(wrapper.find('.dependency-graph__canvas').isVisible()).toBe(true);
+    expect(wrapper.find('.dependency-graph').text()).toContain('0 of 2 closed');
+    expect(wrapper.find('.dependency-graph-progress__bar').exists()).toBe(true);
     expect(wrapper.find('.dependency-graph button[aria-expanded]').exists()).toBe(false);
     expect(viewButton('Graph').attributes('aria-pressed')).toBe('true');
     expect(viewButton('List').attributes('aria-pressed')).toBe('false');

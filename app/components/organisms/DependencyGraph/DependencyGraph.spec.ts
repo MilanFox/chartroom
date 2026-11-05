@@ -64,6 +64,17 @@ describe('DependencyGraph', () => {
     expect(wrapper.find('a[aria-label^="#33 HTTP API shape"]').attributes('href')).toBe('/issues/33');
   });
 
+  it('keeps the progress header and bar without a disclosure or heading when bare', async () => {
+    endpoint('/ui/issues', { method: 'GET', handler: () => ({ items: CHILDREN, nextCursor: null }) });
+    useIssuesStore().children = {};
+    const wrapper = await mountSuspended(DependencyGraph, { props: { issue: issueFixture({ number: 30, parent: 1, kind: 'map' }), bare: true } });
+
+    expect(wrapper.text()).toContain('1 of 4 closed · frontier 1 · claimed 1 · blocked 1');
+    expect(wrapper.findAll('.dependency-graph-progress__segment')).toHaveLength(4);
+    expect(wrapper.find('button[aria-expanded]').exists()).toBe(false);
+    expect(wrapper.find('h2').exists()).toBe(false);
+  });
+
   it('marks the Frontier, names the holder of a claim and shows type glyphs on a map', async () => {
     const wrapper = await mountGraph({ kind: 'map' });
 
