@@ -6,54 +6,56 @@
       <p role="status" class="admin-snapshots__status" :class="{ 'admin-snapshots__status--failed': takeFailed }">{{ takeStatus }}</p>
     </div>
 
-    <div v-if="admin.snapshots?.length" class="admin-snapshots__scroll" role="region" tabindex="0" :aria-labelledby="`${baseId}-caption`">
-      <table class="admin-snapshots__table">
-        <caption :id="`${baseId}-caption`" class="admin-snapshots__caption">{{ strings.admin.snapshots.caption }}</caption>
+    <ListDisclosure v-if="admin.snapshots?.length" v-model:expanded="expanded" :list="listLabel">
+      <div class="admin-snapshots__scroll" role="region" tabindex="0" :aria-labelledby="`${baseId}-caption`">
+        <table class="admin-snapshots__table">
+          <caption :id="`${baseId}-caption`" class="admin-snapshots__caption">{{ strings.admin.snapshots.caption }}</caption>
 
-        <thead>
-          <tr>
-            <th scope="col">{{ strings.admin.snapshots.trigger }}</th>
-
-            <th scope="col">{{ strings.admin.snapshots.time }}</th>
-
-            <th scope="col">{{ strings.admin.snapshots.size }}</th>
-
-            <th scope="col">{{ strings.admin.snapshots.actions }}</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          <template v-for="snapshot in admin.snapshots" :key="snapshot.name">
+          <thead>
             <tr>
-              <td>{{ strings.admin.snapshots.triggers[snapshot.trigger] }}</td>
+              <th scope="col">{{ strings.admin.snapshots.trigger }}</th>
 
-              <th scope="row" class="admin-snapshots__time">{{ formatTimestamp(snapshot.takenAt) }}</th>
+              <th scope="col">{{ strings.admin.snapshots.time }}</th>
 
-              <td>{{ formatFileSize(snapshot.size) }}</td>
+              <th scope="col">{{ strings.admin.snapshots.size }}</th>
 
-              <td class="admin-snapshots__actions">
-                <a :href="`/ui/snapshots/${encodeURIComponent(snapshot.name)}`" :download="`${snapshot.name}.sqlite`" class="admin-snapshots__download">{{ strings.admin.snapshots.download }}</a>
-
-                <AdminAction :id="`${baseId}-delete-${snapshot.name}`" :label="strings.admin.snapshots.delete" variant="danger" @run="confirm(snapshot.name)" />
-              </td>
+              <th scope="col">{{ strings.admin.snapshots.actions }}</th>
             </tr>
+          </thead>
 
-            <tr v-if="confirming === snapshot.name">
-              <td colspan="4">
-                <InlineConfirm
-                  :message="format(snapshot.trigger === 'pre-migrate' ? strings.admin.snapshots.confirmDeletePreMigrate : strings.admin.snapshots.confirmDelete, { name: snapshot.name })"
-                  :confirm-label="strings.admin.snapshots.delete"
-                  :keep-label="strings.admin.snapshots.keep"
-                  :error="deleteAction.error"
-                  @confirm="remove(snapshot.name)"
-                  @keep="keep(snapshot.name)"
-                />
-              </td>
-            </tr>
-          </template>
-        </tbody>
-      </table>
-    </div>
+          <tbody>
+            <template v-for="snapshot in admin.snapshots" :key="snapshot.name">
+              <tr>
+                <td>{{ strings.admin.snapshots.triggers[snapshot.trigger] }}</td>
+
+                <th scope="row" class="admin-snapshots__time">{{ formatTimestamp(snapshot.takenAt) }}</th>
+
+                <td>{{ formatFileSize(snapshot.size) }}</td>
+
+                <td class="admin-snapshots__actions">
+                  <a :href="`/ui/snapshots/${encodeURIComponent(snapshot.name)}`" :download="`${snapshot.name}.sqlite`" class="admin-snapshots__download">{{ strings.admin.snapshots.download }}</a>
+
+                  <AdminAction :id="`${baseId}-delete-${snapshot.name}`" :label="strings.admin.snapshots.delete" variant="danger" @run="confirm(snapshot.name)" />
+                </td>
+              </tr>
+
+              <tr v-if="confirming === snapshot.name">
+                <td colspan="4">
+                  <InlineConfirm
+                    :message="format(snapshot.trigger === 'pre-migrate' ? strings.admin.snapshots.confirmDeletePreMigrate : strings.admin.snapshots.confirmDelete, { name: snapshot.name })"
+                    :confirm-label="strings.admin.snapshots.delete"
+                    :keep-label="strings.admin.snapshots.keep"
+                    :error="deleteAction.error"
+                    @confirm="remove(snapshot.name)"
+                    @keep="keep(snapshot.name)"
+                  />
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </ListDisclosure>
 
     <p v-else-if="admin.snapshots" class="admin-snapshots__muted">{{ strings.admin.snapshots.empty }}</p>
 
@@ -69,6 +71,13 @@ const takeAction = reactive(useAction());
 const deleteAction = reactive(useAction());
 const takeStatus = ref('');
 const takeFailed = ref(false);
+const expanded = ref(false);
+
+const listLabel = computed(() => {
+  const count = admin.snapshots?.length ?? 0;
+  const { count: many, countOne } = strings.value.admin.snapshots;
+  return count === 1 ? countOne : format(many, { count });
+});
 
 const heading = computed(() => {
   const section = strings.value.shell.adminSections.snapshots;

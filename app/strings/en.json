@@ -536,6 +536,10 @@
     "heading": "Admin",
     "lockedHint": "Write controls unlock with the admin password",
     "sectionNav": "Admin sections",
+    "listDisclosure": {
+      "show": "Show {list}",
+      "hide": "Hide {list}"
+    },
     "prompt": {
       "label": "Admin password",
       "hint": "elevates this session for 1 hour",
@@ -691,6 +695,8 @@
       "intro": "Everything in a {effort} is process material. Deleting a closed one removes it for good with its maps, specs, tickets, comments, Links, Changes and Research notes. A Snapshot is taken first, so restoring that Snapshot brings it back; the store is then compacted.",
       "hidden": "Closed {efforts} need admin elevation.",
       "empty": "No closed {efforts}.",
+      "count": "{count} closed {efforts}",
+      "countOne": "1 closed {effort}",
       "caption": "Closed {efforts}, oldest last activity first",
       "effort": "{effort}",
       "closed": "Closed",
@@ -727,6 +733,8 @@
       "heading": "{heading} · {total}",
       "hidden": "Snapshots need admin elevation.",
       "empty": "No Snapshots yet.",
+      "count": "{count} Snapshots",
+      "countOne": "1 Snapshot",
       "caption": "Snapshots",
       "trigger": "Trigger",
       "triggers": {
