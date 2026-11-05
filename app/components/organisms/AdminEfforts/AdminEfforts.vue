@@ -2,66 +2,68 @@
   <AdminSection id="efforts" :heading="strings.shell.adminSections.efforts" :intro="strings.admin.efforts.intro">
     <p :id="`${baseId}-status`" role="status" tabindex="-1" class="admin-efforts__status">{{ deletedStatus }}</p>
 
-    <div v-if="admin.closedEfforts?.length" class="admin-efforts__scroll" role="region" tabindex="0" :aria-labelledby="`${baseId}-caption`">
-      <table class="admin-efforts__table">
-        <caption :id="`${baseId}-caption`" class="admin-efforts__caption">{{ strings.admin.efforts.caption }}</caption>
+    <ListDisclosure v-if="admin.closedEfforts?.length" v-model:expanded="expanded" :list="listLabel">
+      <div class="admin-efforts__scroll" role="region" tabindex="0" :aria-labelledby="`${baseId}-caption`">
+        <table class="admin-efforts__table">
+          <caption :id="`${baseId}-caption`" class="admin-efforts__caption">{{ strings.admin.efforts.caption }}</caption>
 
-        <thead>
-          <tr>
-            <th scope="col">{{ strings.admin.efforts.effort }}</th>
-
-            <th scope="col">{{ strings.admin.efforts.closed }}</th>
-
-            <th scope="col">{{ strings.admin.efforts.lastActivity }}</th>
-
-            <th scope="col">{{ strings.admin.efforts.contents }}</th>
-
-            <th scope="col">{{ strings.admin.efforts.actions }}</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          <template v-for="effort in admin.closedEfforts" :key="effort.number">
+          <thead>
             <tr>
-              <th scope="row" class="admin-efforts__effort">
-                <span class="admin-efforts__title">#{{ effort.number }} {{ effort.title }}</span>{{ ' ' }}
+              <th scope="col">{{ strings.admin.efforts.effort }}</th>
 
-                <span v-if="effort.name" class="admin-efforts__slug">{{ effort.name }}</span>
-              </th>
+              <th scope="col">{{ strings.admin.efforts.closed }}</th>
 
-              <td>{{ effort.closedAt ? formatDate(effort.closedAt) : '' }}</td>
+              <th scope="col">{{ strings.admin.efforts.lastActivity }}</th>
 
-              <td>{{ formatTimestamp(effort.lastActivityAt) }}</td>
+              <th scope="col">{{ strings.admin.efforts.contents }}</th>
 
-              <td class="admin-efforts__contents">{{ contentsOf(effort) }}</td>
-
-              <td>
-                <AdminAction
-                  :id="`${baseId}-delete-${effort.number}`"
-                  :label="strings.admin.efforts.delete"
-                  :aria-label="format(strings.admin.efforts.deleteNamed, { name: nameOf(effort) })"
-                  variant="danger"
-                  @run="confirm(String(effort.number))"
-                />
-              </td>
+              <th scope="col">{{ strings.admin.efforts.actions }}</th>
             </tr>
+          </thead>
 
-            <tr v-if="confirming === String(effort.number)">
-              <td colspan="5">
-                <InlineConfirm
-                  :message="format(strings.admin.efforts.confirmDelete, { name: nameOf(effort), ...countsOf(effort) })"
-                  :confirm-label="strings.admin.efforts.delete"
-                  :keep-label="strings.admin.efforts.keep"
-                  :error="deleteAction.error"
-                  @confirm="remove(effort)"
-                  @keep="keep(String(effort.number))"
-                />
-              </td>
-            </tr>
-          </template>
-        </tbody>
-      </table>
-    </div>
+          <tbody>
+            <template v-for="effort in admin.closedEfforts" :key="effort.number">
+              <tr>
+                <th scope="row" class="admin-efforts__effort">
+                  <span class="admin-efforts__title">#{{ effort.number }} {{ effort.title }}</span>{{ ' ' }}
+
+                  <span v-if="effort.name" class="admin-efforts__slug">{{ effort.name }}</span>
+                </th>
+
+                <td>{{ effort.closedAt ? formatDate(effort.closedAt) : '' }}</td>
+
+                <td>{{ formatTimestamp(effort.lastActivityAt) }}</td>
+
+                <td class="admin-efforts__contents">{{ contentsOf(effort) }}</td>
+
+                <td>
+                  <AdminAction
+                    :id="`${baseId}-delete-${effort.number}`"
+                    :label="strings.admin.efforts.delete"
+                    :aria-label="format(strings.admin.efforts.deleteNamed, { name: nameOf(effort) })"
+                    variant="danger"
+                    @run="confirm(String(effort.number))"
+                  />
+                </td>
+              </tr>
+
+              <tr v-if="confirming === String(effort.number)">
+                <td colspan="5">
+                  <InlineConfirm
+                    :message="format(strings.admin.efforts.confirmDelete, { name: nameOf(effort), ...countsOf(effort) })"
+                    :confirm-label="strings.admin.efforts.delete"
+                    :keep-label="strings.admin.efforts.keep"
+                    :error="deleteAction.error"
+                    @confirm="remove(effort)"
+                    @keep="keep(String(effort.number))"
+                  />
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </ListDisclosure>
 
     <p v-else-if="admin.closedEfforts" class="admin-efforts__muted">{{ strings.admin.efforts.empty }}</p>
 
@@ -77,6 +79,13 @@ const { strings, format } = useStrings();
 const baseId = useId();
 const deleteAction = reactive(useAction());
 const deletedStatus = ref('');
+const expanded = ref(false);
+
+const listLabel = computed(() => {
+  const count = admin.closedEfforts?.length ?? 0;
+  const { count: many, countOne } = strings.value.admin.efforts;
+  return count === 1 ? countOne : format(many, { count });
+});
 
 const { confirming, confirm, keep, focusById } = useInlineConfirm({ triggerPrefix: `${baseId}-delete-` });
 

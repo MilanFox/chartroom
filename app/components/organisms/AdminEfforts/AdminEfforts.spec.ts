@@ -26,6 +26,7 @@ const tiny = {
 };
 const snapshot = { name: 'pre-delete-local-transcription-2026-11-05T09-00-00-000Z', trigger: 'pre-delete' as const, takenAt: '2026-11-05T09:00:00.000Z', size: 4096 };
 const buttonsNamed = (wrapper: VueWrapper, name: string) => wrapper.findAll('button').filter(button => button.text() === name);
+const openList = (wrapper: VueWrapper) => wrapper.get('button[aria-expanded]').trigger('click');
 
 describe('AdminEfforts', () => {
   beforeEach(() => {
@@ -35,6 +36,7 @@ describe('AdminEfforts', () => {
   it('lists each closed Effort with its Slug and contents, and a Delete named after it', async () => {
     useAdminStore().closedEfforts = [transcription, tiny];
     const wrapper = await mountSuspended(AdminEfforts);
+    await openList(wrapper);
 
     expect(wrapper.get('caption').text()).toBe('Closed Efforts, oldest last activity first');
     expect(wrapper.findAll('thead th').map(header => header.text())).toEqual(['Effort', 'Closed', 'Last activity', 'Contents', 'Actions']);
@@ -48,6 +50,7 @@ describe('AdminEfforts', () => {
   it('names the Effort and its counts in the confirm, and Keep returns focus to that row\'s Delete', async () => {
     useAdminStore().closedEfforts = [transcription, tiny];
     const wrapper = await mountSuspended(AdminEfforts, { attachTo: document.body });
+    await openList(wrapper);
 
     const deleteButton = wrapper.findAll('tbody tr')[0]!.get('button');
     await deleteButton.trigger('click');
@@ -75,6 +78,7 @@ describe('AdminEfforts', () => {
     });
     useAdminStore().closedEfforts = [transcription];
     const wrapper = await mountSuspended(AdminEfforts);
+    await openList(wrapper);
 
     await buttonsNamed(wrapper, 'Delete')[0]!.trigger('click');
     await buttonsNamed(wrapper, 'Delete')[1]!.trigger('click');
@@ -88,6 +92,7 @@ describe('AdminEfforts', () => {
     endpoint('/ui/efforts/12', { method: 'DELETE', handler: apiFailure(500, { code: 'internal', message: 'Snapshot failed: disk full' }) });
     useAdminStore().closedEfforts = [transcription];
     const wrapper = await mountSuspended(AdminEfforts);
+    await openList(wrapper);
 
     await buttonsNamed(wrapper, 'Delete')[0]!.trigger('click');
     await buttonsNamed(wrapper, 'Delete')[1]!.trigger('click');
@@ -110,6 +115,7 @@ describe('AdminEfforts', () => {
     useSessionStore().me = viewerSession;
     useAdminStore().closedEfforts = [transcription];
     const wrapper = await mountSuspended(AdminEfforts);
+    await openList(wrapper);
 
     const deleteButton = buttonsNamed(wrapper, 'Delete')[0]!;
     expect(deleteButton.attributes('aria-disabled')).toBe('true');
@@ -117,5 +123,66 @@ describe('AdminEfforts', () => {
 
     expect(wrapper.find('input[type="password"]').exists()).toBe(true);
     expect(wrapper.text()).not.toContain('with 14 issues');
+  });
+
+  it('keeps the list collapsed behind a toggle named with the count', async () => {
+    useAdminStore().closedEfforts = [transcription, tiny];
+    const wrapper = await mountSuspended(AdminEfforts);
+
+    const toggle = wrapper.get('button[aria-expanded]');
+    const list = wrapper.get(`#${toggle.attributes('aria-controls')}`);
+    expect(toggle.text()).toBe('Show 2 closed Efforts');
+    expect(toggle.attributes('aria-expanded')).toBe('false');
+    expect(list.attributes('hidden')).toBeDefined();
+    expect(list.find('table').exists()).toBe(true);
+
+    await toggle.trigger('click');
+    expect(toggle.text()).toBe('Hide 2 closed Efforts');
+    expect(toggle.attributes('aria-expanded')).toBe('true');
+    expect(list.attributes('hidden')).toBeUndefined();
+
+    await toggle.trigger('click');
+    expect(toggle.attributes('aria-expanded')).toBe('false');
+    expect(list.attributes('hidden')).toBeDefined();
+  });
+
+  it('names a single closed Effort in the singular', async () => {
+    useAdminStore().closedEfforts = [tiny];
+    const wrapper = await mountSuspended(AdminEfforts);
+
+    expect(wrapper.get('button[aria-expanded]').text()).toBe('Show 1 closed Effort');
+  });
+
+  it('shows the empty message without a toggle', async () => {
+    useAdminStore().closedEfforts = [];
+    const wrapper = await mountSuspended(AdminEfforts);
+
+    expect(wrapper.text()).toContain('No closed Efforts.');
+    expect(wrapper.find('button[aria-expanded]').exists()).toBe(false);
+  });
+
+  it('stays open after a delete and moves focus to the status', async () => {
+    let listed = [transcription, tiny];
+    endpoint('/ui/admin/closed-efforts', { method: 'GET', handler: () => listed });
+    endpoint('/ui/snapshots', { method: 'GET', handler: () => [snapshot] });
+    endpoint('/ui/efforts', { method: 'GET', handler: () => ({ items: [], nextCursor: null }) });
+    endpoint('/ui/instance', () => ({ projectName: 'Chartroom', effortName: { singular: 'Effort', plural: 'Efforts' }, openIssues: 0 }));
+    endpoint('/ui/efforts/12', {
+      method: 'DELETE', handler: () => {
+        listed = [tiny];
+        return { snapshot, deleted: transcription.counts, vacuumed: true };
+      },
+    });
+    useAdminStore().closedEfforts = [transcription, tiny];
+    const wrapper = await mountSuspended(AdminEfforts, { attachTo: document.body });
+    await openList(wrapper);
+
+    await buttonsNamed(wrapper, 'Delete')[0]!.trigger('click');
+    await buttonsNamed(wrapper, 'Delete')[1]!.trigger('click');
+
+    await vi.waitFor(() => expect(wrapper.get('button[aria-expanded]').text()).toBe('Hide 1 closed Effort'));
+    expect(wrapper.get('button[aria-expanded]').attributes('aria-expanded')).toBe('true');
+    await vi.waitFor(() => expect(document.activeElement?.getAttribute('role')).toBe('status'));
+    wrapper.unmount();
   });
 });
