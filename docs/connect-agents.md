@@ -14,6 +14,8 @@ From an empty machine to agents filing and closing tickets in Chartroom, for a r
 npx -y chartroom-cli@latest init my-chartroom
 ```
 
+Run it outside your project repo, for example next to it. A `docker compose down` run in the repo root would otherwise take the tracker down with the project's own containers.
+
 The wizard asks for the admin and viewer passwords, the public URL and the port, then offers to start the container. If you don't let it start, run `cd my-chartroom && docker compose up -d`. The Instance listens on `http://localhost:3000` by default.
 
 For TLS, a reverse proxy and production use, see [Operating an Instance](operating.md).
@@ -65,9 +67,9 @@ The agent runs `chartroom adapter`, which prints this Instance's reference for b
 
 **c. After changing settings.** When you change the Effort's Display label, the triage Display labels or the Label groups on the admin page, refresh the files with `chartroom adapter --write docs/agents`, or re-run the setup skill.
 
-## 6. Let Claude Code run it without prompting (optional)
+## 6. Let Claude Code run it without prompting (recommended)
 
-Add this to the project settings, `.claude/settings.json` (committed, shared) or `.claude/settings.local.json` (just you), or to the user settings, `~/.claude/settings.json` (all your projects):
+Without an allow rule, Claude Code's auto mode can block a `chartroom` write, such as a comment on an issue, as an external system write when your intent wasn't explicit. Add this to the project settings, `.claude/settings.json` (committed, shared) or `.claude/settings.local.json` (just you), or to the user settings, `~/.claude/settings.json` (all your projects):
 
 ```json
 {
