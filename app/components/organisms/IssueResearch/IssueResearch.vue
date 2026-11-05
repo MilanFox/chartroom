@@ -4,9 +4,11 @@
       <li v-for="note in notes" :key="note.slug" class="issue-research__note">
         <NuxtLink :to="researchNotePath(note.issue, note.slug)" class="issue-research__title">{{ note.title }}</NuxtLink>
 
-        <span class="issue-research__meta">{{ format(strings.issue.fields.research.meta, { size: formatFileSize(note.size), date: formatDate(note.updatedAt) }) }}</span>
+        <span class="issue-research__details">
+          <span class="issue-research__meta">{{ format(strings.issue.fields.research.meta, { size: formatFileSize(note.size), date: formatDate(note.updatedAt) }) }}</span>
 
-        <LinkCopyButton :url="note.url" :title="note.title" />
+          <LinkCopyButton :url="note.url" :title="note.title" />
+        </span>
       </li>
     </ul>
   </FieldRow>
@@ -41,9 +43,8 @@ const notes = computed(() => research.lists[props.issue.number] ?? []);
 
   &__note {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: $space-1;
+    flex-direction: column;
+    align-items: flex-start;
 
     &:hover,
     &:focus-within {
@@ -54,6 +55,12 @@ const notes = computed(() => research.lists[props.issue.number] ?? []);
   &__title {
     color: var(--color-accent);
     overflow-wrap: anywhere;
+  }
+
+  &__details {
+    display: inline-flex;
+    align-items: center;
+    gap: $space-1;
   }
 
   &__meta {
