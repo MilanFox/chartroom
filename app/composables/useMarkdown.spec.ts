@@ -22,4 +22,10 @@ describe('useMarkdown', () => {
     expect(html).not.toMatch(/onerror|javascript:/);
     expect(html).toContain('<img src="x.png">');
   });
+
+  it('raises headings above a minimum level to it, leaving deeper ones alone', () => {
+    const { render } = useMarkdown();
+
+    expect(render('# Top\n\n## Section\n\n### Detail', 2)).toBe('<h2>Top</h2>\n<h2>Section</h2>\n<h3>Detail</h3>\n');
+  });
 });

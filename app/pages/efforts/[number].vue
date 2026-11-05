@@ -38,6 +38,8 @@
     <div class="dashboard__panels">
       <LinkRollupPanel :effort="effort" :rows="dashboard.rows" />
 
+      <ResearchRollupPanel :effort="effort" />
+
       <EffortTestInstructions :effort="effort" />
 
       <EffortEnvironments />

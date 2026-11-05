@@ -14,6 +14,7 @@ export interface CrumbLabels {
   map: string
   spec: string
   issue: string
+  issueTitled: string
 }
 
 interface IssueCrumbTarget {
@@ -23,7 +24,14 @@ interface IssueCrumbTarget {
   parent: { number: number, kind: Kind, title: string } | null
 }
 
-export type CrumbTarget = { page: 'efforts' } | { page: 'dashboard', effort: EffortRef } | IssueCrumbTarget;
+interface ResearchCrumbTarget {
+  page: 'research'
+  issue: { number: number, kind: Kind, title: string }
+  effort: EffortRef | null
+  note: { title: string }
+}
+
+export type CrumbTarget = { page: 'efforts' } | { page: 'dashboard', effort: EffortRef } | IssueCrumbTarget | ResearchCrumbTarget;
 
 const issueCrumbs = ({ issue, effort, parent }: IssueCrumbTarget, labels: CrumbLabels): Crumb[] => {
   const crumbs: Crumb[] = [{ label: labels.issues, to: ISSUES_PATH }];
@@ -35,8 +43,18 @@ const issueCrumbs = ({ issue, effort, parent }: IssueCrumbTarget, labels: CrumbL
   return crumbs;
 };
 
+const researchCrumbs = ({ issue, effort, note }: ResearchCrumbTarget, labels: CrumbLabels): Crumb[] => {
+  const crumbs: Crumb[] = [{ label: labels.issues, to: ISSUES_PATH }];
+  const onEffort = issue.kind === 'effort';
+  if (effort && !onEffort) crumbs.push({ label: effort.title, to: effortPath(effort) });
+  crumbs.push({ label: formatString(labels.issueTitled, { number: issue.number, title: issue.title }), to: onEffort ? effortPath(issue) : issuePath(issue.number) });
+  crumbs.push({ label: note.title });
+  return crumbs;
+};
+
 export const crumbsFor = (target: CrumbTarget, labels: CrumbLabels): Crumb[] => {
   if (target.page === 'issue') return issueCrumbs(target, labels);
+  if (target.page === 'research') return researchCrumbs(target, labels);
   if (target.page === 'efforts') return [{ label: labels.efforts }];
   return [
     { label: labels.efforts, to: HOME_PATH },

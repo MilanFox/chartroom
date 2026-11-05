@@ -88,6 +88,13 @@ export const linkTitle = (value: string) => {
   }
 };
 
+const RESEARCH_NOTE_VALUE = /^(.+) \((\d+) bytes\)$/;
+
+export const researchNoteValue = (value: string | null) => {
+  const match = RESEARCH_NOTE_VALUE.exec(value ?? '');
+  return match ? { slug: match[1]!, size: Number(match[2]) } : null;
+};
+
 const linesOf = (text: string) => (text === '' ? [] : text.split('\n'));
 
 export const lineDiff = (before: string, after: string): DiffLine[] => {

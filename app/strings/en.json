@@ -46,6 +46,7 @@
     "map": "Map: {title}",
     "spec": "Spec: {title}",
     "issue": "#{number}",
+    "issueTitled": "#{number} {title}",
     "collapsed": "…"
   },
   "login": {
@@ -225,6 +226,10 @@
           "taken": "That URL is already linked here.",
           "title": "Enter a title."
         }
+      },
+      "research": {
+        "heading": "Research notes",
+        "meta": "{size} · updated {date}"
       }
     },
     "thread": {
@@ -285,6 +290,8 @@
         "blockerRemoved": "removed blocker {blocker}",
         "linkAdded": "added Link {title}",
         "linkRemoved": "removed Link {title}",
+        "researchAdded": "added Research note {slug} ({size})",
+        "researchUpdated": "updated Research note {slug} ({before} → {after})",
         "commentDeleted": "deleted a comment"
       }
     },
@@ -319,6 +326,13 @@
       "nodeBlockedBy": "blocked by {numbers}",
       "nodeSeparator": ", "
     }
+  },
+  "research": {
+    "pageTitle": "{title} · #{number}/{slug}",
+    "address": "#{number}/{slug}",
+    "updated": "updated {date} by {holder}",
+    "notFound": "There is no Research note #{number}/{slug}.",
+    "loadFailed": "Research note #{number}/{slug} could not be loaded. Try again."
   },
   "workbench": {
     "title": "Issues",
@@ -502,6 +516,14 @@
       "copyFailed": "Copying failed. Try again.",
       "note": "Rolled up over the whole {effort}, deduped by URL, Links on closed tickets included.",
       "addHeading": "Add Link to this {effort}"
+    },
+    "research": {
+      "heading": "Research",
+      "count": "({count})",
+      "from": "from {issue}",
+      "source": "#{number} {title}",
+      "updated": "updated {date}",
+      "none": "No Research notes in this {effort} yet."
     },
     "testInstructions": {
       "heading": "Test instructions",

@@ -6,7 +6,9 @@
       <template v-for="(edit, index) in edits" :key="index">
         <span class="change-row__separator" aria-hidden="true">{{ strings.issue.changes.separator }}</span>
 
-        <span class="change-row__phrase">{{ phraseOf(edit) }}</span>
+        <span v-if="researchParts[index]" class="change-row__phrase">{{ researchParts[index].prefix }}<NuxtLink :to="researchParts[index].to" class="change-row__link">{{ researchParts[index].slug }}</NuxtLink>{{ researchParts[index].suffix }}</span>
+
+        <span v-else class="change-row__phrase">{{ phraseOf(edit) }}</span>
 
         <button
           v-if="isTextField(edit.field)"
@@ -48,6 +50,22 @@ const { strings, format } = useStrings();
 const expanded = reactive(new Set<number>());
 
 const edits = computed(() => groupEdits(props.group));
+
+const SLUG_SLOT = '{slug}';
+
+const researchPartsOf = ({ field, before, after }: FieldEdit) => {
+  const note = field === 'research' ? researchNoteValue(after) : null;
+  if (!note) return null;
+  const { phrases } = strings.value.issue.changes;
+  const previous = researchNoteValue(before);
+  const phrase = previous
+    ? format(phrases.researchUpdated, { slug: SLUG_SLOT, before: formatFileSize(previous.size), after: formatFileSize(note.size) })
+    : format(phrases.researchAdded, { slug: SLUG_SLOT, size: formatFileSize(note.size) });
+  const [prefix = '', suffix = ''] = phrase.split(SLUG_SLOT);
+  return { prefix, suffix, slug: note.slug, to: researchNotePath(props.group.changes[0]!.issue, note.slug) };
+};
+
+const researchParts = computed(() => edits.value.map(researchPartsOf));
 
 const toggle = (index: number) => {
   if (!expanded.delete(index)) expanded.add(index);
@@ -99,6 +117,10 @@ const phraseOf = ({ field, before, after }: FieldEdit) => {
   &__actor {
     font-weight: 600;
     color: var(--color-fg);
+  }
+
+  &__link {
+    color: inherit;
   }
 
   &__expander {

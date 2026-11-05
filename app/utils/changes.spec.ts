@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { IssueChange, IssueComment } from '~/types/api';
 import type { ChangeGroup } from './changes';
-import { groupEdits, lineDiff, threadEntries } from './changes';
+import { groupEdits, lineDiff, researchNoteValue, threadEntries } from './changes';
 
 const at = (minute: number) => `2026-11-04T10:${String(minute).padStart(2, '0')}:00.000Z`;
 
@@ -71,6 +71,17 @@ describe('threadEntries', () => {
       { field: 'label', before: null, after: 'bug' },
       { field: 'label', before: 'bug', after: null },
     ]);
+  });
+});
+
+describe('researchNoteValue', () => {
+  it('reads the slug and size a Research note Change stores', () => {
+    expect(researchNoteValue('local-transcription (158 bytes)')).toEqual({ slug: 'local-transcription', size: 158 });
+  });
+
+  it('reads nothing from an empty or foreign value', () => {
+    expect(researchNoteValue(null)).toBeNull();
+    expect(researchNoteValue('local-transcription')).toBeNull();
   });
 });
 

@@ -12,10 +12,10 @@
 <script setup lang="ts">
 import type { MarkdownTextProps } from './MarkdownText.types';
 
-const props = defineProps<MarkdownTextProps>();
+const props = withDefaults(defineProps<MarkdownTextProps>(), { minHeadingLevel: 1 });
 
 const { render } = useMarkdown();
-const html = computed(() => render(props.source) ?? '');
+const html = computed(() => render(props.source, props.minHeadingLevel) ?? '');
 </script>
 
 <style lang="scss" scoped>
