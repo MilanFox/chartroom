@@ -12,7 +12,7 @@ Issues, maps and specs for this repo live in the Chartroom instance at **{{baseU
 - Verify with `chartroom me`: it prints the holder you act as. Every claim, comment and Link is attributed to that holder.
 - Every command prints the API's JSON on stdout. Errors are `{ "error": { "code", "message", "field"? } }` on stderr with exit 1; usage errors exit 2. Codes: `not-found`, `conflict`, `invalid`, `forbidden`, `unauthenticated`, `rate-limited`, `unreachable`.
 - Markdown bodies: pass `--body "…"` for one line, `--body-file <path>` for a file, or `--body-file -` to read stdin (heredoc). The same for `--comment-file`.
-- Lists print one page `{ "items": [...], "nextCursor": … }` (default 50, max `--limit 200`); `--cursor <c>` continues, `--all` follows every cursor and prints a plain array. Use `--all` for any query a skill walks to the end.
+- `issue list`, `issue changes`, `effort list` and `research list` all print `{ "items": [...], "nextCursor": … }`; read the items with `.items[]`. One page holds 50 by default (max `--limit 200`); `--cursor <c>` continues, `--all` follows every cursor and prints every item in the same shape with `nextCursor: null`. Use `--all` for any query a skill walks to the end.
 
 ## Vocabulary
 
@@ -39,7 +39,7 @@ Every group is exclusive: adding a member removes its siblings. The seeded group
 ## Conventions
 
 - **Create an issue**: `chartroom issue create --kind <kind> --title "…" --body-file - [--parent <n>] [--label <l>]… [--blocked-by <n>]… [--name <slug>]`. `--name` only for an {{Effort}}.
-- **Read an issue**: `chartroom issue view <n>`. The document carries `body`, `labels`, `assignee`, `createdBy`, `createdAt`, `updatedAt`, `blockedBy` (with each blocker's `open` state), `blocks`, `children`, `links`, `comments` (oldest first) and `resolution`.
+- **Read an issue**: `chartroom issue view <n>`. The document carries `body`, `labels`, `assignee`, `createdBy`, `createdAt`, `updatedAt`, `blockedBy` and `children` (both `[{ number, title, open }]`), `blocks`, `links`, `comments` (oldest first) and `resolution`.
 - **List issues**: `chartroom issue list` with any of `--kind`, `--state open|closed`, `--label <l>` (repeatable, AND), `--parent <n>`, `--effort <slug|n>` (whole subtree), `--assignee <slug|none>`, `--missing <group>` (repeatable, AND; issues carrying no member of the group), `--numbers 1,2,3`, `-q <text>`, `--sort number|createdAt|updatedAt|title|state|<group>`, `--order asc|desc`, `--view frontier|mine|needs-triage|blocked|closed-recent`. A view sets its own defaults; other filters narrow within it.
 - **Edit a body**: `chartroom issue view <n>` first and note its `version`, edit the markdown, then `chartroom issue edit <n> --if-version <version> --body-file -`. A `conflict` error means someone wrote in between: view the issue again, redo the edit on the fresh body and retry. Always pass `--if-version`; without it the edit is last-write-wins. `issue edit` also takes `--title`, `--parent <n>` / `--no-parent`, `--name`, `--test-instructions` ({{Effort}} only).
 - **Append under a heading**: `chartroom issue append <n> --section "<heading>" --text-file -`. Atomic, so no view first and no `--if-version`; the heading text must match exactly and the section must exist (a missing one is `invalid`, never created).

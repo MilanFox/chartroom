@@ -391,11 +391,12 @@ const execute = async (context: CliContext) => {
     for (;;) {
       const page = await (await call(path, query)).json() as { items: unknown[], nextCursor: string | null };
       items.push(...page.items);
-      if (!page.nextCursor) break;
+      if (!page.nextCursor) {
+        context.stdout.write(`${JSON.stringify({ ...page, items }, null, 2)}\n`);
+        return 0;
+      }
       query.set('cursor', page.nextCursor);
     }
-    context.stdout.write(`${JSON.stringify(items, null, 2)}\n`);
-    return 0;
   }
   const response = await call(path);
   if (response.status !== 204) context.stdout.write(`${JSON.stringify(await response.json(), null, 2)}\n`);

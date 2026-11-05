@@ -65,7 +65,7 @@ describe('issue core', () => {
 
     const document = await api.json('GET', `/issues/${tracker.body.number}`);
     expect(document.status).toBe(200);
-    expect(document.body).toEqual({ ...tracker.body, children: [map.body.number, spec.body.number, underEffort.body.number] });
+    expect(document.body).toEqual({ ...tracker.body, children: [map.body, spec.body, underEffort.body].map(({ number, title }) => ({ number, title, open: true })) });
   });
 
   it('is not-found for an unknown or non-numeric number', async () => {

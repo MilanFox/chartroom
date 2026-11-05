@@ -129,7 +129,7 @@ export interface IssueDocument extends IssueRow {
   version: number
   blockedBy: { number: number, title: string, open: boolean }[]
   blocks: { number: number, title: string }[]
-  children: number[]
+  children: { number: number, title: string, open: boolean }[]
   links: IssueLink[]
   comments: IssueComment[]
   resolution: IssueComment | null

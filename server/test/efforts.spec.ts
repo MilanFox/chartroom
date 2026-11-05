@@ -36,7 +36,7 @@ describe('efforts', () => {
     const bySlug = (await alice.json('GET', '/efforts/tracker')).body;
     const byNumber = (await alice.json('GET', `/efforts/${tracker.number}`)).body;
     expect(bySlug).toEqual(byNumber);
-    expect(bySlug).toMatchObject({ number: tracker.number, kind: 'effort', name: 'tracker', testInstructions: null, children: [map.number], specs: [], links: [] });
+    expect(bySlug).toMatchObject({ number: tracker.number, kind: 'effort', name: 'tracker', testInstructions: null, children: [{ number: map.number, title: map.title, open: true }], specs: [], links: [] });
     expect(bySlug.map).toMatchObject({ number: map.number, kind: 'map', title: 'Map tracker' });
     expect(bySlug.map).not.toHaveProperty('body');
     expect(bySlug.linkRollup).toEqual({ resource: [], artifact: [] });

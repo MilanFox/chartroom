@@ -215,11 +215,14 @@ describe('the CLI', () => {
       expect(secondPage.nextCursor).toBeNull();
     });
 
-    it('--all follows every cursor and prints one plain array', async () => {
+    it('--all follows every cursor and prints one page shape holding every item, its nextCursor null', async () => {
       const result = await chartroom(['issue', 'list', '--label', 'bulk', '--all']);
+      const allPages = JSON.parse(result.stdout);
 
       expect(result.code).toBe(0);
-      expect(rowNumbers(JSON.parse(result.stdout))).toEqual(bulkNumbers);
+      expect(Object.keys(allPages)).toEqual(Object.keys(await printedJson(['issue', 'list', '--label', 'bulk'])));
+      expect(rowNumbers(allPages.items)).toEqual(bulkNumbers);
+      expect(allPages.nextCursor).toBeNull();
     });
   });
 
@@ -249,7 +252,7 @@ describe('the CLI', () => {
 
       writeFileSync(file, '# Local transcription, revised\n');
       expect(JSON.parse((await chartroom(['research', 'put', String(ticket.number), file])).stdout)).toMatchObject({ title: 'Local transcription, revised' });
-      expect((await aliceApi.json('GET', `/issues/${ticket.number}/research`)).body).toHaveLength(1);
+      expect((await aliceApi.json('GET', `/issues/${ticket.number}/research`)).body.items).toHaveLength(1);
     });
 
     it('put - reads stdin under --slug; without --slug it is a usage error that writes nothing', async () => {
@@ -261,7 +264,7 @@ describe('the CLI', () => {
 
       const piped = JSON.parse((await chartroom(['research', 'put', String(ticket.number), '-', '--slug', 'piped-notes'], { stdin: '# Piped' })).stdout);
       expect(piped).toMatchObject({ slug: 'piped-notes', title: 'Piped', body: '# Piped' });
-      expect((await aliceApi.json('GET', `/issues/${ticket.number}/research`)).body.map((note: { slug: string }) => note.slug)).toEqual(['piped-notes']);
+      expect((await aliceApi.json('GET', `/issues/${ticket.number}/research`)).body.items.map((note: { slug: string }) => note.slug)).toEqual(['piped-notes']);
     });
 
     it('--slug overrides the file name; list and view print what the API serves', async () => {
@@ -274,7 +277,7 @@ describe('the CLI', () => {
       const viewed = await chartroom(['research', 'view', String(ticket.number), 'final']);
 
       expect(JSON.parse(listed.stdout)).toEqual((await aliceApi.json('GET', `/issues/${ticket.number}/research`)).body);
-      expect(JSON.parse(listed.stdout)).toMatchObject([{ slug: 'final', title: 'final' }]);
+      expect(JSON.parse(listed.stdout)).toMatchObject({ items: [{ slug: 'final', title: 'final' }], nextCursor: null });
       expect(JSON.parse(viewed.stdout)).toEqual((await aliceApi.json('GET', `/issues/${ticket.number}/research/final`)).body);
       expectEnvelope(await chartroom(['research', 'view', String(ticket.number), 'missing']), 'not-found');
     });

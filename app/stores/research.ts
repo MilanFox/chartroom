@@ -9,7 +9,7 @@ export const useResearchStore = defineStore('research', () => {
   const notes = ref<Record<string, ResearchNote>>({});
 
   const loadList = async (issue: number) => {
-    lists.value[issue] = await uiFetch<ResearchNoteSummary[]>(`/issues/${issue}/research`);
+    lists.value[issue] = (await uiFetch<{ items: ResearchNoteSummary[] }>(`/issues/${issue}/research`)).items;
   };
 
   const load = async (issue: number, slug: string) => {

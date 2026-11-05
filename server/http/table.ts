@@ -343,7 +343,7 @@ export const routeTable: TableRoute[] = [
       summary: 'The Research notes of an issue without their bodies, in slug order',
       tags: ['research'],
       parameters: [ISSUE_NUMBER_PARAM],
-      responses: { 200: { description: 'Research notes', schema: { type: 'array', items: RESEARCH_NOTE_SUMMARY_SCHEMA } }, 404: { description: 'No such issue' } },
+      responses: { 200: { description: 'Research notes; nextCursor is always null', schema: pageSchema(RESEARCH_NOTE_SUMMARY_SCHEMA) }, 404: { description: 'No such issue' } },
     },
   },
   {

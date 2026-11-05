@@ -110,8 +110,6 @@ export const touchIssue = (tx: Store, number: number, at: string) => {
 export const childrenOf = (parent: number): IssueRecord[] =>
   useStore().select().from(issues).where(eq(issues.parent, parent)).orderBy(asc(issues.number)).all();
 
-export const childNumbers = (number: number) => childrenOf(number).map(child => child.number);
-
 export const effortNumberOf = (issue: IssueRecord): number | null => effortsByIssue([issue.number]).get(issue.number) ?? null;
 
 export const subtreeNumbers = (root: number) => {

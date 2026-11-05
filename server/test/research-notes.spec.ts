@@ -52,7 +52,7 @@ describe('research notes', () => {
     expect(replaced.body.updatedAt > created.body.updatedAt).toBe(true);
 
     expect((await put(alice, `${ticket.number}/untitled`, 'no heading')).body.title).toBe('untitled');
-    const listed = (await alice.json('GET', `/issues/${ticket.number}/research`)).body;
+    const listed = (await alice.json('GET', `/issues/${ticket.number}/research`)).body.items;
     expect(listed.map((note: { slug: string }) => note.slug)).toEqual(['local-transcription', 'untitled']);
     expect(listed[0]).not.toHaveProperty('body');
     expect(listed[0]).toEqual(Object.fromEntries(Object.entries(replaced.body).filter(([key]) => key !== 'body')));
@@ -90,7 +90,7 @@ describe('research notes', () => {
     for (const slug of ['Upper', 'with_underscore', 'trailing-', 'two--dashes', 'sp%20ace']) {
       expect(await put(alice, `${ticket.number}/${slug}`, 'x')).toMatchObject(invalidOn('slug'));
     }
-    expect(await alice.json('GET', `/issues/${ticket.number}/research`)).toMatchObject({ body: [{ slug: 'at-cap' }] });
+    expect(await alice.json('GET', `/issues/${ticket.number}/research`)).toMatchObject({ body: { items: [{ slug: 'at-cap' }], nextCursor: null } });
   });
 
   it('records a research Change per put with slug and size, never the body', async () => {
